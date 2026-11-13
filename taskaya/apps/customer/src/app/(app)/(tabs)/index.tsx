@@ -1,13 +1,15 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Link } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { GlassCard } from '@/components/ui/GlassCard';
 import { ProviderCard } from '@/components/ui/ProviderCard';
 import { Screen } from '@/components/ui/Screen';
 import { lang, t, tr } from '@/i18n';
 import { Category, getCategories, getProviders, ProviderCard as P } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/AuthProvider';
-import { colors, fonts, radius, spacing } from '@/theme';
+import { colors, fonts, spacing } from '@/theme';
 
 export default function Home() {
   const { session } = useAuth();
@@ -30,8 +32,14 @@ export default function Home() {
       <View style={styles.grid}>
         {cats.map((c) => (
           <Link key={c.id} href={`/category/${c.id}`} asChild>
-            <Pressable style={styles.cat}>
-              <Text style={styles.catText}>{lang === 'ar' ? c.name_ar : c.name_en}</Text>
+            <Pressable accessibilityRole="button" style={({ pressed }) => pressed && { opacity: 0.9, transform: [{ scale: 0.99 }] }}>
+              <GlassCard style={styles.cat}>
+                <View style={styles.iconWrap}>
+                  <Ionicons name="apps" size={20} color={colors.primaryLight} />
+                </View>
+                <Text style={styles.catText}>{lang === 'ar' ? c.name_ar : c.name_en}</Text>
+                <Ionicons name={lang === 'ar' ? 'chevron-back' : 'chevron-forward'} size={20} color={colors.textSecondary} />
+              </GlassCard>
             </Pressable>
           </Link>
         ))}
@@ -45,6 +53,7 @@ export default function Home() {
 const styles = StyleSheet.create({
   section: { fontFamily: fonts.bold, fontSize: 18, color: colors.text, marginBottom: spacing.md, marginTop: spacing.md },
   grid: { gap: spacing.md, marginBottom: spacing.md },
-  cat: { backgroundColor: colors.accent, borderRadius: radius.lg, padding: spacing.lg },
-  catText: { fontFamily: fonts.semibold, fontSize: 18, color: colors.primary },
+  cat: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.lg },
+  iconWrap: { width: 40, height: 40, borderRadius: 12, backgroundColor: colors.accent, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
+  catText: { flex: 1, fontFamily: fonts.semibold, fontSize: 18, color: colors.text },
 });

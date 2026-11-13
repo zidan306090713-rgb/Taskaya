@@ -5,5 +5,5 @@ export default function AuthLayout() {
   const { session, loading } = useAuth();
   if (loading) return null;
   if (session) return <Redirect href="/" />;
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' } }} />;
 }

@@ -1,14 +1,37 @@
+import { DarkTheme, ThemeProvider } from 'expo-router';
 import { Stack } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { View } from 'react-native';
 import { Cairo_400Regular, Cairo_600SemiBold, Cairo_700Bold, useFonts } from '@expo-google-fonts/cairo';
+import { NebulaBackground } from '@/components/ui/NebulaBackground';
 import { AuthProvider } from '@/providers/AuthProvider';
+import { colors } from '@/theme';
 import '@/i18n';
+
+const GlassNavTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    background: 'transparent',
+    card: 'transparent',
+    border: 'transparent',
+    primary: colors.primaryLight,
+    text: colors.text,
+  },
+};
 
 export default function RootLayout() {
   const [loaded] = useFonts({ Cairo_400Regular, Cairo_600SemiBold, Cairo_700Bold });
-  if (!loaded) return null;
+  if (!loaded) return <View style={{ flex: 1, backgroundColor: colors.background }} />;
   return (
-    <AuthProvider>
-      <Stack screenOptions={{ headerShown: false }} />
-    </AuthProvider>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <NebulaBackground />
+      <StatusBar style="light" />
+      <ThemeProvider value={GlassNavTheme}>
+        <AuthProvider>
+          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' } }} />
+        </AuthProvider>
+      </ThemeProvider>
+    </View>
   );
 }

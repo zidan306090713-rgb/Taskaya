@@ -81,3 +81,61 @@ export async function getProvider(id: string) {
     .eq('is_active', true);
   return { profile, services: services ?? [] };
 }
+
+export type ServiceOption = {
+  id: string;
+  provider_id: string;
+  pricing_model: 'fixed' | 'starting_from' | 'custom_quote';
+  base_price: number | null;
+  estimated_duration_minutes: number | null;
+  provider_profiles: { business_name: string };
+  services: { name_ar: string; name_en: string };
+};
+
+export async function getProviderService(id: string) {
+  const { data } = await supabase
+    .from('provider_services')
+    .select('id, provider_id, pricing_model, base_price, estimated_duration_minutes, provider_profiles(business_name), services(name_ar, name_en)')
+    .eq('id', id)
+    .single();
+  return data as unknown as ServiceOption | null;
+}
+
+export type Area = { id: string; name_ar: string; name_en: string };
+
+export async function getAreas(): Promise<Area[]> {
+  const { data } = await supabase.from('service_areas').select('id, name_ar, name_en').order('name_en');
+  return data ?? [];
+}
+
+export type Address = { id: string; label: string | null; street: string | null; building: string | null; area_id: string | null };
+
+export async function getMyAddresses(uid: string): Promise<Address[]> {
+  const { data } = await supabase
+    .from('addresses')
+    .select('id, label, street, building, area_id')
+    .eq('customer_id', uid)
+    .order('created_at', { ascending: false });
+  return data ?? [];
+}
+
+export type Booking = {
+  id: string;
+  booking_number: number;
+  status: string;
+  scheduled_at: string | null;
+  quoted_price: number | null;
+  final_price: number | null;
+  pricing_model: string | null;
+  provider_profiles: { business_name: string } | null;
+  services: { name_ar: string; name_en: string } | null;
+};
+
+export async function getMyBookings(uid: string): Promise<Booking[]> {
+  const { data } = await supabase
+    .from('bookings')
+    .select('id, booking_number, status, scheduled_at, quoted_price, final_price, pricing_model, provider_profiles(business_name), services(name_ar, name_en)')
+    .eq('customer_id', uid)
+    .order('created_at', { ascending: false });
+  return (data ?? []) as unknown as Booking[];
+}

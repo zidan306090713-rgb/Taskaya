@@ -33,7 +33,7 @@ const styles = StyleSheet.create({
   search: {
     height: 52,
     borderRadius: radius.md,
-    backgroundColor: colors.surface,
+    backgroundColor: 'rgba(7,22,41,0.55)',
     borderWidth: 1,
     borderColor: colors.border,
     paddingHorizontal: spacing.md,

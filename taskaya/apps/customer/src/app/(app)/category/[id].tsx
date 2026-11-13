@@ -27,7 +27,7 @@ export default function CategoryScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ headerShown: true, title: cat ? name(cat) : '', headerTitleStyle: { fontFamily: fonts.bold } }} />
+      <Stack.Screen options={{ headerShown: true, title: cat ? name(cat) : '', headerTitleStyle: { fontFamily: fonts.bold, color: colors.text } }} />
       <Screen subtitle={cat ? (lang === 'ar' ? cat.description_ar ?? '' : cat.description_en ?? '') : ''}>
         <View style={styles.chips}>
           <Chip label={tr('الكل', 'All')} on={!active} onPress={() => setActive(undefined)} />
@@ -52,8 +52,8 @@ function Chip({ label, on, onPress }: { label: string; on: boolean; onPress: () 
 
 const styles = StyleSheet.create({
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.lg },
-  chip: { paddingHorizontal: spacing.md, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
-  chipOn: { backgroundColor: colors.primary, borderColor: colors.primary },
+  chip: { paddingHorizontal: spacing.md, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: colors.glass, borderWidth: 1, borderColor: colors.border },
+  chipOn: { backgroundColor: 'rgba(47,140,255,0.55)', borderColor: colors.primaryLight },
   chipText: { fontFamily: fonts.semibold, color: colors.text, fontSize: 13 },
   empty: { fontFamily: fonts.regular, color: colors.textSecondary, textAlign: 'center', marginTop: 32 },
 });

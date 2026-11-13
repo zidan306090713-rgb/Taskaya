@@ -46,3 +46,5 @@ if (I18nManager.isRTL !== isRTL) {
 }
 
 export const t = (key: keyof typeof dict.ar) => dict[lang][key];
+
+export const tr = (ar: string, en: string) => (lang === 'ar' ? ar : en);

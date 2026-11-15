@@ -33,7 +33,6 @@ export default function TabsLayout() {
       }}
     >
       {tab('index', tr('الرئيسية', 'Home'), 'home')}
-      {tab('explore', tr('استكشاف', 'Explore'), 'search')}
       {tab('orders', tr('طلباتي', 'My Orders'), 'receipt')}
       {tab('profile', tr('حسابي', 'Profile'), 'person')}
     </Tabs>

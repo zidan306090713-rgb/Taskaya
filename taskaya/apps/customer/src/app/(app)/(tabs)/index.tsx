@@ -1,15 +1,15 @@
-import { Ionicons } from '@expo/vector-icons';
-import { Link } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
+import { CategoryTile } from '@/components/ui/CategoryTile';
+import { FeaturedTile } from '@/components/ui/FeaturedTile';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { ProviderCard } from '@/components/ui/ProviderCard';
 import { Screen } from '@/components/ui/Screen';
-import { lang, t, tr } from '@/i18n';
+import { TileGrid } from '@/components/ui/TileGrid';
+import { t, tr } from '@/i18n';
 import { Category, getCategories, getProviders, ProviderCard as P } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/AuthProvider';
-import { colors, fonts, spacing } from '@/theme';
+import { colors, fonts, radius, spacing } from '@/theme';
 
 export default function Home() {
   const { session } = useAuth();
@@ -29,31 +29,16 @@ export default function Home() {
   return (
     <Screen title={`${t('greeting')} ${name}`} subtitle={t('tagline')}>
       <Text style={styles.section}>{t('categories')}</Text>
-      <View style={styles.grid}>
-        {cats.map((c) => (
-          <Link key={c.id} href={`/category/${c.id}`} asChild>
-            <Pressable accessibilityRole="button" style={({ pressed }) => pressed && { opacity: 0.9, transform: [{ scale: 0.99 }] }}>
-              <GlassCard style={styles.cat}>
-                <View style={styles.iconWrap}>
-                  <Ionicons name="apps" size={20} color={colors.primaryLight} />
-                </View>
-                <Text style={styles.catText}>{lang === 'ar' ? c.name_ar : c.name_en}</Text>
-                <Ionicons name={lang === 'ar' ? 'chevron-back' : 'chevron-forward'} size={20} color={colors.textSecondary} />
-              </GlassCard>
-            </Pressable>
-          </Link>
-        ))}
-      </View>
+      <TileGrid data={cats} keyOf={(c) => c.id} aspect={0.6} render={(c, size, height) => <CategoryTile c={c} size={size} height={height} />} />
       <Text style={styles.section}>{tr('مقدمو خدمة مميزون', 'Featured providers')}</Text>
-      {featured.map((p) => <ProviderCard key={p.id} p={p} />)}
+      <GlassCard strong radiusSize={radius.lg} style={styles.panel}>
+        <TileGrid data={featured} keyOf={(p) => p.id} render={(p, size) => <FeaturedTile p={p} size={size} />} />
+      </GlassCard>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   section: { fontFamily: fonts.bold, fontSize: 18, color: colors.text, marginBottom: spacing.md, marginTop: spacing.md },
-  grid: { gap: spacing.md, marginBottom: spacing.md },
-  cat: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.lg },
-  iconWrap: { width: 40, height: 40, borderRadius: 12, backgroundColor: colors.accent, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
-  catText: { flex: 1, fontFamily: fonts.semibold, fontSize: 18, color: colors.text },
+  panel: { marginHorizontal: -spacing.md, paddingHorizontal: 28, paddingTop: 28, paddingBottom: 12, backgroundColor: 'rgba(7,22,41,0.6)' },
 });

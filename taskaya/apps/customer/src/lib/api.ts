@@ -11,6 +11,9 @@ export type ProviderCard = {
   rating_avg: number;
   rating_count: number;
   min_price: number | null;
+  logo_url: string | null;
+  cover_url: string | null;
+  description: string | null;
 };
 
 export async function getCategories(): Promise<Category[]> {
@@ -49,7 +52,7 @@ export async function getProviders(opts: { categoryId?: string; subcategoryId?: 
   let q = supabase
     .from('provider_services')
     .select(
-      'provider_id, base_price, provider_profiles!inner(id, business_name, is_verified, is_featured, is_available, rating_avg, rating_count), services!inner(subcategory_id, service_subcategories!inner(category_id))'
+      'provider_id, base_price, provider_profiles!inner(id, business_name, is_verified, is_featured, is_available, rating_avg, rating_count, logo_url, cover_url, description), services!inner(subcategory_id, service_subcategories!inner(category_id))'
     )
     .eq('is_active', true);
   if (opts.subcategoryId) q = q.eq('services.subcategory_id', opts.subcategoryId);

@@ -5,22 +5,27 @@ import { Button } from '@/components/ui/Button';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Input } from '@/components/ui/Input';
 import { t } from '@/i18n';
-import { supabase } from '@/lib/supabase';
+import { signInWithPhone } from '@/lib/auth';
+import { normalizeEgyptPhone } from '@/lib/phone';
 import { colors, fonts, spacing } from '@/theme';
 
 export default function Login() {
-  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const onLogin = async () => {
-    if (!email || !password) return setError(t('requiredFields'));
+    if (!phone.trim() || !password) return setError(t('requiredFields'));
+    const e164 = normalizeEgyptPhone(phone);
+    if (!e164) return setError(t('invalidPhone'));
+
     setLoading(true);
     setError('');
-    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-    if (error) setError(error.message);
+    const { error } = await signInWithPhone(e164, password);
     setLoading(false);
+    if (error) setError(t('wrongCredentials'));
+    // عند النجاح: AuthProvider يلتقط الجلسة و (auth)/_layout يحوّل للرئيسية تلقائيًا
   };
 
   return (
@@ -30,10 +35,10 @@ export default function Login() {
         <Text style={styles.tagline}>{t('tagline')}</Text>
         <View style={{ height: spacing.xl }} />
         <GlassCard strong style={styles.panel}>
-        <Input label={t('email')} value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
-        <Input label={t('password')} value={password} onChangeText={setPassword} secureTextEntry />
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-        <Button title={t('login')} onPress={onLogin} loading={loading} />
+          <Input label={t('phone')} value={phone} onChangeText={setPhone} keyboardType="phone-pad" autoComplete="username" textContentType="username" />
+          <Input label={t('password')} value={password} onChangeText={setPassword} secureTextEntry autoComplete="current-password" textContentType="password" />
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+          <Button title={t('login')} onPress={onLogin} loading={loading} />
         </GlassCard>
         <View style={styles.footer}>
           <Text style={styles.muted}>{t('noAccount')} </Text>

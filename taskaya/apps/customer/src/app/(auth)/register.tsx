@@ -1,40 +1,39 @@
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Input } from '@/components/ui/Input';
 import { t } from '@/i18n';
-import { supabase } from '@/lib/supabase';
+import { signUpWithPhone } from '@/lib/auth';
+import { normalizeEgyptPhone } from '@/lib/phone';
 import { colors, fonts, spacing } from '@/theme';
 
+const MIN_PASSWORD = 8;
+
 export default function Register() {
+  const router = useRouter();
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [info, setInfo] = useState('');
 
   const onRegister = async () => {
-    if (!fullName || !email || !password) return setError(t('requiredFields'));
+    if (!fullName.trim() || !phone.trim() || !password || !confirm) return setError(t('requiredFields'));
+    const e164 = normalizeEgyptPhone(phone);
+    if (!e164) return setError(t('invalidPhone'));
+    if (password.length < MIN_PASSWORD) return setError(t('passwordTooShort'));
+    if (password !== confirm) return setError(t('passwordMismatch'));
+
     setLoading(true);
     setError('');
-    setInfo('');
-    const { data, error } = await supabase.auth.signUp({
-      email: email.trim(),
-      password,
-      options: { data: { full_name: fullName.trim(), role: 'customer' } },
-    });
-    if (error) {
-      setError(error.message);
-    } else if (data.session && phone.trim()) {
-      await supabase.from('profiles').update({ phone: phone.trim() }).eq('id', data.session.user.id);
-    } else if (!data.session) {
-      setInfo(t('checkEmail'));
-    }
+    const { error } = await signUpWithPhone({ phone: e164, password, fullName });
     setLoading(false);
+    if (error) return setError(`${t('sendFailed')} (${error.message})`);
+
+    router.push({ pathname: '/verify', params: { phone: e164 } });
   };
 
   return (
@@ -43,13 +42,12 @@ export default function Register() {
         <Text style={styles.title}>{t('register')}</Text>
         <View style={{ height: spacing.lg }} />
         <GlassCard strong style={styles.panel}>
-        <Input label={t('fullName')} value={fullName} onChangeText={setFullName} />
-        <Input label={t('phone')} value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
-        <Input label={t('email')} value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
-        <Input label={t('password')} value={password} onChangeText={setPassword} secureTextEntry />
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-        {info ? <Text style={styles.info}>{info}</Text> : null}
-        <Button title={t('register')} onPress={onRegister} loading={loading} />
+          <Input label={t('fullName')} value={fullName} onChangeText={setFullName} autoComplete="name" textContentType="name" />
+          <Input label={t('phone')} value={phone} onChangeText={setPhone} keyboardType="phone-pad" autoComplete="tel" textContentType="telephoneNumber" />
+          <Input label={t('password')} value={password} onChangeText={setPassword} secureTextEntry autoComplete="new-password" textContentType="newPassword" />
+          <Input label={t('confirmPassword')} value={confirm} onChangeText={setConfirm} secureTextEntry autoComplete="new-password" textContentType="newPassword" />
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+          <Button title={t('sendCode')} onPress={onRegister} loading={loading} />
         </GlassCard>
         <View style={styles.footer}>
           <Text style={styles.muted}>{t('haveAccount')} </Text>
@@ -65,7 +63,6 @@ const styles = StyleSheet.create({
   panel: { padding: spacing.lg },
   title: { fontFamily: fonts.bold, fontSize: 28, color: colors.text, textAlign: 'center' },
   error: { fontFamily: fonts.regular, color: colors.danger, marginBottom: spacing.md },
-  info: { fontFamily: fonts.regular, color: colors.success, marginBottom: spacing.md },
   footer: { flexDirection: 'row', justifyContent: 'center', marginTop: spacing.lg },
   muted: { fontFamily: fonts.regular, color: colors.textSecondary },
   link: { fontFamily: fonts.bold, color: colors.primaryLight },

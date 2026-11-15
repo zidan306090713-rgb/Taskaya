@@ -1,5 +1,6 @@
 import { Session } from '@supabase/supabase-js';
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
+import { interceptSession, registerAuthApply } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 
 const Ctx = createContext<{ session: Session | null; loading: boolean }>({
@@ -18,7 +19,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(data.session);
       setLoading(false);
     });
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
+    registerAuthApply(setSession);
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
+      if (!interceptSession(s)) setSession(s);
+    });
     return () => sub.subscription.unsubscribe();
   }, []);
 

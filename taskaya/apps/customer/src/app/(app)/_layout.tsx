@@ -11,7 +11,7 @@ export default function AppLayout() {
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: 'transparent' },
-        headerStyle: { backgroundColor: '#0A1F3D' },
+        headerStyle: { backgroundColor: '#E3EDFB' },
         headerTintColor: colors.text,
         headerShadowVisible: false,
       }}

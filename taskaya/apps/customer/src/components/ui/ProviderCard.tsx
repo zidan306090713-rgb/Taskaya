@@ -10,14 +10,14 @@ export function ProviderCard({ p }: { p: P }) {
   return (
     <Link href={`/provider/${p.id}`} asChild>
       <Pressable style={({ pressed }) => [pressed && { opacity: 0.9, transform: [{ scale: 0.99 }] }]}>
-        <GlassCard style={styles.card}>
+        <GlassCard navy style={styles.card}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{p.business_name.charAt(0)}</Text>
           </View>
           <View style={{ flex: 1 }}>
             <View style={styles.row}>
               <Text style={styles.name} numberOfLines={1}>{p.business_name}</Text>
-              {p.is_verified ? <Ionicons name="checkmark-circle" size={18} color={colors.primaryLight} /> : null}
+              {p.is_verified ? <Ionicons name="checkmark-circle" size={18} color="#9CC7FF" /> : null}
             </View>
             <View style={styles.row}>
               <Ionicons name="star" size={14} color="#FBBF24" />
@@ -35,10 +35,10 @@ export function ProviderCard({ p }: { p: P }) {
 
 const styles = StyleSheet.create({
   card: { flexDirection: 'row', gap: spacing.md, padding: spacing.md, marginBottom: spacing.md },
-  avatar: { width: 56, height: 56, borderRadius: radius.md, backgroundColor: colors.accent, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
+  avatar: { width: 56, height: 56, borderRadius: radius.md, backgroundColor: colors.accent, borderWidth: 1.5, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
   avatarText: { fontFamily: fonts.bold, fontSize: 22, color: colors.primaryLight },
   row: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  name: { fontFamily: fonts.bold, fontSize: 16, color: colors.text, flexShrink: 1 },
-  meta: { fontFamily: fonts.regular, color: colors.textSecondary, fontSize: 13 },
-  price: { fontFamily: fonts.semibold, color: colors.primaryLight, marginTop: 4, fontSize: 13 },
+  name: { fontFamily: fonts.bold, fontSize: 16, color: '#FFFFFF', flexShrink: 1 },
+  meta: { fontFamily: fonts.regular, color: '#B7CDEE', fontSize: 13 },
+  price: { fontFamily: fonts.semibold, color: '#9CC7FF', marginTop: 4, fontSize: 13 },
 });

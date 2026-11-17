@@ -59,6 +59,6 @@ export default function Home() {
 
 const styles = StyleSheet.create({
   section: { fontFamily: fonts.bold, fontSize: 18, color: colors.text, marginBottom: spacing.md, marginTop: spacing.md },
-  panel: { marginHorizontal: -spacing.md, paddingHorizontal: 28, paddingTop: 28, paddingBottom: 12, backgroundColor: 'rgba(7,22,41,0.6)' },
+  panel: { marginHorizontal: -spacing.md, paddingHorizontal: 28, paddingTop: 28, paddingBottom: 12, backgroundColor: 'rgba(255,255,255,0.95)' },
   empty: { fontFamily: fonts.regular, color: colors.textSecondary, textAlign: 'center', marginTop: spacing.lg },
 });

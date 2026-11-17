@@ -1,82 +1,88 @@
-import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { AccessibilityInfo, Animated, Easing, Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Animated, Dimensions, Easing, StyleSheet, View } from 'react-native';
 
-const BLOBS = [
-  { color: '#1D6FE0', size: 0.95, x: -0.25, y: -0.15, dx: 70, dy: 50, dur: 22000, op: 0.42 },
-  { color: '#0EA5C6', size: 0.8, x: 0.45, y: 0.05, dx: -60, dy: 70, dur: 26000, op: 0.3 },
-  { color: '#3B5BDB', size: 0.9, x: -0.1, y: 0.6, dx: 80, dy: -50, dur: 30000, op: 0.32 },
-  { color: '#22D3EE', size: 0.6, x: 0.55, y: 0.7, dx: -50, dy: -60, dur: 24000, op: 0.22 },
-];
-const RINGS = [1, 0.75, 0.5, 0.28];
+const { width, height } = Dimensions.get('window');
+const STAR_COUNT = 35;
+const STAR_COLOR = '#2F80ED';
 
-function Blob({ b, w, h, animate }: { b: (typeof BLOBS)[number]; w: number; h: number; animate: boolean }) {
-  const v = useRef(new Animated.Value(0)).current;
+// مولّد أرقام ثابت (pure): نفس التوزيع كل مرة
+function makeRand(seed: number) {
+  let a = seed;
+  return () => {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+type StarData = {
+  x: number;
+  y: number;
+  size: number;
+  drift: number;
+  duration: number;
+  delay: number;
+};
+
+function Star({ x, y, size, drift, duration, delay }: StarData) {
+  const [move] = useState(() => new Animated.Value(0));
+
   useEffect(() => {
-    if (!animate) {
-      v.setValue(0);
-      return;
-    }
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(v, { toValue: 1, duration: b.dur, easing: Easing.inOut(Easing.sin), useNativeDriver: Platform.OS !== 'web' }),
-        Animated.timing(v, { toValue: 0, duration: b.dur, easing: Easing.inOut(Easing.sin), useNativeDriver: Platform.OS !== 'web' }),
+        Animated.timing(move, { toValue: 1, duration, delay, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(move, { toValue: 0, duration, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
       ])
     );
     loop.start();
     return () => loop.stop();
-  }, [animate, b.dur, v]);
+  }, [move, duration, delay]);
 
-  const size = Math.max(w, h) * b.size;
-  const tx = v.interpolate({ inputRange: [0, 1], outputRange: [0, b.dx] });
-  const ty = v.interpolate({ inputRange: [0, 1], outputRange: [0, b.dy] });
-  const web = Platform.OS === 'web' ? ({ filter: 'blur(40px)' } as any) : null;
+  const translateY = move.interpolate({ inputRange: [0, 1], outputRange: [0, -drift] });
+  const translateX = move.interpolate({ inputRange: [0, 1], outputRange: [0, drift * 0.6] });
 
   return (
     <Animated.View
-      style={[
-        { position: 'absolute', left: w * b.x, top: h * b.y, width: size, height: size, alignItems: 'center', justifyContent: 'center', transform: [{ translateX: tx }, { translateY: ty }] },
-        web,
-      ]}
-    >
-      {RINGS.map((r) => (
-        <View
-          key={r}
-          style={{ position: 'absolute', width: size * r, height: size * r, borderRadius: size, backgroundColor: b.color, opacity: b.op / RINGS.length }}
-        />
-      ))}
-    </Animated.View>
+      style={{
+        position: 'absolute',
+        left: x,
+        top: y,
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        backgroundColor: STAR_COLOR,
+        transform: [{ translateX }, { translateY }],
+      }}
+    />
   );
 }
 
 export function NebulaBackground() {
-  const { width, height } = useWindowDimensions();
-  const [animate, setAnimate] = useState(true);
-
-  useEffect(() => {
-    AccessibilityInfo.isReduceMotionEnabled().then((r) => setAnimate(!r));
-    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', (r) => setAnimate(!r));
-    return () => sub.remove();
-  }, []);
-
-  const stars = useMemo(() => {
-    let s = 7;
-    const rnd = () => ((s = (s * 9301 + 49297) % 233280) / 233280);
-    return Array.from({ length: 28 }, () => ({ x: rnd(), y: rnd(), r: 1 + rnd() * 1.4, o: 0.25 + rnd() * 0.55 }));
+  const stars = useMemo<StarData[]>(() => {
+    const rand = makeRand(20261117);
+    return Array.from({ length: STAR_COUNT }, () => {
+      const r = rand();
+      const size = r < 0.55 ? 3 + rand() * 4 : r < 0.88 ? 8 + rand() * 8 : 14 + rand() * 10;
+      return {
+        x: rand() * width,
+        y: rand() * height,
+        size,
+        drift: 25 + rand() * 55,
+        duration: 2000 + rand() * 2200,
+        delay: rand() * 1500,
+      };
+    });
   }, []);
 
   return (
-    <View style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]}>
-      <LinearGradient colors={['#0A1F3D', '#071629', '#050F1E']} style={StyleSheet.absoluteFill} />
-      {BLOBS.map((b, i) => (
-        <Blob key={i} b={b} w={width} h={height} animate={animate} />
-      ))}
+    <View style={[StyleSheet.absoluteFill, { backgroundColor: '#E3EDFB', overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }]}>
       {stars.map((s, i) => (
-        <View
-          key={i}
-          style={{ position: 'absolute', left: s.x * width, top: s.y * height, width: s.r * 2, height: s.r * 2, borderRadius: s.r, backgroundColor: '#CFE8FF', opacity: s.o }}
-        />
+        <Star key={i} {...s} />
       ))}
     </View>
   );
 }
+
+export default NebulaBackground;

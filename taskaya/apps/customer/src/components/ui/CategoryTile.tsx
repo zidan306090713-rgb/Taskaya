@@ -4,7 +4,7 @@ import { ComponentProps } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { lang } from '@/i18n';
 import { Category } from '@/lib/api';
-import { colors, fonts, radius } from '@/theme';
+import { fonts, radius } from '@/theme';
 import { GlassCard } from './GlassCard';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
@@ -25,9 +25,9 @@ export function CategoryTile({ c, size, height }: { c: Category; size: number; h
   return (
     <Link href={`/category/${c.id}`} asChild>
       <Pressable accessibilityRole="button" accessibilityLabel={label} style={{ width: size, height }}>
-        <GlassCard strong radiusSize={radius.md} style={[styles.tile, { width: size, height, backgroundColor: 'rgba(5,16,34,0.82)' }]}>
+        <GlassCard navy radiusSize={radius.md} style={[styles.tile, { width: size, height }]}>
           <View style={[styles.iconWrap, { width: iconBox, height: iconBox, borderRadius: Math.round(iconBox * 0.32) }]}>
-            <Ionicons name={icon} size={Math.round(iconBox * 0.56)} color={colors.primaryLight} />
+            <Ionicons name={icon} size={Math.round(iconBox * 0.56)} color="#9CC7FF" />
           </View>
           <Text
             style={[styles.name, { fontSize, lineHeight: Math.round(fontSize * 1.3) }]}
@@ -46,15 +46,11 @@ export function CategoryTile({ c, size, height }: { c: Category; size: number; h
 const styles = StyleSheet.create({
   tile: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, paddingHorizontal: 8 },
   iconWrap: {
-    backgroundColor: colors.accent,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: 'rgba(124,196,255,0.16)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(124,196,255,0.45)',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: colors.glow,
-    shadowOpacity: 0.45,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 0 },
   },
-  name: { fontFamily: fonts.bold, color: colors.text, textAlign: 'center', letterSpacing: 0.2 },
+  name: { fontFamily: fonts.bold, color: '#FFFFFF', textAlign: 'center', letterSpacing: 0.2 },
 });

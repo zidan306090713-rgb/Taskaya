@@ -8,7 +8,7 @@ import { t, tr } from '@/i18n';
 import { toLocalDisplay } from '@/lib/phone';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/AuthProvider';
-import { colors, fonts, spacing } from '@/theme';
+import { fonts, spacing } from '@/theme';
 
 export default function Profile() {
   const { session } = useAuth();
@@ -30,9 +30,9 @@ export default function Profile() {
 
   return (
     <Screen title={tr('حسابي', 'Profile')}>
-      <GlassCard style={styles.card}>
+      <GlassCard navy style={styles.card}>
         <View style={styles.avatar}>
-          <Ionicons name="person" size={28} color={colors.primaryLight} />
+          <Ionicons name="person" size={28} color="#9CC7FF" />
         </View>
         <View style={{ flex: 1 }}>
           {name ? <Text style={styles.name} numberOfLines={1}>{name}</Text> : null}
@@ -47,7 +47,7 @@ export default function Profile() {
 
 const styles = StyleSheet.create({
   card: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.lg },
-  avatar: { width: 56, height: 56, borderRadius: 16, backgroundColor: colors.accent, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
-  name: { fontFamily: fonts.bold, fontSize: 17, color: colors.text },
-  phone: { fontFamily: fonts.regular, fontSize: 14, color: colors.textSecondary, marginTop: 2 },
+  avatar: { width: 56, height: 56, borderRadius: 16, backgroundColor: 'rgba(124,196,255,0.16)', borderWidth: 1.5, borderColor: 'rgba(124,196,255,0.45)', alignItems: 'center', justifyContent: 'center' },
+  name: { fontFamily: fonts.bold, fontSize: 17, color: '#FFFFFF' },
+  phone: { fontFamily: fonts.regular, fontSize: 14, color: '#B7CDEE', marginTop: 2 },
 });

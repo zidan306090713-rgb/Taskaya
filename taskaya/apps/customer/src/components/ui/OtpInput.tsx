@@ -1,6 +1,6 @@
 import { ComponentRef, useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { colors, fonts, radius } from '@/theme';
+import { colors, fonts } from '@/theme';
 
 export type OtpStatus = 'idle' | 'checking' | 'success' | 'error';
 
@@ -12,6 +12,7 @@ type Props = {
   autoFocus?: boolean;
 };
 
+const BLUE = '#2F80ED';
 const AR_DIGITS = '٠١٢٣٤٥٦٧٨٩';
 const clean = (v: string, max: number) =>
   v.replace(/[٠-٩]/g, (c) => String(AR_DIGITS.indexOf(c))).replace(/\D/g, '').slice(0, max);
@@ -21,8 +22,8 @@ export function OtpInput({ value, onChange, length = 6, status = 'idle', autoFoc
   const ref = useRef<ComponentRef<typeof TextInput>>(null);
   const [focused, setFocused] = useState(false);
   const [blink, setBlink] = useState(true);
-  const pulses = useRef(Array.from({ length }, () => new Animated.Value(1))).current;
-  const shake = useRef(new Animated.Value(0)).current;
+  const [pulses] = useState(() => Array.from({ length }, () => new Animated.Value(1)));
+  const [shake] = useState(() => new Animated.Value(0));
   const active = Math.min(value.length, length - 1);
   const locked = status !== 'idle';
 
@@ -51,7 +52,7 @@ export function OtpInput({ value, onChange, length = 6, status = 'idle', autoFoc
     );
     loop.start();
     return () => loop.stop();
-  }, [status]);
+  }, [status, pulses]);
 
   // اهتزاز عند الخطأ
   useEffect(() => {
@@ -60,7 +61,7 @@ export function OtpInput({ value, onChange, length = 6, status = 'idle', autoFoc
     Animated.sequence(
       [10, -10, 8, -8, 4, 0].map((x) => Animated.timing(shake, { toValue: x, duration: 60, useNativeDriver: native }))
     ).start();
-  }, [status]);
+  }, [status, shake]);
 
   return (
     <Pressable onPress={() => !locked && ref.current?.focus()} style={styles.wrap} accessibilityLabel="OTP">
@@ -82,7 +83,7 @@ export function OtpInput({ value, onChange, length = 6, status = 'idle', autoFoc
               ]}
             >
               {ch ? (
-                <Text style={[styles.digit, status === 'success' && { color: colors.success }]}>{ch}</Text>
+                <Text style={[styles.digit, status === 'success' && { color: '#16A34A' }, status === 'error' && { color: '#DC2626' }]}>{ch}</Text>
               ) : isActive && value.length < length && blink ? (
                 <View style={styles.caret} />
               ) : null}
@@ -111,39 +112,39 @@ export function OtpInput({ value, onChange, length = 6, status = 'idle', autoFoc
 }
 
 const styles = StyleSheet.create({
-  wrap: { width: '100%', marginBottom: 12 },
-  row: { flexDirection: 'row', gap: 8, direction: 'ltr' },
+  wrap: { width: '100%', marginBottom: 6 },
+  row: { flexDirection: 'row', gap: 8, justifyContent: 'center', direction: 'ltr' },
   box: {
     flex: 1,
-    height: 58,
-    maxWidth: 64,
-    borderRadius: radius.md,
-    backgroundColor: 'rgba(7,22,41,0.55)',
-    borderWidth: 1,
-    borderColor: colors.border,
+    height: 60,
+    maxWidth: 56,
+    borderRadius: 16,
+    backgroundColor: '#F4F8FF',
+    borderWidth: 1.5,
+    borderColor: '#DCE8FA',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  boxFilled: { backgroundColor: 'rgba(47,140,255,0.16)', borderColor: 'rgba(124,196,255,0.45)' },
+  boxFilled: { backgroundColor: '#FFFFFF', borderColor: 'rgba(47,128,237,0.55)' },
   boxActive: {
-    borderColor: colors.primaryLight,
-    borderWidth: 1.5,
-    shadowColor: colors.glow,
-    shadowOpacity: 0.55,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 0 },
+    backgroundColor: '#FFFFFF',
+    borderColor: BLUE,
+    shadowColor: BLUE,
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
   },
-  boxChecking: { borderColor: colors.primaryLight },
+  boxChecking: { borderColor: BLUE },
   boxSuccess: {
-    borderColor: colors.success,
-    backgroundColor: 'rgba(74,222,128,0.14)',
-    shadowColor: colors.success,
-    shadowOpacity: 0.5,
+    borderColor: '#16A34A',
+    backgroundColor: 'rgba(22,163,74,0.08)',
+    shadowColor: '#16A34A',
+    shadowOpacity: 0.35,
     shadowRadius: 10,
-    shadowOffset: { width: 0, height: 0 },
+    shadowOffset: { width: 0, height: 4 },
   },
-  boxError: { borderColor: colors.danger, backgroundColor: 'rgba(248,113,113,0.12)' },
+  boxError: { borderColor: '#DC2626', backgroundColor: 'rgba(220,38,38,0.06)' },
   digit: { fontFamily: fonts.bold, fontSize: 24, color: colors.text },
-  caret: { width: 2, height: 24, borderRadius: 1, backgroundColor: colors.primaryLight },
+  caret: { width: 2, height: 24, borderRadius: 1, backgroundColor: BLUE },
   hidden: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0, color: 'transparent' },
 });

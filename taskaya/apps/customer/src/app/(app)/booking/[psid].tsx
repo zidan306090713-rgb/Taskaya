@@ -2,7 +2,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { PremiumInput } from '@/components/ui/PremiumInput';
 import { Screen } from '@/components/ui/Screen';
 import { lang, tr } from '@/i18n';
 import { Address, Area, getAreas, getMyAddresses, getProviderService, ServiceOption } from '@/lib/api';
@@ -31,7 +31,7 @@ export default function Booking() {
   const [hour, setHour] = useState<number | undefined>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const key = useRef(`${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  const key = useRef<string | null>(null);
 
   useEffect(() => {
     getProviderService(psid).then(setSvc);
@@ -72,6 +72,7 @@ export default function Booking() {
 
   const submit = async () => {
     setError('');
+    key.current ??= `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     if (hour === undefined) return setError(tr('اختر الموعد المناسب', 'Pick a time slot'));
     if (addrId === 'new' && (!areaId || !street.trim())) return setError(tr('أكمل بيانات العنوان', 'Complete the address'));
     setLoading(true);
@@ -109,13 +110,13 @@ export default function Booking() {
 
   return (
     <>
-      <Stack.Screen options={{ headerShown: true, title: tr('حجز خدمة', 'Book a service'), headerTitleStyle: { fontFamily: fonts.bold, color: colors.text } }} />
+      <Stack.Screen options={{ headerShown: true, title: tr('حجز خدمة', 'Book a service'), headerTitleStyle: { fontFamily: fonts.bold, color: colors.text }, headerStyle: { backgroundColor: '#E3EDFB' }, headerShadowVisible: false, headerTintColor: '#2F80ED' }} />
       <Screen>
         <View style={styles.summary}>
           <Text style={styles.svcName}>{svcName}</Text>
-          <Text style={styles.muted}>{svc.provider_profiles.business_name}</Text>
+          <Text style={styles.summaryMuted}>{svc.provider_profiles.business_name}</Text>
           <Text style={styles.price}>{priceText}</Text>
-          <Text style={styles.muted}>{note}</Text>
+          <Text style={styles.summaryMuted}>{note}</Text>
         </View>
 
         <Text style={styles.section}>{tr('العنوان', 'Address')}</Text>
@@ -131,8 +132,8 @@ export default function Booking() {
                 <Chip key={a.id} label={lang === 'ar' ? a.name_ar : a.name_en} on={areaId === a.id} onPress={() => setAreaId(a.id)} />
               ))}
             </View>
-            <Input label={tr('الشارع', 'Street')} value={street} onChangeText={setStreet} />
-            <Input label={tr('العمارة / الشقة', 'Building / Apartment')} value={building} onChangeText={setBuilding} />
+            <PremiumInput icon="trail-sign-outline" label={tr('الشارع', 'Street')} value={street} onChangeText={setStreet} />
+            <PremiumInput icon="business-outline" label={tr('العمارة / الشقة', 'Building / Apartment')} value={building} onChangeText={setBuilding} />
           </View>
         ) : null}
 
@@ -142,7 +143,7 @@ export default function Booking() {
           onChangeText={setDetails}
           multiline
           placeholder={tr('اكتب أي تفاصيل تساعد مقدم الخدمة...', 'Add any details for the provider...')}
-          placeholderTextColor={colors.textSecondary}
+          placeholderTextColor="#A5B6CD"
           style={styles.textarea}
         />
 
@@ -181,17 +182,18 @@ function Chip({ label, on, onPress, disabled, block }: { label: string; on: bool
 }
 
 const styles = StyleSheet.create({
-  summary: { backgroundColor: colors.glass, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, padding: spacing.lg, gap: 4 },
-  svcName: { fontFamily: fonts.bold, fontSize: 20, color: colors.text },
-  price: { fontFamily: fonts.bold, fontSize: 16, color: colors.primaryLight, marginTop: 4 },
+  summary: { backgroundColor: '#0F2F6B', borderWidth: 1.5, borderColor: '#08193D', borderTopColor: 'rgba(124,196,255,0.35)', borderRadius: 22, padding: spacing.lg, gap: 4, shadowColor: '#0A2250', shadowOpacity: 0.3, shadowRadius: 14, shadowOffset: { width: 0, height: 6 } },
+  summaryMuted: { fontFamily: fonts.regular, color: '#B7CDEE' },
+  svcName: { fontFamily: fonts.bold, fontSize: 20, color: '#FFFFFF' },
+  price: { fontFamily: fonts.bold, fontSize: 16, color: '#9CC7FF', marginTop: 4 },
   muted: { fontFamily: fonts.regular, color: colors.textSecondary },
   section: { fontFamily: fonts.bold, fontSize: 18, color: colors.text, marginTop: spacing.lg, marginBottom: spacing.md },
   label: { fontFamily: fonts.semibold, color: colors.text, marginBottom: spacing.xs },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
-  chip: { paddingHorizontal: spacing.md, paddingVertical: 10, borderRadius: radius.pill, backgroundColor: colors.glass, borderWidth: 1, borderColor: colors.border },
+  chip: { paddingHorizontal: spacing.md, paddingVertical: 10, borderRadius: radius.pill, backgroundColor: 'rgba(255,255,255,0.7)', borderWidth: 1.5, borderColor: 'rgba(47,128,237,0.3)' },
   block: { borderRadius: radius.md, marginBottom: spacing.sm },
-  chipOn: { backgroundColor: 'rgba(47,140,255,0.55)', borderColor: colors.primaryLight },
+  chipOn: { backgroundColor: '#2F80ED', borderColor: '#2F80ED', shadowColor: '#2F80ED', shadowOpacity: 0.35, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } },
   chipText: { fontFamily: fonts.semibold, color: colors.text, fontSize: 13 },
-  textarea: { minHeight: 100, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: 'rgba(7,22,41,0.55)', padding: spacing.md, fontFamily: fonts.regular, fontSize: 16, color: colors.text, textAlignVertical: 'top' },
+  textarea: { minHeight: 110, borderRadius: 16, borderWidth: 1.5, borderColor: '#DCE8FA', backgroundColor: '#F4F8FF', padding: spacing.md, fontFamily: fonts.regular, fontSize: 16, color: '#0B1F3A', textAlignVertical: 'top' },
   error: { fontFamily: fonts.regular, color: colors.danger, marginTop: spacing.md },
 });

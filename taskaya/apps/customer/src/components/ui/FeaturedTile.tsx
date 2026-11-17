@@ -5,8 +5,10 @@ import { Link } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { tr } from '@/i18n';
 import { ProviderCard as P } from '@/lib/api';
-import { colors, fonts, radius } from '@/theme';
+import { fonts, radius } from '@/theme';
 import { GlassCard } from './GlassCard';
+
+const ICON = '#9CC7FF';
 
 export function FeaturedTile({ p, size }: { p: P; size: number }) {
   const uri = p.cover_url ?? p.logo_url;
@@ -16,18 +18,14 @@ export function FeaturedTile({ p, size }: { p: P; size: number }) {
 
   return (
     <Link href={`/provider/${p.id}`} asChild>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={p.business_name}
-        style={{ width: size, height: size }}
-      >
-        <GlassCard strong radiusSize={radius.md} style={[styles.tile, { width: size, height: size, backgroundColor: 'rgba(5,16,34,0.82)' }]}>
+      <Pressable accessibilityRole="button" accessibilityLabel={p.business_name} style={{ width: size, height: size }}>
+        <GlassCard navy radiusSize={radius.md} style={[styles.tile, { width: size, height: size }]}>
           <View style={styles.imageWrap}>
             {uri ? (
               <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" />
             ) : (
               <LinearGradient
-                colors={['rgba(47,140,255,0.45)', 'rgba(7,22,41,0.9)']}
+                colors={['rgba(47,140,255,0.55)', 'rgba(10,34,80,0.9)']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={[StyleSheet.absoluteFill, styles.placeholder]}
@@ -46,7 +44,7 @@ export function FeaturedTile({ p, size }: { p: P; size: number }) {
               <Text style={[styles.name, { fontSize: fs, lineHeight: fs + 2 }]} numberOfLines={1}>
                 {p.business_name}
               </Text>
-              {p.is_verified ? <Ionicons name="checkmark-circle" size={fs} color={colors.primaryLight} /> : null}
+              {p.is_verified ? <Ionicons name="checkmark-circle" size={fs} color={ICON} /> : null}
             </View>
             {p.description ? (
               <Text style={[styles.desc, { fontSize: fs - 1.5, lineHeight: fs + 1 }]} numberOfLines={1}>
@@ -65,9 +63,9 @@ export function FeaturedTile({ p, size }: { p: P; size: number }) {
 
 const styles = StyleSheet.create({
   tile: { flex: 1 },
-  imageWrap: { flex: 2, overflow: 'hidden' },
+  imageWrap: { flex: 2, overflow: 'hidden', borderBottomWidth: 1.5, borderBottomColor: '#08193D' },
   placeholder: { alignItems: 'center', justifyContent: 'center' },
-  initial: { fontFamily: fonts.bold, color: colors.primaryLight },
+  initial: { fontFamily: fonts.bold, color: '#DCEBFF' },
   rating: {
     position: 'absolute',
     bottom: 4,
@@ -78,12 +76,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: radius.pill,
-    backgroundColor: 'rgba(5,16,34,0.72)',
+    backgroundColor: '#0A2250',
+    borderWidth: 1.5,
+    borderColor: 'rgba(124,196,255,0.45)',
   },
-  ratingText: { fontFamily: fonts.semibold, color: colors.text },
+  ratingText: { fontFamily: fonts.semibold, color: '#FFFFFF' },
   info: { flex: 1, paddingHorizontal: 6, paddingVertical: 2, justifyContent: 'space-evenly' },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  name: { fontFamily: fonts.bold, color: colors.text, flexShrink: 1 },
-  desc: { fontFamily: fonts.regular, color: colors.textSecondary },
-  price: { fontFamily: fonts.semibold, color: colors.primaryLight },
+  name: { fontFamily: fonts.bold, color: '#FFFFFF', flexShrink: 1 },
+  desc: { fontFamily: fonts.regular, color: '#B7CDEE' },
+  price: { fontFamily: fonts.semibold, color: '#9CC7FF' },
 });

@@ -1,18 +1,18 @@
 export const colors = {
   primary: '#2F8CFF',
-  primaryLight: '#7CC4FF',
-  background: '#071629', // Midnight Blue
-  surface: 'rgba(255,255,255,0.06)',
-  text: '#EAF2FF',
-  textSecondary: '#8FA6C4',
-  accent: 'rgba(56,160,255,0.16)',
-  border: 'rgba(125,190,255,0.18)',
-  danger: '#F87171',
-  success: '#4ADE80',
+  primaryLight: '#3B9BFF',
+  background: '#D9E7FA',
+  surface: 'rgba(11,31,58,0.04)',
+  text: '#2F80ED',
+  textSecondary: '#5B6F8A',
+  accent: 'rgba(47,140,255,0.12)',
+  border: '#3B9BFF',
+  danger: '#DC2626',
+  success: '#16A34A',
   // glass tokens
-  glass: 'rgba(14,38,72,0.55)',
-  glassStrong: 'rgba(18,48,92,0.72)',
-  glassHighlight: 'rgba(255,255,255,0.14)',
+  glass: 'rgba(255,255,255,0.72)',
+  glassStrong: 'rgba(255,255,255,0.9)',
+  glassHighlight: 'rgba(255,255,255,0.6)',
   glow: '#2F8CFF',
 };
 export const spacing = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 };

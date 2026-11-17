@@ -9,14 +9,14 @@ import { useAuth } from '@/providers/AuthProvider';
 import { colors, fonts, radius, spacing } from '@/theme';
 
 const STATUS: Record<string, { ar: string; en: string; color: string }> = {
-  pending: { ar: 'قيد الانتظار', en: 'Pending', color: '#F59E0B' },
+  pending: { ar: 'قيد الانتظار', en: 'Pending', color: '#FBBF24' },
   accepted: { ar: 'تم القبول', en: 'Accepted', color: '#60A5FA' },
-  quotation_submitted: { ar: 'تم إرسال عرض السعر', en: 'Quote sent', color: '#A78BFA' },
-  awaiting_customer_approval: { ar: 'بانتظار موافقتك', en: 'Awaiting your approval', color: '#A78BFA' },
+  quotation_submitted: { ar: 'تم إرسال عرض السعر', en: 'Quote sent', color: '#C4B5FD' },
+  awaiting_customer_approval: { ar: 'بانتظار موافقتك', en: 'Awaiting your approval', color: '#C4B5FD' },
   confirmed: { ar: 'مؤكد', en: 'Confirmed', color: '#4ADE80' },
   in_progress: { ar: 'جاري التنفيذ', en: 'In progress', color: '#60A5FA' },
   completed: { ar: 'مكتمل', en: 'Completed', color: '#4ADE80' },
-  cancelled: { ar: 'ملغي', en: 'Cancelled', color: '#94A3B8' },
+  cancelled: { ar: 'ملغي', en: 'Cancelled', color: '#CBD5E1' },
   rejected: { ar: 'مرفوض', en: 'Rejected', color: '#F87171' },
 };
 
@@ -40,10 +40,10 @@ export default function Orders() {
         const st = STATUS[b.status] ?? { ar: b.status, en: b.status, color: colors.textSecondary };
         const price = b.final_price ?? b.quoted_price;
         return (
-          <GlassCard key={b.id} style={styles.card}>
+          <GlassCard navy key={b.id} style={styles.card}>
             <View style={styles.row}>
               <Text style={styles.title}>{b.services ? (lang === 'ar' ? b.services.name_ar : b.services.name_en) : '-'}</Text>
-              <View style={[styles.badge, { backgroundColor: st.color + '22' }]}>
+              <View style={[styles.badge, { backgroundColor: st.color + '33', borderWidth: 1, borderColor: st.color + '88' }]}>
                 <Text style={[styles.badgeText, { color: st.color }]}>{lang === 'ar' ? st.ar : st.en}</Text>
               </View>
             </View>
@@ -68,9 +68,9 @@ const styles = StyleSheet.create({
   empty: { fontFamily: fonts.regular, color: colors.textSecondary, textAlign: 'center', marginTop: 48 },
   card: { padding: spacing.md, marginBottom: spacing.md, gap: 4 },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.sm },
-  title: { fontFamily: fonts.bold, fontSize: 16, color: colors.text, flexShrink: 1 },
-  muted: { fontFamily: fonts.regular, color: colors.textSecondary, fontSize: 13 },
-  price: { fontFamily: fonts.bold, color: colors.primaryLight, fontSize: 13 },
+  title: { fontFamily: fonts.bold, fontSize: 16, color: '#FFFFFF', flexShrink: 1 },
+  muted: { fontFamily: fonts.regular, color: '#B7CDEE', fontSize: 13 },
+  price: { fontFamily: fonts.bold, color: '#9CC7FF', fontSize: 13 },
   badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.pill },
   badgeText: { fontFamily: fonts.semibold, fontSize: 12 },
 });

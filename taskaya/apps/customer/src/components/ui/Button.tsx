@@ -13,9 +13,9 @@ type Props = {
 export function Button({ title, onPress, loading, variant = 'primary' }: Props) {
   const outline = variant === 'outline';
   const content = loading ? (
-    <ActivityIndicator color={outline ? colors.primaryLight : '#fff'} />
+    <ActivityIndicator color="#fff" />
   ) : (
-    <Text style={[styles.text, { color: outline ? colors.primaryLight : '#fff' }]}>{title}</Text>
+    <Text style={[styles.text, { color: '#fff' }]}>{title}</Text>
   );
 
   return (
@@ -27,7 +27,7 @@ export function Button({ title, onPress, loading, variant = 'primary' }: Props) 
       style={({ pressed }) => [styles.shadow, pressed && { opacity: 0.88, transform: [{ scale: 0.985 }] }]}
     >
       {outline ? (
-        <GlassCard radiusSize={radius.md} style={styles.base}>{content}</GlassCard>
+        <GlassCard navy radiusSize={radius.md} style={styles.base}>{content}</GlassCard>
       ) : (
         <LinearGradient colors={['#4AA3FF', '#1D6FE0']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.base, styles.primary]}>
           {content}

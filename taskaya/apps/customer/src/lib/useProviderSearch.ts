@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useEffect, useMemo, useState } from 'react';
 import type { ProviderCard } from '@/lib/api';
 import { normalizeAr } from '@/lib/arabic';

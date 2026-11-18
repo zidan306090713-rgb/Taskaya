@@ -10,6 +10,7 @@ import { t, tr } from '@/i18n';
 import { signUpWithPhone } from '@/lib/auth';
 import { normalizeEgyptPhone } from '@/lib/phone';
 import { colors, fonts, spacing } from '@/theme';
+import { useTheme } from '@/providers/ThemeProvider';
 
 const MIN_PASSWORD = 8;
 const BLUE = '#2F80ED';
@@ -26,6 +27,7 @@ function useEntrance(delay: number) {
 }
 
 export default function Register() {
+  const { c } = useTheme();
   const router = useRouter();
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
@@ -69,19 +71,19 @@ export default function Register() {
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         {/* ===== Brand ===== */}
         <Animated.View style={[styles.brandWrap, brandAnim]}>
-          <LinearGradient colors={['#4AA3FF', '#1D6FE0']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.logo}>
+          <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.logo, { shadowColor: c.accent }]}>
             <Text style={styles.logoLetter}>T</Text>
           </LinearGradient>
-          <Text style={styles.brand}>TASKAYA</Text>
+          <Text style={[styles.brand, { color: c.accent }]}>TASKAYA</Text>
         </Animated.View>
 
         {/* ===== Card ===== */}
         <Animated.View style={cardAnim}>
-          <View style={[styles.card, webGlass]}>
-            <LinearGradient colors={['#4AA3FF', '#1D6FE0']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.accent} />
+          <View style={[styles.card, { backgroundColor: c.glassBg, borderColor: c.panelBorder, shadowColor: c.accent }, webGlass]}>
+            <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.accent} />
             <View style={styles.cardBody}>
-              <Text style={styles.welcome}>{t('register')}</Text>
-              <Text style={styles.welcomeSub}>{tr('أنشئ حسابك في دقيقة واحدة', 'Create your account in a minute')}</Text>
+              <Text style={[styles.welcome, { color: c.text }]}>{t('register')}</Text>
+              <Text style={[styles.welcomeSub, { color: c.textSecondary }]}>{tr('أنشئ حسابك في دقيقة واحدة', 'Create your account in a minute')}</Text>
 
               <PremiumInput
                 label={t('fullName')}
@@ -138,9 +140,9 @@ export default function Register() {
                 disabled={loading}
                 accessibilityRole="button"
                 accessibilityLabel={t('sendCode')}
-                style={({ pressed }) => [styles.ctaShadow, pressed && { opacity: 0.92, transform: [{ scale: 0.985 }] }]}
+                style={({ pressed }) => [styles.ctaShadow, { shadowColor: c.accent }, pressed && { opacity: 0.92, transform: [{ scale: 0.985 }] }]}
               >
-                <LinearGradient colors={['#3B8DF5', '#1F66D6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.cta}>
+                <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.cta}>
                   {loading ? (
                     <ActivityIndicator color="#FFFFFF" />
                   ) : (
@@ -158,12 +160,12 @@ export default function Register() {
         {/* ===== Footer ===== */}
         <Animated.View style={[styles.footerWrap, footAnim]}>
           <View style={styles.footer}>
-            <Text style={styles.muted}>{t('haveAccount')} </Text>
-            <Link href="/login" style={styles.link}>{t('login')}</Link>
+            <Text style={[styles.muted, { color: c.textSecondary }]}>{t('haveAccount')} </Text>
+            <Link href="/login" style={[styles.link, { color: c.accent }]}>{t('login')}</Link>
           </View>
           <View style={styles.secure}>
-            <Ionicons name="shield-checkmark-outline" size={14} color={colors.textSecondary} />
-            <Text style={styles.secureText}>{tr('بياناتك محمية ومشفّرة', 'Your data is protected & encrypted')}</Text>
+            <Ionicons name="shield-checkmark-outline" size={14} color={c.textSecondary} />
+            <Text style={[styles.secureText, { color: c.textSecondary }]}>{tr('بياناتك محمية ومشفّرة', 'Your data is protected & encrypted')}</Text>
           </View>
         </Animated.View>
       </ScrollView>

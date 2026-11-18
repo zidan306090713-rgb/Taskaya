@@ -1,9 +1,10 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useMemo, useState } from 'react';
-import { Animated, Dimensions, Easing, StyleSheet, View } from 'react-native';
+import { Animated, Dimensions, Easing, Platform, StyleSheet, View } from 'react-native';
+import { useTheme } from '@/providers/ThemeProvider';
 
 const { width, height } = Dimensions.get('window');
-const STAR_COUNT = 35;
-const STAR_COLOR = '#2F80ED';
+const STAR_COUNT = 16;
 
 // مولّد أرقام ثابت (pure): نفس التوزيع كل مرة
 function makeRand(seed: number) {
@@ -26,7 +27,9 @@ type StarData = {
   delay: number;
 };
 
-function Star({ x, y, size, drift, duration, delay }: StarData) {
+type StarLook = { color: string; glow: string; glowColor: string };
+
+function Star({ x, y, size, drift, duration, delay, color, glow, glowColor }: StarData & StarLook) {
   const [move] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
@@ -52,7 +55,16 @@ function Star({ x, y, size, drift, duration, delay }: StarData) {
         width: size,
         height: size,
         borderRadius: size / 2,
-        backgroundColor: STAR_COLOR,
+        backgroundColor: color,
+        opacity: 1,
+        ...(Platform.OS === 'web'
+          ? ({ boxShadow: `0 0 ${Math.round(size * 1.1)}px ${Math.round(size * 0.15)}px ${glow}` } as any)
+          : {
+              shadowColor: glowColor,
+              shadowOpacity: 0.8,
+              shadowRadius: size * 0.8,
+              shadowOffset: { width: 0, height: 0 },
+            }),
         transform: [{ translateX }, { translateY }],
       }}
     />
@@ -60,26 +72,39 @@ function Star({ x, y, size, drift, duration, delay }: StarData) {
 }
 
 export function NebulaBackground() {
+  const { c } = useTheme();
   const stars = useMemo<StarData[]>(() => {
     const rand = makeRand(20261117);
     return Array.from({ length: STAR_COUNT }, () => {
       const r = rand();
-      const size = r < 0.55 ? 3 + rand() * 4 : r < 0.88 ? 8 + rand() * 8 : 14 + rand() * 10;
+      const size = r < 0.55 ? 3 + rand() * 3 : r < 0.88 ? 7 + rand() * 6 : 14 + rand() * 8;
       return {
         x: rand() * width,
         y: rand() * height,
         size,
-        drift: 25 + rand() * 55,
-        duration: 2000 + rand() * 2200,
+        drift: 20 + rand() * 40,
+        duration: 2800 + rand() * 2400,
         delay: rand() * 1500,
       };
     });
   }, []);
 
+  const look: StarLook = {
+    color: c.isDark ? c.accentLight : c.accent,
+    glow: c.starGlow,
+    glowColor: c.accentLight,
+  };
+
   return (
-    <View style={[StyleSheet.absoluteFill, { backgroundColor: '#E3EDFB', overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }]}>
+    <View style={[StyleSheet.absoluteFill, { overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }]}>
+      <LinearGradient
+        colors={c.bgGradient}
+        start={{ x: 0.1, y: 0 }}
+        end={{ x: 0.9, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
       {stars.map((s, i) => (
-        <Star key={i} {...s} />
+        <Star key={i} {...s} {...look} />
       ))}
     </View>
   );

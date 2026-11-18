@@ -1,18 +1,35 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { Button } from '@/components/ui/Button';
-import { GlassCard } from '@/components/ui/GlassCard';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useEffect, useMemo, useState } from 'react';
+import { Animated, Easing, Platform, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { Screen } from '@/components/ui/Screen';
 import { t, tr } from '@/i18n';
 import { toLocalDisplay } from '@/lib/phone';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/AuthProvider';
-import { fonts, spacing } from '@/theme';
+import { useTheme } from '@/providers/ThemeProvider';
+import { ACCENTS, fonts, Palette, spacing } from '@/theme';
+
+function useEntrance(delay: number) {
+  const [v] = useState(() => new Animated.Value(0));
+  useEffect(() => {
+    Animated.timing(v, { toValue: 1, duration: 650, delay, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+  }, [v, delay]);
+  return {
+    opacity: v,
+    transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [22, 0] }) }],
+  };
+}
 
 export default function Profile() {
+  const { c, accent, setMode, setAccent } = useTheme();
+  const styles = useMemo(() => makeStyles(c), [c]);
   const { session } = useAuth();
   const [info, setInfo] = useState<{ full_name: string | null; phone: string | null } | null>(null);
+
+  const heroAnim = useEntrance(0);
+  const setAnim = useEntrance(90);
+  const btnAnim = useEntrance(180);
 
   useEffect(() => {
     if (!session) return;
@@ -26,28 +43,197 @@ export default function Profile() {
 
   const name = info?.full_name || session?.user.user_metadata?.full_name || '';
   const rawPhone = info?.phone || session?.user.phone || '';
-  const secondary = rawPhone ? toLocalDisplay(rawPhone) : session?.user.email ?? '';
+  const phone = rawPhone ? toLocalDisplay(rawPhone) : '';
+  const secondary = phone || session?.user.email || '';
+  const initial = name ? name.charAt(0).toUpperCase() : '';
+  const current = ACCENTS.find((a) => a.key === accent) ?? ACCENTS[0];
+
+  const webGlass =
+    Platform.OS === 'web'
+      ? ({ backdropFilter: 'blur(8px) saturate(160%)', WebkitBackdropFilter: 'blur(8px) saturate(160%)' } as any)
+      : null;
 
   return (
     <Screen title={tr('حسابي', 'Profile')}>
-      <GlassCard navy style={styles.card}>
-        <View style={styles.avatar}>
-          <Ionicons name="person" size={28} color="#9CC7FF" />
+      <Animated.View style={heroAnim}>
+        <View style={[styles.hero, webGlass]}>
+          <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.accent} />
+          <View style={styles.heroBody}>
+            <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.avatar}>
+              {initial ? <Text style={styles.avatarText}>{initial}</Text> : <Ionicons name="person" size={36} color="#FFFFFF" />}
+            </LinearGradient>
+            {name ? <Text style={styles.name} numberOfLines={2}>{name}</Text> : null}
+            {secondary ? (
+              <View style={styles.phonePill}>
+                <Ionicons name={phone ? 'call-outline' : 'mail-outline'} size={15} color={c.accentText} />
+                <Text style={styles.phone} numberOfLines={1}>{secondary}</Text>
+              </View>
+            ) : null}
+          </View>
         </View>
-        <View style={{ flex: 1 }}>
-          {name ? <Text style={styles.name} numberOfLines={1}>{name}</Text> : null}
-          {secondary ? <Text style={name ? styles.phone : styles.name} numberOfLines={1}>{secondary}</Text> : null}
+      </Animated.View>
+
+      {/* ===== إعدادات المظهر ===== */}
+      <Animated.View style={[{ marginTop: spacing.lg }, setAnim]}>
+        <View style={[styles.card, webGlass]}>
+          <View style={styles.row}>
+            <View style={styles.rowIcon}>
+              <Ionicons name={c.isDark ? 'moon' : 'sunny'} size={20} color={c.accentText} />
+            </View>
+            <Text style={styles.rowLabel}>{tr('الوضع الغامق', 'Dark mode')}</Text>
+            <Switch
+              value={c.isDark}
+              onValueChange={(v) => setMode(v ? 'dark' : 'light')}
+              trackColor={{ false: c.switchOff, true: c.accent }}
+              thumbColor="#FFFFFF"
+              accessibilityLabel={tr('الوضع الغامق', 'Dark mode')}
+            />
+          </View>
+
+          <View style={styles.sep} />
+
+          <View style={styles.row}>
+            <View style={styles.rowIcon}>
+              <Ionicons name="color-palette" size={20} color={c.accentText} />
+            </View>
+            <Text style={styles.rowLabel}>{tr('لون التطبيق', 'App color')}</Text>
+            <Text style={styles.rowValue}>{tr(current.ar, current.en)}</Text>
+          </View>
+          <View style={styles.swatches}>
+            {ACCENTS.map((a) => {
+              const on = a.key === accent;
+              return (
+                <Pressable
+                  key={a.key}
+                  onPress={() => setAccent(a.key)}
+                  accessibilityRole="button"
+                  accessibilityLabel={tr(a.ar, a.en)}
+                  style={[styles.swatchWrap, on && { borderColor: a.main }]}
+                >
+                  <LinearGradient colors={[a.light, a.dark]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.swatch}>
+                    {on ? <Ionicons name="checkmark" size={17} color="#FFFFFF" /> : null}
+                  </LinearGradient>
+                </Pressable>
+              );
+            })}
+          </View>
         </View>
-      </GlassCard>
-      <View style={{ height: spacing.lg }} />
-      <Button title={t('logout')} variant="outline" onPress={() => supabase.auth.signOut()} />
+      </Animated.View>
+
+      <Animated.View style={[{ marginTop: spacing.lg }, btnAnim]}>
+        <Pressable
+          onPress={() => supabase.auth.signOut()}
+          accessibilityRole="button"
+          accessibilityLabel={t('logout')}
+          style={({ pressed }) => [styles.logout, pressed && { opacity: 0.85, transform: [{ scale: 0.985 }] }]}
+        >
+          <Ionicons name="log-out-outline" size={21} color={c.dangerText} />
+          <Text style={styles.logoutText}>{t('logout')}</Text>
+        </Pressable>
+
+        <View style={styles.secure}>
+          <Ionicons name="shield-checkmark-outline" size={14} color={c.textSecondary} />
+          <Text style={styles.secureText}>{tr('بياناتك محمية ومشفّرة', 'Your data is protected & encrypted')}</Text>
+        </View>
+      </Animated.View>
     </Screen>
   );
 }
 
-const styles = StyleSheet.create({
-  card: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.lg },
-  avatar: { width: 56, height: 56, borderRadius: 16, backgroundColor: 'rgba(124,196,255,0.16)', borderWidth: 1.5, borderColor: 'rgba(124,196,255,0.45)', alignItems: 'center', justifyContent: 'center' },
-  name: { fontFamily: fonts.bold, fontSize: 17, color: '#FFFFFF' },
-  phone: { fontFamily: fonts.regular, fontSize: 14, color: '#B7CDEE', marginTop: 2 },
-});
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+    hero: {
+      borderRadius: 28,
+      overflow: 'hidden',
+      backgroundColor: c.panelBg,
+      borderWidth: 1,
+      borderColor: c.panelBorder,
+      shadowColor: c.accent,
+      shadowOpacity: c.isDark ? 0.28 : 0.2,
+      shadowRadius: 36,
+      shadowOffset: { width: 0, height: 18 },
+      elevation: 8,
+    },
+    accent: { height: 4 },
+    heroBody: { alignItems: 'center', paddingVertical: 28, paddingHorizontal: 20, gap: 12 },
+    avatar: {
+      width: 88,
+      height: 88,
+      borderRadius: 28,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1.5,
+      borderColor: 'rgba(255,255,255,0.6)',
+      shadowColor: c.accent,
+      shadowOpacity: 0.5,
+      shadowRadius: 18,
+      shadowOffset: { width: 0, height: 8 },
+    },
+    avatarText: { fontFamily: fonts.bold, fontSize: 38, lineHeight: 52, color: '#FFFFFF' },
+    name: { fontFamily: fonts.bold, fontSize: 22, color: c.text, textAlign: 'center' },
+    phonePill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      borderRadius: 999,
+      backgroundColor: c.accentSoft,
+      borderWidth: 1,
+      borderColor: c.accentBorder,
+    },
+    phone: { fontFamily: fonts.bold, fontSize: 15, color: c.accentText, letterSpacing: 1 },
+
+    card: {
+      borderRadius: 24,
+      overflow: 'hidden',
+      backgroundColor: c.panelBg,
+      borderWidth: 1,
+      borderColor: c.panelBorder,
+      paddingHorizontal: 16,
+      paddingVertical: 6,
+      shadowColor: c.accent,
+      shadowOpacity: c.isDark ? 0.2 : 0.12,
+      shadowRadius: 24,
+      shadowOffset: { width: 0, height: 10 },
+      elevation: 4,
+    },
+    row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56 },
+    rowIcon: {
+      width: 36,
+      height: 36,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: c.accentSoft,
+    },
+    rowLabel: { flex: 1, fontFamily: fonts.semibold, fontSize: 15, color: c.ink },
+    rowValue: { fontFamily: fonts.semibold, fontSize: 13, color: c.accentText },
+    sep: { height: 1, backgroundColor: c.accentLine },
+    swatches: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, paddingTop: 4, paddingBottom: 14 },
+    swatchWrap: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      borderWidth: 2,
+      borderColor: 'transparent',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    swatch: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+
+    logout: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 10,
+      height: 54,
+      borderRadius: 16,
+      backgroundColor: c.dangerBg,
+      borderWidth: 1.5,
+      borderColor: c.dangerBorder,
+    },
+    logoutText: { fontFamily: fonts.bold, fontSize: 16, color: c.dangerText },
+    secure: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 18, opacity: 0.85 },
+    secureText: { fontFamily: fonts.regular, fontSize: 12, color: c.textSecondary },
+  });

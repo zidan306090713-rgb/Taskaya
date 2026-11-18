@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Defs, LinearGradient, Path, Stop } from 'react-native-svg';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '@/providers/ThemeProvider';
 import { fonts } from '@/theme';
 
 const BAR_HEIGHT = 66;
@@ -37,6 +38,7 @@ function buildPath(w: number, h: number, cx: number) {
 export default function FloatingTabBar({ state, descriptors, navigation }: any) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { c } = useTheme();
   const { width } = useWindowDimensions();
   const barWidth = Math.min(width - SIDE_GAP * 2, BAR_MAX_WIDTH);
   const side = Math.round((width - barWidth) / 2);
@@ -69,10 +71,16 @@ export default function FloatingTabBar({ state, descriptors, navigation }: any) 
       style={{ position: 'absolute', left: side, width: barWidth, bottom: Math.max(insets.bottom, 12), height: BAR_HEIGHT }}
     >
       <Svg width={barWidth} height={BAR_HEIGHT} style={StyleSheet.absoluteFill} pointerEvents="none">
+        <Defs>
+          <LinearGradient id="navGrad" x1="0" y1="0" x2="1" y2="1">
+            <Stop offset="0" stopColor={c.tabGradient[0]} />
+            <Stop offset="1" stopColor={c.tabGradient[1]} />
+          </LinearGradient>
+        </Defs>
         <Path
           d={buildPath(barWidth, BAR_HEIGHT, cx)}
-          fill="#0F2F6B"
-          stroke="#3B9BFF"
+          fill="url(#navGrad)"
+          stroke="rgba(255,255,255,0.45)"
           strokeWidth={1.5}
         />
       </Svg>
@@ -81,7 +89,7 @@ export default function FloatingTabBar({ state, descriptors, navigation }: any) 
         {state.routes.map((route: any, index: number) => {
           const { options } = descriptors[route.key];
           const focused = state.index === index;
-          const color = focused ? '#FFFFFF' : '#9CC7FF';
+          const color = focused ? '#FFFFFF' : 'rgba(255,255,255,0.72)';
           const label = options.title ?? route.name;
           const onPress = () => {
             if (focused) return;
@@ -107,9 +115,9 @@ export default function FloatingTabBar({ state, descriptors, navigation }: any) 
 
       <Animated.View
         pointerEvents="none"
-        style={[styles.ball, { left: tabWidth / 2 - BALL / 2, transform: [{ translateX: x }] }]}
+        style={[styles.ball, { left: tabWidth / 2 - BALL / 2, transform: [{ translateX: x }], backgroundColor: c.ballBg, borderColor: c.ballBorder, shadowColor: c.accent }]}
       >
-        {activeOptions.tabBarIcon?.({ color: '#1F6FE5', size: 24, focused: true })}
+        {activeOptions.tabBarIcon?.({ color: c.ballIcon, size: 24, focused: true })}
       </Animated.View>
     </View>
   );
@@ -127,8 +135,8 @@ const styles = StyleSheet.create({
     borderRadius: BALL / 2,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#E3F0FF', borderWidth: 1.5, borderColor: '#3B9BFF',
-    shadowColor: '#4A9BFF',
+    backgroundColor: '#FFFFFF', borderWidth: 2, borderColor: '#BFDBFE',
+    shadowColor: '#2F80ED',
     shadowOpacity: 0.45,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 },

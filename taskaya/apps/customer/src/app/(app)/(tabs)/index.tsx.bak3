@@ -1,0 +1,194 @@
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { ReactNode, useEffect, useState } from 'react';
+import { Animated, Easing, Platform, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { CategoryTile } from '@/components/ui/CategoryTile';
+import { FeaturedTile } from '@/components/ui/FeaturedTile';
+import { Screen } from '@/components/ui/Screen';
+import { SearchField } from '@/components/ui/SearchField';
+import { TileGrid } from '@/components/ui/TileGrid';
+import { t, tr } from '@/i18n';
+import { Category, getCategories } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
+import { useDirectory, useProviderSearch } from '@/lib/useProviderSearch';
+import { useAuth } from '@/providers/AuthProvider';
+import { colors, fonts, spacing } from '@/theme';
+
+const BLUE = '#2F80ED';
+
+function useEntrance(delay: number) {
+  const [v] = useState(() => new Animated.Value(0));
+  useEffect(() => {
+    Animated.timing(v, { toValue: 1, duration: 650, delay, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+  }, [v, delay]);
+  return {
+    opacity: v,
+    transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [22, 0] }) }],
+  };
+}
+
+// كارت زجاجي موحّد (نفس ستايل كارت الترحيب) نستخدمه للهيرو وللأقسام
+function Panel({ children, bodyStyle }: { children: ReactNode; bodyStyle?: StyleProp<ViewStyle> }) {
+  const webGlass =
+    Platform.OS === 'web'
+      ? ({ backdropFilter: 'blur(8px) saturate(160%)', WebkitBackdropFilter: 'blur(8px) saturate(160%)' } as any)
+      : null;
+  return (
+    <View style={[styles.hero, webGlass]}>
+      <LinearGradient colors={['#4AA3FF', '#1D6FE0']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.accentTop} />
+      <View style={[styles.heroBody, bodyStyle]}>{children}</View>
+    </View>
+  );
+}
+
+function SectionTitle({ children, first }: { children: string; first?: boolean }) {
+  return (
+    <View style={[styles.sectionRow, first && { marginTop: 0 }]}>
+      <LinearGradient colors={['#4AA3FF', '#1D6FE0']} style={styles.sectionBar} />
+      <Text style={styles.section}>{children}</Text>
+    </View>
+  );
+}
+
+export default function Home() {
+  const { session } = useAuth();
+  const [firstName, setFirstName] = useState('');
+  const [cats, setCats] = useState<Category[]>([]);
+  const [q, setQ] = useState('');
+  const [hour] = useState(() => new Date().getHours());
+  const { dir, featured } = useDirectory();
+  const results = useProviderSearch(q, dir);
+
+  const heroAnim = useEntrance(0);
+  const bodyAnim = useEntrance(160);
+
+  useEffect(() => {
+    getCategories().then(setCats);
+    if (session) {
+      // نطلب الاسم الأول فقط (عمود محسوب في الداتابيز)
+      supabase
+        .from('profiles')
+        .select('first_name')
+        .eq('id', session.user.id)
+        .single()
+        .then(({ data }) => setFirstName(data?.first_name ?? ''));
+    }
+  }, [session]);
+
+  const searching = q.trim().length > 0;
+  const hello =
+    hour < 12 ? tr('صباح الخير', 'Good morning') : hour < 18 ? tr('مساء الخير', 'Good afternoon') : tr('مساء النور', 'Good evening');
+  const initial = firstName ? firstName.charAt(0).toUpperCase() : '';
+
+  return (
+    <Screen>
+      <Animated.View style={[{ marginTop: -40 }, heroAnim]}>
+        {/* ===== كارت واحد: ترحيب + بحث + تصنيفات + مقدمو خدمة ===== */}
+        <Panel bodyStyle={styles.mergedBody}>
+          <View style={styles.header}>
+            <LinearGradient colors={['#4AA3FF', '#1D6FE0']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.avatar}>
+              {initial ? <Text style={styles.avatarText}>{initial}</Text> : <Ionicons name="person" size={24} color="#FFFFFF" />}
+            </LinearGradient>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.hello}>{hello}</Text>
+              <Text style={styles.name} numberOfLines={1}>
+                {firstName}
+              </Text>
+            </View>
+          </View>
+          <Text style={styles.tagline}>{t('tagline')}</Text>
+          <View style={{ height: 16 }} />
+          <SearchField value={q} onChangeText={setQ} placeholder={tr('بتدور على أي', 'Looking for anything?')} />
+
+          <Animated.View style={bodyAnim}>
+            <View style={styles.divider} />
+            {searching ? (
+              <>
+                <SectionTitle>{tr('نتائج البحث', 'Search results')}</SectionTitle>
+                {results === null ? null : results.length === 0 ? (
+                  <View style={styles.emptyWrap}>
+                    <View style={styles.emptyIcon}>
+                      <Ionicons name="search-outline" size={28} color={BLUE} />
+                    </View>
+                    <Text style={styles.empty}>{tr('لا يوجد نتائج', 'No results')}</Text>
+                  </View>
+                ) : (
+                  <TileGrid data={results} keyOf={(p) => p.id} render={(p, size) => <FeaturedTile p={p} size={size} />} />
+                )}
+              </>
+            ) : (
+              <>
+                <SectionTitle>{t('categories')}</SectionTitle>
+                <TileGrid
+                  data={cats}
+                  keyOf={(c) => c.id}
+                  aspect={0.6}
+                  render={(c, size, height) => <CategoryTile c={c} size={size} height={height} />}
+                />
+
+                <View style={styles.divider} />
+
+                <SectionTitle>{tr('مقدمو خدمة مميزون', 'Featured providers')}</SectionTitle>
+                <TileGrid data={featured} keyOf={(p) => p.id} render={(p, size) => <FeaturedTile p={p} size={size} />} />
+              </>
+            )}
+          </Animated.View>
+        </Panel>
+      </Animated.View>
+    </Screen>
+  );
+}
+
+const styles = StyleSheet.create({
+  hero: {
+    borderRadius: 28,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.4)',
+    borderWidth: 1,
+    borderColor: 'rgba(47,128,237,0.18)',
+    shadowColor: BLUE,
+    shadowOpacity: 0.2,
+    shadowRadius: 36,
+    shadowOffset: { width: 0, height: 18 },
+    elevation: 8,
+  },
+  accentTop: { height: 4 },
+  heroBody: { padding: 20 },
+  mergedBody: { padding: 16, paddingBottom: 20 },
+  divider: { height: 1, backgroundColor: 'rgba(47,128,237,0.14)', marginTop: spacing.lg },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  avatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.6)',
+    shadowColor: BLUE,
+    shadowOpacity: 0.45,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+  },
+  avatarText: { fontFamily: fonts.bold, fontSize: 26, lineHeight: 36, color: '#FFFFFF' },
+  hello: { fontFamily: fonts.regular, fontSize: 13.5, color: colors.textSecondary },
+  name: { fontFamily: fonts.bold, fontSize: 24, color: colors.text, marginTop: 2 },
+  tagline: { fontFamily: fonts.regular, color: colors.textSecondary, marginTop: 12, fontSize: 13.5 },
+
+  sectionRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: spacing.lg, marginBottom: spacing.md },
+  sectionBar: { width: 5, height: 22, borderRadius: 3 },
+  section: { fontFamily: fonts.bold, fontSize: 18, color: colors.text },
+
+  emptyWrap: { alignItems: 'center', marginTop: 36, gap: 12 },
+  emptyIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(47,128,237,0.1)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(47,128,237,0.28)',
+  },
+  empty: { fontFamily: fonts.regular, color: colors.textSecondary, textAlign: 'center' },
+});

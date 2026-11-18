@@ -10,6 +10,7 @@ import { t, tr } from '@/i18n';
 import { signInWithPhone } from '@/lib/auth';
 import { normalizeEgyptPhone } from '@/lib/phone';
 import { colors, fonts, spacing } from '@/theme';
+import { useTheme } from '@/providers/ThemeProvider';
 
 const BLUE = '#2F80ED';
 
@@ -25,6 +26,7 @@ function useEntrance(delay: number) {
 }
 
 export default function Login() {
+  const { c } = useTheme();
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -58,26 +60,26 @@ export default function Login() {
         {/* ===== Brand ===== */}
         <Animated.View style={[styles.brandWrap, brandAnim]}>
           <View style={styles.halo}>
-            <LinearGradient colors={['#4AA3FF', '#1D6FE0']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.logo}>
+            <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.logo, { shadowColor: c.accent }]}>
               <Text style={styles.logoLetter}>T</Text>
             </LinearGradient>
           </View>
-          <Text style={styles.brand}>TASKAYA</Text>
-          <Text style={styles.tagline}>{t('tagline')}</Text>
+          <Text style={[styles.brand, { color: c.accent }]}>TASKAYA</Text>
+          <Text style={[styles.tagline, { color: c.textSecondary }]}>{t('tagline')}</Text>
         </Animated.View>
 
         {/* ===== Card ===== */}
         <Animated.View style={cardAnim}>
-          <View style={[styles.card, webGlass]}>
+          <View style={[styles.card, { backgroundColor: c.glassBg, borderColor: c.panelBorder, shadowColor: c.accent }, webGlass]}>
             <LinearGradient
-              colors={['#4AA3FF', '#1D6FE0']}
+              colors={c.gradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.accent}
             />
             <View style={styles.cardBody}>
-              <Text style={styles.welcome}>{tr('أهلاً بعودتك', 'Welcome back')}</Text>
-              <Text style={styles.welcomeSub}>{tr('سجّل دخولك لمتابعة طلباتك', 'Sign in to manage your orders')}</Text>
+              <Text style={[styles.welcome, { color: c.text }]}>{tr('أهلاً بعودتك', 'Welcome back')}</Text>
+              <Text style={[styles.welcomeSub, { color: c.textSecondary }]}>{tr('سجّل دخولك لمتابعة طلباتك', 'Sign in to manage your orders')}</Text>
 
               <PremiumInput
                 label={t('phone')}
@@ -114,9 +116,9 @@ export default function Login() {
                 disabled={loading}
                 accessibilityRole="button"
                 accessibilityLabel={t('login')}
-                style={({ pressed }) => [styles.ctaShadow, pressed && { opacity: 0.92, transform: [{ scale: 0.985 }] }]}
+                style={({ pressed }) => [styles.ctaShadow, { shadowColor: c.accent }, pressed && { opacity: 0.92, transform: [{ scale: 0.985 }] }]}
               >
-                <LinearGradient colors={['#3B8DF5', '#1F66D6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.cta}>
+                <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.cta}>
                   {loading ? (
                     <ActivityIndicator color="#FFFFFF" />
                   ) : (
@@ -134,12 +136,12 @@ export default function Login() {
         {/* ===== Footer ===== */}
         <Animated.View style={[styles.footerWrap, footAnim]}>
           <View style={styles.footer}>
-            <Text style={styles.muted}>{t('noAccount')} </Text>
-            <Link href="/register" style={styles.link}>{t('register')}</Link>
+            <Text style={[styles.muted, { color: c.textSecondary }]}>{t('noAccount')} </Text>
+            <Link href="/register" style={[styles.link, { color: c.accent }]}>{t('register')}</Link>
           </View>
           <View style={styles.secure}>
-            <Ionicons name="shield-checkmark-outline" size={14} color={colors.textSecondary} />
-            <Text style={styles.secureText}>{tr('اتصال آمن ومشفّر', 'Secure & encrypted connection')}</Text>
+            <Ionicons name="shield-checkmark-outline" size={14} color={c.textSecondary} />
+            <Text style={[styles.secureText, { color: c.textSecondary }]}>{tr('اتصال آمن ومشفّر', 'Secure & encrypted connection')}</Text>
           </View>
         </Animated.View>
       </ScrollView>
@@ -151,17 +153,7 @@ const styles = StyleSheet.create({
   container: { flexGrow: 1, justifyContent: 'center', padding: spacing.lg, width: '100%', maxWidth: 440, alignSelf: 'center' },
 
   brandWrap: { alignItems: 'center', marginBottom: 28 },
-  halo: {
-    width: 104,
-    height: 104,
-    borderRadius: 52,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(47,128,237,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(47,128,237,0.18)',
-    marginBottom: spacing.md,
-  },
+  halo: { alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md },
   logo: {
     width: 68,
     height: 68,

@@ -1,3 +1,4 @@
+// ===== ثوابت قديمة (باقية لحد ما كل الشاشات تتحول للثيم الجديد) =====
 export const colors = {
   primary: '#2F8CFF',
   primaryLight: '#3B9BFF',
@@ -22,3 +23,111 @@ export const fonts = {
   semibold: 'Cairo_600SemiBold',
   bold: 'Cairo_700Bold',
 };
+
+// ===== نظام الثيم =====
+export type ThemeMode = 'light' | 'dark';
+export type AccentKey = 'blue' | 'green' | 'purple' | 'orange' | 'red' | 'pink' | 'teal' | 'gold';
+export type Accent = {
+  key: AccentKey;
+  ar: string;
+  en: string;
+  main: string;
+  light: string;
+  dark: string;
+  deep: string;
+  textLight: string; // لون النص/الأيقونات فوق الخلفية الفاتحة
+};
+
+export const ACCENTS: Accent[] = [
+  { key: 'blue', ar: 'أزرق', en: 'Blue', main: '#2F80ED', light: '#4AA3FF', dark: '#1D6FE0', deep: '#0B47B0', textLight: '#2F80ED' },
+  { key: 'green', ar: 'أخضر', en: 'Green', main: '#10B981', light: '#34D399', dark: '#059669', deep: '#046C4E', textLight: '#059669' },
+  { key: 'purple', ar: 'بنفسجي', en: 'Purple', main: '#7C3AED', light: '#A78BFA', dark: '#6D28D9', deep: '#4C1D95', textLight: '#6D28D9' },
+  { key: 'orange', ar: 'برتقالي', en: 'Orange', main: '#F97316', light: '#FB923C', dark: '#EA580C', deep: '#9A3412', textLight: '#EA580C' },
+  { key: 'red', ar: 'أحمر', en: 'Red', main: '#EF4444', light: '#F87171', dark: '#DC2626', deep: '#991B1B', textLight: '#DC2626' },
+  { key: 'pink', ar: 'وردي', en: 'Pink', main: '#EC4899', light: '#F472B6', dark: '#DB2777', deep: '#9D174D', textLight: '#DB2777' },
+  { key: 'teal', ar: 'تركوازي', en: 'Teal', main: '#14B8A6', light: '#2DD4BF', dark: '#0D9488', deep: '#115E59', textLight: '#0D9488' },
+  { key: 'gold', ar: 'ذهبي', en: 'Gold', main: '#CA8A04', light: '#EAB308', dark: '#A16207', deep: '#713F12', textLight: '#A16207' },
+];
+
+const clamp = (n: number) => Math.max(0, Math.min(255, Math.round(n)));
+
+export function hexToRgb(hex: string): [number, number, number] {
+  const h = hex.replace('#', '');
+  const n = parseInt(h.length === 3 ? h.split('').map((x) => x + x).join('') : h, 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+export function rgba(hex: string, a: number) {
+  const [r, g, b] = hexToRgb(hex);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+// t=0 يرجّع hex، t=1 يرجّع other
+export function mix(hex: string, other: string, t: number) {
+  const a = hexToRgb(hex);
+  const b = hexToRgb(other);
+  return '#' + a.map((v, i) => clamp(v * (1 - t) + b[i] * t).toString(16).padStart(2, '0')).join('');
+}
+
+export function buildPalette(mode: ThemeMode, key: AccentKey) {
+  const A = ACCENTS.find((x) => x.key === key) ?? ACCENTS[0];
+  const dk = mode === 'dark';
+  const accentText = dk ? A.light : A.textLight;
+  return {
+    isDark: dk,
+    accentKey: A.key,
+    accent: A.main,
+    accentLight: A.light,
+    accentDark: A.dark,
+    accentText,
+    gradient: [A.light, A.dark] as [string, string],
+    tabGradient: (dk ? [A.dark, A.deep] : [A.main, A.deep]) as [string, string],
+    accentSoft: rgba(A.main, dk ? 0.18 : 0.1),
+    accentBorder: rgba(A.main, dk ? 0.4 : 0.25),
+    accentLine: rgba(A.main, 0.14),
+
+    background: dk ? '#0A0B0D' : mix(A.main, '#FFFFFF', 0.85),
+    bgGradient: (dk
+      ? ['#0A0B0D', '#14161A', '#0C0D10']
+      : [mix(A.main, '#FFFFFF', 0.93), mix(A.main, '#FFFFFF', 0.85), mix(A.main, '#FFFFFF', 0.9)]) as [string, string, string],
+
+    text: accentText,
+    ink: dk ? '#F3F5F8' : '#0B1F3A',
+    textSecondary: dk ? '#A3ABB8' : '#5B6F8A',
+
+    glassBg: dk ? 'rgba(28,31,38,0.62)' : 'rgba(255,255,255,0.4)',
+    glassBorder: dk ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.85)',
+    glassHighlight: (dk
+      ? ['rgba(255,255,255,0.07)', 'rgba(255,255,255,0)']
+      : ['rgba(255,255,255,0.6)', 'rgba(255,255,255,0)']) as [string, string],
+    panelBg: dk ? 'rgba(28,31,38,0.7)' : 'rgba(255,255,255,0.6)',
+    panelBorder: dk ? 'rgba(255,255,255,0.10)' : rgba(A.main, 0.18),
+    card: dk ? 'rgba(30,33,40,0.96)' : 'rgba(255,255,255,0.95)',
+    cardBorder: dk ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.9)',
+    circleGradient: (dk ? ['#2B2F38', '#1B1E24'] : ['#FFFFFF', mix(A.main, '#FFFFFF', 0.8)]) as [string, string],
+    placeholderGradient: [rgba(A.light, 0.55), rgba(A.main, 0.12)] as [string, string],
+
+    ballBg: dk ? '#1B1E24' : '#FFFFFF',
+    ballBorder: dk ? rgba(A.light, 0.55) : mix(A.main, '#FFFFFF', 0.75),
+    ballIcon: dk ? A.light : A.main,
+    switchOff: dk ? 'rgba(255,255,255,0.18)' : 'rgba(11,31,58,0.16)',
+    starGlow: rgba(A.light, 0.55),
+
+    fieldBg: dk ? '#1B1E24' : '#F4F8FF',
+    fieldBgFocus: dk ? '#23262E' : '#FFFFFF',
+    fieldBorder: dk ? 'rgba(255,255,255,0.12)' : '#DCE8FA',
+    searchBg: dk ? '#1B1E24' : '#FFFFFF',
+    iconMuted: dk ? '#7C8696' : '#8FA6C4',
+    placeholder: dk ? '#6B7482' : '#A5B6CD',
+    headerBg: dk ? '#0F1114' : mix(A.main, '#FFFFFF', 0.88),
+    chipBg: dk ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.7)',
+    chipBorder: dk ? 'rgba(255,255,255,0.14)' : rgba(A.main, 0.3),
+    summaryBg: dk ? '#14161A' : A.deep,
+
+    dangerText: dk ? '#F87171' : '#DC2626',
+    dangerBg: 'rgba(220,38,38,0.08)',
+    dangerBorder: 'rgba(220,38,38,0.3)',
+  };
+}
+
+export type Palette = ReturnType<typeof buildPalette>;

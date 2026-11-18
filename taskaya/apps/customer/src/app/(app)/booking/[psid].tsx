@@ -8,12 +8,15 @@ import { lang, tr } from '@/i18n';
 import { Address, Area, getAreas, getMyAddresses, getProviderService, ServiceOption } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/AuthProvider';
-import { colors, fonts, radius, spacing } from '@/theme';
+import { useTheme } from '@/providers/ThemeProvider';
+import { fonts, Palette, radius, spacing } from '@/theme';
 
 const SLOTS = [9, 11, 13, 15, 17, 19];
 const locale = lang === 'ar' ? 'ar-EG' : 'en-US';
 
 export default function Booking() {
+  const { c } = useTheme();
+  const styles = useMemo(() => makeStyles(c), [c]);
   const { psid } = useLocalSearchParams<{ psid: string }>();
   const router = useRouter();
   const { session } = useAuth();
@@ -110,7 +113,16 @@ export default function Booking() {
 
   return (
     <>
-      <Stack.Screen options={{ headerShown: true, title: tr('حجز خدمة', 'Book a service'), headerTitleStyle: { fontFamily: fonts.bold, color: colors.text }, headerStyle: { backgroundColor: '#E3EDFB' }, headerShadowVisible: false, headerTintColor: '#2F80ED' }} />
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          title: tr('حجز خدمة', 'Book a service'),
+          headerTitleStyle: { fontFamily: fonts.bold, color: c.text },
+          headerStyle: { backgroundColor: c.headerBg },
+          headerShadowVisible: false,
+          headerTintColor: c.accentText,
+        }}
+      />
       <Screen>
         <View style={styles.summary}>
           <Text style={styles.svcName}>{svcName}</Text>
@@ -143,7 +155,8 @@ export default function Booking() {
           onChangeText={setDetails}
           multiline
           placeholder={tr('اكتب أي تفاصيل تساعد مقدم الخدمة...', 'Add any details for the provider...')}
-          placeholderTextColor="#A5B6CD"
+          placeholderTextColor={c.placeholder}
+          selectionColor={c.accent}
           style={styles.textarea}
         />
 
@@ -170,6 +183,8 @@ export default function Booking() {
 }
 
 function Chip({ label, on, onPress, disabled, block }: { label: string; on: boolean; onPress: () => void; disabled?: boolean; block?: boolean }) {
+  const { c } = useTheme();
+  const styles = useMemo(() => makeStyles(c), [c]);
   return (
     <Pressable
       onPress={onPress}
@@ -181,19 +196,32 @@ function Chip({ label, on, onPress, disabled, block }: { label: string; on: bool
   );
 }
 
-const styles = StyleSheet.create({
-  summary: { backgroundColor: '#0F2F6B', borderWidth: 1.5, borderColor: '#08193D', borderTopColor: 'rgba(124,196,255,0.35)', borderRadius: 22, padding: spacing.lg, gap: 4, shadowColor: '#0A2250', shadowOpacity: 0.3, shadowRadius: 14, shadowOffset: { width: 0, height: 6 } },
-  summaryMuted: { fontFamily: fonts.regular, color: '#B7CDEE' },
-  svcName: { fontFamily: fonts.bold, fontSize: 20, color: '#FFFFFF' },
-  price: { fontFamily: fonts.bold, fontSize: 16, color: '#9CC7FF', marginTop: 4 },
-  muted: { fontFamily: fonts.regular, color: colors.textSecondary },
-  section: { fontFamily: fonts.bold, fontSize: 18, color: colors.text, marginTop: spacing.lg, marginBottom: spacing.md },
-  label: { fontFamily: fonts.semibold, color: colors.text, marginBottom: spacing.xs },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
-  chip: { paddingHorizontal: spacing.md, paddingVertical: 10, borderRadius: radius.pill, backgroundColor: 'rgba(255,255,255,0.7)', borderWidth: 1.5, borderColor: 'rgba(47,128,237,0.3)' },
-  block: { borderRadius: radius.md, marginBottom: spacing.sm },
-  chipOn: { backgroundColor: '#2F80ED', borderColor: '#2F80ED', shadowColor: '#2F80ED', shadowOpacity: 0.35, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } },
-  chipText: { fontFamily: fonts.semibold, color: colors.text, fontSize: 13 },
-  textarea: { minHeight: 110, borderRadius: 16, borderWidth: 1.5, borderColor: '#DCE8FA', backgroundColor: '#F4F8FF', padding: spacing.md, fontFamily: fonts.regular, fontSize: 16, color: '#0B1F3A', textAlignVertical: 'top' },
-  error: { fontFamily: fonts.regular, color: colors.danger, marginTop: spacing.md },
-});
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+    summary: {
+      backgroundColor: c.summaryBg,
+      borderWidth: 1.5,
+      borderColor: 'rgba(0,0,0,0.25)',
+      borderTopColor: 'rgba(255,255,255,0.25)',
+      borderRadius: 22,
+      padding: spacing.lg,
+      gap: 4,
+      shadowColor: c.accent,
+      shadowOpacity: 0.3,
+      shadowRadius: 14,
+      shadowOffset: { width: 0, height: 6 },
+    },
+    summaryMuted: { fontFamily: fonts.regular, color: 'rgba(255,255,255,0.75)' },
+    svcName: { fontFamily: fonts.bold, fontSize: 20, color: '#FFFFFF' },
+    price: { fontFamily: fonts.bold, fontSize: 16, color: c.isDark ? c.accentLight : '#FFFFFF', marginTop: 4 },
+    muted: { fontFamily: fonts.regular, color: c.textSecondary },
+    section: { fontFamily: fonts.bold, fontSize: 18, color: c.text, marginTop: spacing.lg, marginBottom: spacing.md },
+    label: { fontFamily: fonts.semibold, color: c.text, marginBottom: spacing.xs },
+    chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
+    chip: { paddingHorizontal: spacing.md, paddingVertical: 10, borderRadius: radius.pill, backgroundColor: c.chipBg, borderWidth: 1.5, borderColor: c.chipBorder },
+    block: { borderRadius: radius.md, marginBottom: spacing.sm },
+    chipOn: { backgroundColor: c.accent, borderColor: c.accent, shadowColor: c.accent, shadowOpacity: 0.35, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } },
+    chipText: { fontFamily: fonts.semibold, color: c.ink, fontSize: 13 },
+    textarea: { minHeight: 110, borderRadius: 16, borderWidth: 1.5, borderColor: c.fieldBorder, backgroundColor: c.fieldBg, padding: spacing.md, fontFamily: fonts.regular, fontSize: 16, color: c.ink, textAlignVertical: 'top' },
+    error: { fontFamily: fonts.regular, color: c.dangerText, marginTop: spacing.md },
+  });

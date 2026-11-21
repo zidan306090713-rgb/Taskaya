@@ -6,9 +6,9 @@ import { useTheme } from '@/providers/ThemeProvider';
 import { fonts, Palette, rgba } from '@/theme';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
-type Props = TextInputProps & { label: string; icon: IconName; error?: string; highlighted?: boolean };
+type Props = TextInputProps & { label: string; icon: IconName; error?: string; highlighted?: boolean; labelInside?: boolean };
 
-export function PremiumInput({ label, icon, error, highlighted = false, secureTextEntry, onFocus, onBlur, ...props }: Props) {
+export function PremiumInput({ label, icon, error, highlighted = false, labelInside = false, secureTextEntry, onFocus, onBlur, ...props }: Props) {
   const { c } = useTheme();
   const styles = useMemo(() => makeStyles(c), [c]);
   const [focused, setFocused] = useState(false);
@@ -49,7 +49,7 @@ export function PremiumInput({ label, icon, error, highlighted = false, secureTe
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.label}>{label}</Text>
+      {labelInside ? null : <Text style={styles.label}>{label}</Text>}
       {/* ستايل الصندوق ده ثابت ومش بيتغير مع الفوكس — تغييره كان بيطرد المؤشر على أندرويد */}
       <View style={[styles.field, !!error && styles.fieldError, webField]}>
         {/* الضوء الأزرق: طبقة منفصلة بتظهر بالشفافية بس */}
@@ -65,6 +65,7 @@ export function PremiumInput({ label, icon, error, highlighted = false, secureTe
           secureTextEntry={isPassword ? hidden : false}
           style={[styles.input, Platform.OS === 'web' && ({ outlineStyle: 'none' } as any)]}
           {...props}
+          placeholder={labelInside ? label : props.placeholder}
         />
         {isPassword ? (
           <Pressable

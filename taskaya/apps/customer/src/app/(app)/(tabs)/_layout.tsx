@@ -38,7 +38,7 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         sceneStyle: { backgroundColor: 'transparent' },
-        animation: 'fade',
+        animation: 'none',
         tabBarActiveTintColor: colors.primaryLight,
         tabBarInactiveTintColor: colors.textSecondary,
         tabBarActiveBackgroundColor: 'rgba(47,140,255,0.2)',

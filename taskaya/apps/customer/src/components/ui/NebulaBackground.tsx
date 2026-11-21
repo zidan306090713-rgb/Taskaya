@@ -4,7 +4,7 @@ import { Animated, Dimensions, Easing, Platform, StyleSheet, View } from 'react-
 import { useTheme } from '@/providers/ThemeProvider';
 
 const { width, height } = Dimensions.get('window');
-const STAR_COUNT = 16;
+const STAR_COUNT = Platform.OS === 'android' ? 7 : 16;
 
 // مولّد أرقام ثابت (pure): نفس التوزيع كل مرة
 function makeRand(seed: number) {

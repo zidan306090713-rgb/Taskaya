@@ -8,6 +8,7 @@ import {
 import { KeyboardInputBar } from '@/components/ui/KeyboardInputBar';
 import { PremiumInput } from '@/components/ui/PremiumInput';
 import { t, tr } from '@/i18n';
+import { useEntrance, useFocusHide } from '@/hooks/use-screen-entrance';
 import { signUpWithPhone } from '@/lib/auth';
 import { normalizeEgyptPhone } from '@/lib/phone';
 import { colors, fonts, spacing } from '@/theme';
@@ -23,16 +24,6 @@ type BarCfg = Omit<ComponentProps<typeof KeyboardInputBar>, 'onClose' | 'onActio
   next: Field | null;
 };
 
-function useEntrance(delay: number) {
-  const [v] = useState(() => new Animated.Value(0));
-  useEffect(() => {
-    Animated.timing(v, { toValue: 1, duration: 700, delay, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
-  }, [v, delay]);
-  return {
-    opacity: Platform.OS === 'android' ? 1 : v,
-    transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) }],
-  };
-}
 
 // على الموبايل: الخانة في الكارت بتبقى "زرار" يفتح الشريط
 function TapField({ onPress, label, children }: { onPress: () => void; label: string; children: ReactNode }) {
@@ -56,9 +47,10 @@ export default function Register() {
   const [nameError, setNameError] = useState('');
   const [active, setActive] = useState<Field | null>(null);
 
+  const hide = useFocusHide();
   const brandAnim = useEntrance(0);
-  const cardAnim = useEntrance(150);
-  const footAnim = useEntrance(300);
+  const cardAnim = useEntrance(60);
+  const footAnim = useEntrance(120);
 
   const onRegister = async () => {
     setError('');
@@ -150,7 +142,7 @@ export default function Register() {
   const goNext = bar?.next ? () => setActive(bar.next) : submitFromBar;
 
   return (
-    <View style={{ flex: 1, backgroundColor: 'transparent' }}>
+    <View style={[{ flex: 1, backgroundColor: 'transparent' }, hide]}>
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         {/* ===== Brand ===== */}
         <Animated.View style={[styles.brandWrap, brandAnim]}>
@@ -183,7 +175,7 @@ export default function Register() {
                 const { next, ...cfg } = fields[key];
                 return (
                   <TapField key={key} onPress={() => setActive(key)} label={cfg.label}>
-                    <PremiumInput
+                    <PremiumInput labelInside
                       {...cfg}
                       error={key === 'name' ? nameError : undefined}
                       highlighted={active === key}
@@ -227,7 +219,7 @@ export default function Register() {
         <Animated.View style={[styles.footerWrap, footAnim]}>
           <View style={styles.footer}>
             <Text style={[styles.muted, { color: c.textSecondary }]}>{t('haveAccount')} </Text>
-            <Link href="/login" style={[styles.link, { color: c.accent }]}>{t('login')}</Link>
+            <Link href="/login" dismissTo style={[styles.link, { color: c.accent }]}>{t('login')}</Link>
           </View>
           <View style={styles.secure}>
             <Ionicons name="shield-checkmark-outline" size={14} color={c.textSecondary} />

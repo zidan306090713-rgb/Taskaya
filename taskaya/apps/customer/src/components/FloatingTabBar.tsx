@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Svg, { Defs, LinearGradient, Path, Stop } from 'react-native-svg';
 import { useRouter } from 'expo-router';
@@ -45,20 +45,19 @@ export default function FloatingTabBar({ state, descriptors, navigation }: any) 
   const count = state.routes.length;
   const tabWidth = barWidth / count;
 
+  // الكورة بتتحرك على الـ native thread (مش بتشغل JavaScript خالص أثناء الحركة)
   const [x] = useState(() => new Animated.Value(state.index * tabWidth));
-  const [cx, setCx] = useState(state.index * tabWidth + tabWidth / 2);
 
-  useEffect(() => {
-    const id = x.addListener(({ value }) => setCx(value + tabWidth / 2));
-    return () => x.removeListener(id);
-  }, [tabWidth, x]);
+  // التجويف بيتحسب مرة واحدة لكل تاب — مش 60 مرة في الثانية
+  const notchX = state.index * tabWidth + tabWidth / 2;
+  const path = useMemo(() => buildPath(barWidth, BAR_HEIGHT, notchX), [barWidth, notchX]);
 
   useEffect(() => {
     Animated.timing(x, {
       toValue: state.index * tabWidth,
-      duration: 220,
+      duration: 240,
       easing: Easing.out(Easing.cubic),
-      useNativeDriver: false,
+      useNativeDriver: true,
     }).start();
   }, [state.index, tabWidth, x]);
 
@@ -67,22 +66,16 @@ export default function FloatingTabBar({ state, descriptors, navigation }: any) 
 
   return (
     <View
-      pointerEvents="box-none"
-      style={{ position: 'absolute', left: side, width: barWidth, bottom: Math.max(insets.bottom, 12), height: BAR_HEIGHT }}
+      style={{ position: 'absolute', left: side, width: barWidth, bottom: Math.max(insets.bottom, 12), height: BAR_HEIGHT, pointerEvents: 'box-none' }}
     >
-      <Svg width={barWidth} height={BAR_HEIGHT} style={StyleSheet.absoluteFill} pointerEvents="none">
+      <Svg width={barWidth} height={BAR_HEIGHT} style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]}>
         <Defs>
           <LinearGradient id="navGrad" x1="0" y1="0" x2="1" y2="1">
             <Stop offset="0" stopColor={c.tabGradient[0]} />
             <Stop offset="1" stopColor={c.tabGradient[1]} />
           </LinearGradient>
         </Defs>
-        <Path
-          d={buildPath(barWidth, BAR_HEIGHT, cx)}
-          fill="url(#navGrad)"
-          stroke="rgba(255,255,255,0.45)"
-          strokeWidth={1.5}
-        />
+        <Path d={path} fill="url(#navGrad)" stroke="rgba(255,255,255,0.45)" strokeWidth={1.5} />
       </Svg>
 
       <View style={styles.row}>
@@ -114,8 +107,16 @@ export default function FloatingTabBar({ state, descriptors, navigation }: any) 
       </View>
 
       <Animated.View
-        pointerEvents="none"
-        style={[styles.ball, { left: tabWidth / 2 - BALL / 2, transform: [{ translateX: x }], backgroundColor: c.ballBg, borderColor: c.ballBorder, shadowColor: c.accent }]}
+        style={[
+          styles.ball,
+          {
+            left: tabWidth / 2 - BALL / 2,
+            transform: [{ translateX: x }],
+            backgroundColor: c.ballBg,
+            borderColor: c.ballBorder,
+            shadowColor: c.accent,
+          },
+        ]}
       >
         {activeOptions.tabBarIcon?.({ color: c.ballIcon, size: 24, focused: true })}
       </Animated.View>
@@ -135,11 +136,14 @@ const styles = StyleSheet.create({
     borderRadius: BALL / 2,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF', borderWidth: 2, borderColor: '#BFDBFE',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: '#BFDBFE',
     shadowColor: '#2F80ED',
     shadowOpacity: 0.45,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 },
     elevation: 0,
+    pointerEvents: 'none',
   },
 });

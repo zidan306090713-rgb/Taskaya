@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { OtpInput, OtpStatus } from '@/components/ui/OtpInput';
 import { t, tr } from '@/i18n';
+import { useEntrance, useFocusHide } from '@/hooks/use-screen-entrance';
 import { cancelHold, holdAuth, releaseAuth, resendSms, verifyOtp } from '@/lib/auth';
 import { toLocalDisplay } from '@/lib/phone';
 import { colors, fonts, spacing } from '@/theme';
@@ -18,16 +19,6 @@ const BLUE = '#2F80ED';
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
-function useEntrance(delay: number) {
-  const [v] = useState(() => new Animated.Value(0));
-  useEffect(() => {
-    Animated.timing(v, { toValue: 1, duration: 700, delay, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
-  }, [v, delay]);
-  return {
-    opacity: Platform.OS === 'android' ? 1 : v,
-    transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) }],
-  };
-}
 
 export default function Verify() {
   const router = useRouter();
@@ -38,9 +29,10 @@ export default function Verify() {
   const [left, setLeft] = useState(RESEND_SECONDS);
   const busy = useRef(false);
 
+  const hide = useFocusHide();
   const brandAnim = useEntrance(0);
-  const cardAnim = useEntrance(150);
-  const footAnim = useEntrance(300);
+  const cardAnim = useEntrance(60);
+  const footAnim = useEntrance(120);
 
   useEffect(() => {
     if (left <= 0) return;
@@ -94,7 +86,7 @@ export default function Verify() {
   const canResend = left <= 0 && status === 'idle';
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: 'transparent' }} behavior="padding">
+    <KeyboardAvoidingView style={[{ flex: 1, backgroundColor: 'transparent' }, hide]} behavior="padding">
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         {/* ===== Brand ===== */}
         <Animated.View style={[styles.brandWrap, brandAnim]}>

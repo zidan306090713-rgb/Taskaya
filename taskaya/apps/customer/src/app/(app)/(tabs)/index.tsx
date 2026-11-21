@@ -18,10 +18,10 @@ import { fonts, Palette, spacing } from '@/theme';
 function useEntrance(delay: number) {
   const [v] = useState(() => new Animated.Value(0));
   useEffect(() => {
-    Animated.timing(v, { toValue: 1, duration: 650, delay, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+    Animated.timing(v, { toValue: 1, duration: 420, delay, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
   }, [v, delay]);
   return {
-    opacity: v,
+    opacity: Platform.OS === 'android' ? 1 : v,
     transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [22, 0] }) }],
   };
 }
@@ -69,7 +69,7 @@ export default function Home() {
   const results = useProviderSearch(q, dir);
 
   const heroAnim = useEntrance(0);
-  const bodyAnim = useEntrance(160);
+  const bodyAnim = useEntrance(60);
 
   useEffect(() => {
     getCategories().then(setCats);

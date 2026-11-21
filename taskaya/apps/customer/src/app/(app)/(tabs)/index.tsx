@@ -3,6 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { Animated, Easing, Platform, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { CategoryCarousel } from '@/components/ui/CategoryCarousel';
+import { CategoriesSkeleton, TilesSkeleton } from '@/components/ui/Skeleton';
 import { FeaturedTile } from '@/components/ui/FeaturedTile';
 import { Screen } from '@/components/ui/Screen';
 import { SearchField } from '@/components/ui/SearchField';
@@ -11,6 +12,7 @@ import { t, tr } from '@/i18n';
 import { Category, getCategories } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 import { useDirectory, useProviderSearch } from '@/lib/useProviderSearch';
+import { useMyProfile } from '@/lib/profile';
 import { useAuth } from '@/providers/AuthProvider';
 import { useTheme } from '@/providers/ThemeProvider';
 import { fonts, Palette, spacing } from '@/theme';
@@ -61,6 +63,7 @@ function SectionTitle({ children, first }: { children: string; first?: boolean }
 export default function Home() {
   const { c, styles } = useThemed();
   const { session } = useAuth();
+  const me = useMyProfile();
   const [firstName, setFirstName] = useState('');
   const [cats, setCats] = useState<Category[]>([]);
   const [q, setQ] = useState('');
@@ -95,13 +98,10 @@ export default function Home() {
         {/* ===== كارت واحد: ترحيب + بحث + تصنيفات + مقدمو خدمة ===== */}
         <Panel bodyStyle={styles.mergedBody}>
           <View style={styles.header}>
-            <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.avatar}>
-              {initial ? <Text style={styles.avatarText}>{initial}</Text> : <Ionicons name="person" size={24} color="#FFFFFF" />}
-            </LinearGradient>
             <View style={{ flex: 1 }}>
               <Text style={styles.hello}>{hello}</Text>
               <Text style={styles.name} numberOfLines={1}>
-                {firstName.toUpperCase()}
+                {(me?.first_name || firstName).toUpperCase()}
               </Text>
             </View>
           </View>
@@ -126,7 +126,7 @@ export default function Home() {
               </>
             ) : (
               <>
-                <CategoryCarousel data={cats} />
+                {cats.length ? <CategoryCarousel data={cats} /> : <CategoriesSkeleton />}
 
                 <View style={{ height: spacing.lg }} />
                 <TileGrid data={featured} keyOf={(p) => p.id} columns={3} aspect={1.4} render={(p, size, h) => <FeaturedTile p={p} size={size} height={h} />} />

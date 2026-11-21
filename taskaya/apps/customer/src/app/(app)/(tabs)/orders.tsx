@@ -2,8 +2,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from 'expo-router';
 import { ComponentProps, useCallback, useEffect, useMemo, useState } from 'react';
-import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, Platform, StyleSheet, Text, View } from 'react-native';
 import { Screen } from '@/components/ui/Screen';
+import { ListSkeleton } from '@/components/ui/Skeleton';
 import { lang, tr } from '@/i18n';
 import { Booking, getMyBookings } from '@/lib/api';
 import { useAuth } from '@/providers/AuthProvider';
@@ -32,7 +33,7 @@ function useEntrance(delay: number) {
     Animated.timing(v, { toValue: 1, duration: 600, delay, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
   }, [v, delay]);
   return {
-    opacity: v,
+    opacity: Platform.OS === 'android' ? 1 : v,
     transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }],
   };
 }
@@ -95,7 +96,7 @@ export default function Orders() {
   const styles = useMemo(() => makeStyles(c), [c]);
   const { session } = useAuth();
   const uid = session?.user.id ?? '';
-  const [list, setList] = useState<Booking[]>([]);
+  const [list, setList] = useState<Booking[] | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -105,7 +106,7 @@ export default function Orders() {
 
   return (
     <Screen title={tr('طلباتي', 'My Orders')}>
-      {list.length === 0 ? (
+      {list === null ? <ListSkeleton rows={3} height={160} /> : list.length === 0 ? (
         <View style={styles.emptyWrap}>
           <View style={styles.emptyIcon}>
             <Ionicons name="receipt-outline" size={30} color={c.accentText} />
@@ -114,7 +115,7 @@ export default function Orders() {
           <Text style={styles.emptySub}>{tr('ابدأ بحجز خدمتك الأولى من الرئيسية', 'Book your first service from Home')}</Text>
         </View>
       ) : null}
-      {list.map((b, i) => (
+      {(list ?? []).map((b, i) => (
         <OrderCard key={b.id} b={b} index={i} />
       ))}
     </Screen>

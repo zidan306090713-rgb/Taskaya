@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { Screen } from '@/components/ui/Screen';
+import { ListSkeleton, PageSkeleton } from '@/components/ui/Skeleton';
 import { useEntrance } from '@/hooks/use-screen-entrance';
 import { lang, tr } from '@/i18n';
 import { getAreas, getMyAddresses, getProvider, peekProvider, ProviderSvc, seedProviderService } from '@/lib/api';
@@ -55,7 +56,7 @@ export default function ProviderScreen() {
           {failed ? (
             <Text style={styles.muted}>{tr('تعذّر التحميل، حاول تاني', 'Could not load, please try again')}</Text>
           ) : (
-            <ActivityIndicator color={c.accent} />
+            <PageSkeleton />
           )}
         </View>
       </Screen>
@@ -153,7 +154,7 @@ export default function ProviderScreen() {
               );
             })
           ) : (
-            <ActivityIndicator color={c.accent} style={{ marginVertical: spacing.lg }} />
+            <ListSkeleton rows={3} />
           )}
 
           <View style={{ height: spacing.lg }} />
@@ -166,7 +167,7 @@ export default function ProviderScreen() {
 
 const makeStyles = (c: Palette) =>
   StyleSheet.create({
-    loading: { paddingVertical: 80, alignItems: 'center' },
+    loading: { paddingVertical: 8, alignItems: 'center' },
     hero: {
       borderRadius: 28,
       overflow: 'hidden',

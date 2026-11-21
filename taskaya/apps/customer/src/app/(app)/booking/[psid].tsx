@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { PremiumInput } from '@/components/ui/PremiumInput';
 import { Screen } from '@/components/ui/Screen';
+import { PageSkeleton } from '@/components/ui/Skeleton';
 import { lang, tr } from '@/i18n';
 import { Address, Area, getAreas, getMyAddresses, getProviderService, invalidateAddresses, peekAddresses, peekAreas, peekProviderService, ServiceOption } from '@/lib/api';
 import { supabase } from '@/lib/supabase';

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { ProviderCard } from '@/components/ui/ProviderCard';
 import { Screen } from '@/components/ui/Screen';
+import { ListSkeleton, Skeleton } from '@/components/ui/Skeleton';
 import { lang, tr } from '@/i18n';
 import { Category, getCategory, getProviders, getSubcategories, ProviderCard as P, Subcategory } from '@/lib/api';
 import { useTheme } from '@/providers/ThemeProvider';
@@ -16,7 +17,7 @@ export default function CategoryScreen() {
   const [cat, setCat] = useState<Category | null>(null);
   const [subs, setSubs] = useState<Subcategory[]>([]);
   const [active, setActive] = useState<string | undefined>();
-  const [list, setList] = useState<P[]>([]);
+  const [list, setList] = useState<P[] | null>(null);
 
   useEffect(() => {
     getCategory(id).then(setCat);
@@ -24,7 +25,14 @@ export default function CategoryScreen() {
   }, [id]);
 
   useEffect(() => {
-    getProviders({ categoryId: id, subcategoryId: active }).then(setList);
+    let alive = true;
+    setList(null);
+    getProviders({ categoryId: id, subcategoryId: active }).then((r) => {
+      if (alive) setList(r);
+    });
+    return () => {
+      alive = false;
+    };
   }, [id, active]);
 
   const name = (x: { name_ar: string; name_en: string }) => (lang === 'ar' ? x.name_ar : x.name_en);
@@ -48,7 +56,7 @@ export default function CategoryScreen() {
             <Chip key={s.id} label={name(s)} on={active === s.id} onPress={() => setActive(s.id)} />
           ))}
         </View>
-        {list.length === 0 ? (
+        {list === null ? <ListSkeleton rows={4} height={96} /> : list.length === 0 ? (
           <View style={styles.emptyWrap}>
             <View style={styles.emptyIcon}>
               <Ionicons name="search-outline" size={28} color={c.accentText} />
@@ -56,7 +64,7 @@ export default function CategoryScreen() {
             <Text style={styles.empty}>{tr('لا يوجد مقدمو خدمة بعد', 'No providers yet')}</Text>
           </View>
         ) : null}
-        {list.map((p) => <ProviderCard key={p.id} p={p} />)}
+        {(list ?? []).map((p) => <ProviderCard key={p.id} p={p} />)}
       </Screen>
     </>
   );

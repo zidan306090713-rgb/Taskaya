@@ -1,13 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { startTransition, useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Animated, Platform, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { Avatar, EditProfileSheet } from '@/components/EditProfileSheet';
 import { useThemeReveal } from '@/components/ThemeReveal';
 import { AccentPickerRow } from '@/components/ui/AccentPicker';
 import { Screen } from '@/components/ui/Screen';
 import { useEntrance } from '@/hooks/use-screen-entrance';
 import { t, tr } from '@/i18n';
 import { toLocalDisplay } from '@/lib/phone';
+import { useMyProfile } from '@/lib/profile';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/AuthProvider';
 import { useTheme } from '@/providers/ThemeProvider';
@@ -17,8 +19,9 @@ export default function Profile() {
   const { c, setMode } = useTheme();
   const styles = useMemo(() => makeStyles(c), [c]);
   const { session } = useAuth();
-  const [info, setInfo] = useState<{ full_name: string | null; phone: string | null } | null>(null);
-  // الزرار يتحرك فورًا، وإعادة رسم التطبيق بالوضع الجديد تحصل في الخلفية
+  const me = useMyProfile();
+  const [editing, setEditing] = useState(false);
+  // الزرار يتحرك فورًا، والوضع الجديد يظهر بدايرة من مكان الضغطة
   const [dark, setDark] = useState(c.isDark);
   const { reveal, prepare } = useThemeReveal();
   const touch = useRef({ x: 0, y: 0 });
@@ -27,21 +30,10 @@ export default function Profile() {
   const setAnim = useEntrance(60);
   const btnAnim = useEntrance(120);
 
-  useEffect(() => {
-    if (!session) return;
-    supabase
-      .from('profiles')
-      .select('full_name, phone')
-      .eq('id', session.user.id)
-      .single()
-      .then(({ data }) => setInfo(data));
-  }, [session]);
-
-  const name = info?.full_name || session?.user.user_metadata?.full_name || '';
-  const rawPhone = info?.phone || session?.user.phone || '';
+  const name = me?.full_name || session?.user.user_metadata?.full_name || '';
+  const rawPhone = me?.phone || session?.user.phone || '';
   const phone = rawPhone ? toLocalDisplay(rawPhone) : '';
   const secondary = phone || session?.user.email || '';
-  const initial = name ? name.charAt(0).toUpperCase() : '';
 
   const webGlass =
     Platform.OS === 'web'
@@ -53,10 +45,21 @@ export default function Profile() {
       <Animated.View style={heroAnim}>
         <View style={[styles.hero, webGlass]}>
           <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.accent} />
+
+          {/* زرار التعديل */}
+          <Pressable
+            onPress={() => me && setEditing(true)}
+            disabled={!me}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={tr('تعديل البيانات', 'Edit profile')}
+            style={({ pressed }) => [styles.editBtn, pressed && { opacity: 0.7, transform: [{ scale: 0.94 }] }]}
+          >
+            <Ionicons name="pencil" size={17} color={c.accentText} />
+          </Pressable>
+
           <View style={styles.heroBody}>
-            <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.avatar}>
-              {initial ? <Text style={styles.avatarText}>{initial}</Text> : <Ionicons name="person" size={36} color="#FFFFFF" />}
-            </LinearGradient>
+            <Avatar uri={me?.avatar_url} size={96} />
             {name ? <Text style={styles.name} numberOfLines={2}>{name}</Text> : null}
             {secondary ? (
               <View style={styles.phonePill}>
@@ -71,7 +74,13 @@ export default function Profile() {
       {/* ===== إعدادات المظهر ===== */}
       <Animated.View style={[{ marginTop: spacing.lg }, setAnim]}>
         <View style={[styles.card, webGlass]}>
-          <View style={styles.row} onTouchStart={(e) => { touch.current = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY }; prepare(); }}>
+          <View
+            style={styles.row}
+            onTouchStart={(e) => {
+              touch.current = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY };
+              prepare();
+            }}
+          >
             <View style={styles.rowIcon}>
               <Ionicons name={dark ? 'moon' : 'sunny'} size={20} color={c.accentText} />
             </View>
@@ -110,6 +119,8 @@ export default function Profile() {
           <Text style={styles.secureText}>{tr('بياناتك محمية ومشفّرة', 'Your data is protected & encrypted')}</Text>
         </View>
       </Animated.View>
+
+      {editing && me ? <EditProfileSheet me={me} onClose={() => setEditing(false)} /> : null}
     </Screen>
   );
 }
@@ -129,21 +140,21 @@ const makeStyles = (c: Palette) =>
       elevation: 0,
     },
     accent: { height: 4 },
-    heroBody: { alignItems: 'center', paddingVertical: 28, paddingHorizontal: 20, gap: 12 },
-    avatar: {
-      width: 88,
-      height: 88,
-      borderRadius: 28,
+    editBtn: {
+      position: 'absolute',
+      top: 16,
+      right: 16,
+      zIndex: 2,
+      width: 38,
+      height: 38,
+      borderRadius: 19,
       alignItems: 'center',
       justifyContent: 'center',
-      borderWidth: 1.5,
-      borderColor: 'rgba(255,255,255,0.6)',
-      shadowColor: c.accent,
-      shadowOpacity: 0.5,
-      shadowRadius: 18,
-      shadowOffset: { width: 0, height: 8 },
+      backgroundColor: c.accentSoft,
+      borderWidth: 1,
+      borderColor: c.accentBorder,
     },
-    avatarText: { fontFamily: fonts.bold, fontSize: 38, lineHeight: 52, color: '#FFFFFF' },
+    heroBody: { alignItems: 'center', paddingVertical: 28, paddingHorizontal: 20, gap: 12 },
     name: { fontFamily: fonts.bold, fontSize: 22, color: c.text, textAlign: 'center' },
     phonePill: {
       flexDirection: 'row',

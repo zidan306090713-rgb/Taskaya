@@ -9,6 +9,7 @@ import { KeyboardInputBar } from '@/components/ui/KeyboardInputBar';
 import { PremiumInput } from '@/components/ui/PremiumInput';
 import { t, tr } from '@/i18n';
 import { useEntrance, useFocusHide } from '@/hooks/use-screen-entrance';
+import { OrbitLogo } from '@/components/ui/OrbitLogo';
 import { signInWithPhone } from '@/lib/auth';
 import { normalizeEgyptPhone } from '@/lib/phone';
 import { colors, fonts, spacing } from '@/theme';
@@ -74,9 +75,7 @@ export default function Login() {
         {/* ===== Brand ===== */}
         <Animated.View style={[styles.brandWrap, brandAnim]}>
           <View style={styles.halo}>
-            <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.logo, { shadowColor: c.accent }]}>
-              <Text style={styles.logoLetter}>T</Text>
-            </LinearGradient>
+              <OrbitLogo size={124} />
           </View>
           <Text style={[styles.brand, { color: c.accent }]}>TASKAYA</Text>
           <Text style={[styles.tagline, { color: c.textSecondary }]}>{t('tagline')}</Text>

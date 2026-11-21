@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { startTransition, useEffect, useMemo, useState } from 'react';
+import { startTransition, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Platform, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { useThemeReveal } from '@/components/ThemeReveal';
 import { AccentPickerRow } from '@/components/ui/AccentPicker';
 import { Screen } from '@/components/ui/Screen';
 import { useEntrance } from '@/hooks/use-screen-entrance';
@@ -19,6 +20,8 @@ export default function Profile() {
   const [info, setInfo] = useState<{ full_name: string | null; phone: string | null } | null>(null);
   // الزرار يتحرك فورًا، وإعادة رسم التطبيق بالوضع الجديد تحصل في الخلفية
   const [dark, setDark] = useState(c.isDark);
+  const { reveal, prepare } = useThemeReveal();
+  const touch = useRef({ x: 0, y: 0 });
 
   const heroAnim = useEntrance(0);
   const setAnim = useEntrance(60);
@@ -68,7 +71,7 @@ export default function Profile() {
       {/* ===== إعدادات المظهر ===== */}
       <Animated.View style={[{ marginTop: spacing.lg }, setAnim]}>
         <View style={[styles.card, webGlass]}>
-          <View style={styles.row}>
+          <View style={styles.row} onTouchStart={(e) => { touch.current = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY }; prepare(); }}>
             <View style={styles.rowIcon}>
               <Ionicons name={dark ? 'moon' : 'sunny'} size={20} color={c.accentText} />
             </View>
@@ -77,7 +80,7 @@ export default function Profile() {
               value={dark}
               onValueChange={(v) => {
                 setDark(v);
-                startTransition(() => setMode(v ? 'dark' : 'light'));
+                reveal(touch.current.x, touch.current.y, () => setMode(v ? 'dark' : 'light'));
               }}
               trackColor={{ false: c.switchOff, true: c.accent }}
               thumbColor="#FFFFFF"

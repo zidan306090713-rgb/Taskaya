@@ -5,6 +5,7 @@ import { View } from 'react-native';
 import { Cairo_400Regular, Cairo_600SemiBold, Cairo_700Bold, useFonts } from '@expo-google-fonts/cairo';
 import { NebulaBackground } from '@/components/ui/NebulaBackground';
 import { AuthProvider } from '@/providers/AuthProvider';
+import { ThemeRevealProvider } from '@/components/ThemeReveal';
 import { AppThemeProvider, useTheme } from '@/providers/ThemeProvider';
 import '@/i18n';
 
@@ -47,5 +48,9 @@ function Shell() {
 
 export default function RootLayout() {
   const [loaded] = useFonts({ Cairo_400Regular, Cairo_600SemiBold, Cairo_700Bold });
-  return <AppThemeProvider>{loaded ? <Shell /> : <Blank />}</AppThemeProvider>;
+  return (
+    <AppThemeProvider>
+      <ThemeRevealProvider>{loaded ? <Shell /> : <Blank />}</ThemeRevealProvider>
+    </AppThemeProvider>
+  );
 }

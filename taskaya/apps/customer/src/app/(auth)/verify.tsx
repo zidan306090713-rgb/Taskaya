@@ -6,6 +6,7 @@ import { Animated, Easing, KeyboardAvoidingView, Platform, Pressable, ScrollView
 import { OtpInput, OtpStatus } from '@/components/ui/OtpInput';
 import { t, tr } from '@/i18n';
 import { useEntrance, useFocusHide } from '@/hooks/use-screen-entrance';
+import { OrbitLogo } from '@/components/ui/OrbitLogo';
 import { cancelHold, holdAuth, releaseAuth, resendSms, verifyOtp } from '@/lib/auth';
 import { toLocalDisplay } from '@/lib/phone';
 import { colors, fonts, spacing } from '@/theme';
@@ -90,9 +91,7 @@ export default function Verify() {
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         {/* ===== Brand ===== */}
         <Animated.View style={[styles.brandWrap, brandAnim]}>
-          <LinearGradient colors={['#4AA3FF', '#1D6FE0']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.logo}>
-            <Text style={styles.logoLetter}>T</Text>
-          </LinearGradient>
+          <OrbitLogo size={104} />
           <Text style={styles.brand}>TASKAYA</Text>
         </Animated.View>
 

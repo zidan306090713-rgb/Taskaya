@@ -93,7 +93,7 @@ const makeStyles = (c: Palette) =>
       shadowOpacity: c.isDark ? 0.22 : 0.14,
       shadowRadius: 14,
       shadowOffset: { width: 0, height: 8 },
-      elevation: 3,
+      elevation: 0,
     },
     imageWrap: { flex: 1.35, overflow: 'hidden' },
     placeholder: { alignItems: 'center', justifyContent: 'center' },

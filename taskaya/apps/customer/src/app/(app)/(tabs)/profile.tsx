@@ -152,7 +152,7 @@ const makeStyles = (c: Palette) =>
       shadowOpacity: c.isDark ? 0.28 : 0.2,
       shadowRadius: 36,
       shadowOffset: { width: 0, height: 18 },
-      elevation: 8,
+      elevation: 0,
     },
     accent: { height: 4 },
     heroBody: { alignItems: 'center', paddingVertical: 28, paddingHorizontal: 20, gap: 12 },
@@ -196,7 +196,7 @@ const makeStyles = (c: Palette) =>
       shadowOpacity: c.isDark ? 0.2 : 0.12,
       shadowRadius: 24,
       shadowOffset: { width: 0, height: 10 },
-      elevation: 4,
+      elevation: 0,
     },
     row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56 },
     rowIcon: {

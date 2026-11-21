@@ -27,7 +27,7 @@ export function SearchField({ value, onChangeText, placeholder }: Props) {
       : null;
 
   return (
-    <View style={[styles.wrap, focused && styles.focus, webField]}>
+    <View style={[styles.wrap, focused && Platform.OS !== 'android' && styles.focus, webField]}>
       <Ionicons name="search" size={20} color={focused ? c.accentText : c.iconMuted} />
       <TextInput
         value={value}

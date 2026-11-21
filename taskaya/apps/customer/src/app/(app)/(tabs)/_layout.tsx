@@ -55,7 +55,7 @@ export default function TabsLayout() {
           backgroundColor: 'transparent',
           borderTopWidth: 0,
           borderRadius: BAR_RADIUS,
-          elevation: 12,
+          elevation: 0,
           shadowColor: colors.glow,
           shadowOpacity: 0.35,
           shadowRadius: 18,

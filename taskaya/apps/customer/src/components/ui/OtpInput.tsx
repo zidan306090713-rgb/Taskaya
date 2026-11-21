@@ -113,7 +113,7 @@ export function OtpInput({ value, onChange, length = 6, status = 'idle', autoFoc
 
 const styles = StyleSheet.create({
   wrap: { width: '100%', marginBottom: 6 },
-  row: { flexDirection: 'row', gap: 8, justifyContent: 'center', direction: 'ltr' },
+  row: { flexDirection: 'row', gap: 8, justifyContent: 'center', ...(native ? { direction: 'ltr' as const } : {}) },
   box: {
     flex: 1,
     height: 60,

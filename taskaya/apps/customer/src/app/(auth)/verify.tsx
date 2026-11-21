@@ -24,7 +24,7 @@ function useEntrance(delay: number) {
     Animated.timing(v, { toValue: 1, duration: 700, delay, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
   }, [v, delay]);
   return {
-    opacity: v,
+    opacity: Platform.OS === 'android' ? 1 : v,
     transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) }],
   };
 }
@@ -94,7 +94,7 @@ export default function Verify() {
   const canResend = left <= 0 && status === 'idle';
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: 'transparent' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: 'transparent' }} behavior="padding">
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         {/* ===== Brand ===== */}
         <Animated.View style={[styles.brandWrap, brandAnim]}>
@@ -205,14 +205,14 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 28,
     overflow: 'hidden',
-    backgroundColor: 'rgba(255,255,255,0.28)',
+    backgroundColor: Platform.OS === 'android' ? 'rgba(255,255,255,0.88)' : 'rgba(255,255,255,0.28)',
     borderWidth: 1,
     borderColor: 'rgba(47,128,237,0.18)',
     shadowColor: BLUE,
     shadowOpacity: 0.2,
     shadowRadius: 40,
     shadowOffset: { width: 0, height: 22 },
-    elevation: 10,
+    elevation: 0,
   },
   accent: { height: 4 },
   cardBody: { padding: 26, alignItems: 'center' },

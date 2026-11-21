@@ -151,7 +151,7 @@ const makeStyles = (c: Palette) =>
       shadowOpacity: c.isDark ? 0.28 : 0.2,
       shadowRadius: 36,
       shadowOffset: { width: 0, height: 18 },
-      elevation: 8,
+      elevation: 0,
     },
     accentTop: { height: 4 },
     heroBody: { padding: 20 },

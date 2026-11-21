@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { ComponentProps, ReactNode, useEffect, useState } from 'react';
 import {
-  ActivityIndicator, Animated, Easing, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View,
+  ActivityIndicator, Animated, Easing, Keyboard, Platform, Pressable, ScrollView, StyleSheet, Text, View,
 } from 'react-native';
+import { KeyboardInputBar } from '@/components/ui/KeyboardInputBar';
 import { PremiumInput } from '@/components/ui/PremiumInput';
 import { t, tr } from '@/i18n';
 import { signUpWithPhone } from '@/lib/auth';
@@ -14,6 +15,13 @@ import { useTheme } from '@/providers/ThemeProvider';
 
 const MIN_PASSWORD = 8;
 const BLUE = '#2F80ED';
+// على الموبايل: الكتابة في شريط فوق الكيبورد والشاشة ثابتة. على الويب: خانات عادية.
+const USE_BAR = Platform.OS !== 'web';
+
+type Field = 'name' | 'phone' | 'password' | 'confirm';
+type BarCfg = Omit<ComponentProps<typeof KeyboardInputBar>, 'onClose' | 'onAction' | 'actionIcon' | 'onSubmitEditing' | 'returnKeyType'> & {
+  next: Field | null;
+};
 
 function useEntrance(delay: number) {
   const [v] = useState(() => new Animated.Value(0));
@@ -21,9 +29,19 @@ function useEntrance(delay: number) {
     Animated.timing(v, { toValue: 1, duration: 700, delay, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
   }, [v, delay]);
   return {
-    opacity: v,
+    opacity: Platform.OS === 'android' ? 1 : v,
     transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) }],
   };
+}
+
+// على الموبايل: الخانة في الكارت بتبقى "زرار" يفتح الشريط
+function TapField({ onPress, label, children }: { onPress: () => void; label: string; children: ReactNode }) {
+  if (!USE_BAR) return <>{children}</>;
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label}>
+      <View style={{ pointerEvents: 'none' }}>{children}</View>
+    </Pressable>
+  );
 }
 
 export default function Register() {
@@ -36,6 +54,7 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [nameError, setNameError] = useState('');
+  const [active, setActive] = useState<Field | null>(null);
 
   const brandAnim = useEntrance(0);
   const cardAnim = useEntrance(150);
@@ -61,13 +80,77 @@ export default function Register() {
     router.push({ pathname: '/verify', params: { phone: e164 } });
   };
 
+  const submitFromBar = () => {
+    setActive(null);
+    Keyboard.dismiss();
+    onRegister();
+  };
+
+  const onName = (v: string) => {
+    setFullName(v);
+    setNameError('');
+  };
+
+  // إعدادات كل خانة — نفس الإعدادات بتتستخدم في الكارت وفي الشريط
+  const fields: Record<Field, BarCfg> = {
+    name: {
+      label: t('fullName'),
+      icon: 'person-outline',
+      value: fullName,
+      onChangeText: onName,
+      placeholder: tr('الاسم الثلاثي', 'First Middle Last'),
+      autoComplete: 'name',
+      textContentType: 'name',
+      autoCapitalize: 'words',
+      next: 'phone',
+    },
+    phone: {
+      label: t('phone'),
+      icon: 'call-outline',
+      value: phone,
+      onChangeText: setPhone,
+      placeholder: '01XXXXXXXXX',
+      keyboardType: 'phone-pad',
+      autoComplete: 'tel',
+      textContentType: 'telephoneNumber',
+      next: 'password',
+    },
+    password: {
+      label: t('password'),
+      icon: 'lock-closed-outline',
+      value: password,
+      onChangeText: setPassword,
+      placeholder: '••••••••',
+      secureTextEntry: true,
+      autoComplete: 'new-password',
+      textContentType: 'newPassword',
+      next: 'confirm',
+    },
+    confirm: {
+      label: t('confirmPassword'),
+      icon: 'shield-checkmark-outline',
+      value: confirm,
+      onChangeText: setConfirm,
+      placeholder: '••••••••',
+      secureTextEntry: true,
+      autoComplete: 'new-password',
+      textContentType: 'newPassword',
+      next: null,
+    },
+  };
+
+  const order: Field[] = ['name', 'phone', 'password', 'confirm'];
+
   const webGlass =
     Platform.OS === 'web'
       ? ({ backdropFilter: 'blur(8px) saturate(160%)', WebkitBackdropFilter: 'blur(8px) saturate(160%)' } as any)
       : null;
 
+  const bar = active ? fields[active] : null;
+  const goNext = bar?.next ? () => setActive(bar.next) : submitFromBar;
+
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: 'transparent' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <View style={{ flex: 1, backgroundColor: 'transparent' }}>
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         {/* ===== Brand ===== */}
         <Animated.View style={[styles.brandWrap, brandAnim]}>
@@ -79,54 +162,37 @@ export default function Register() {
 
         {/* ===== Card ===== */}
         <Animated.View style={cardAnim}>
-          <View style={[styles.card, { backgroundColor: c.glassBg, borderColor: c.panelBorder, shadowColor: c.accent }, webGlass]}>
+          <View
+            style={[
+              styles.card,
+              {
+                backgroundColor:
+                  Platform.OS === 'android' ? (c.isDark ? 'rgba(28,31,38,0.94)' : 'rgba(255,255,255,0.88)') : c.glassBg,
+                borderColor: c.panelBorder,
+                shadowColor: c.accent,
+              },
+              webGlass,
+            ]}
+          >
             <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.accent} />
             <View style={styles.cardBody}>
               <Text style={[styles.welcome, { color: c.text }]}>{t('register')}</Text>
               <Text style={[styles.welcomeSub, { color: c.textSecondary }]}>{tr('أنشئ حسابك في دقيقة واحدة', 'Create your account in a minute')}</Text>
 
-              <PremiumInput
-                label={t('fullName')}
-                placeholder={tr('الاسم الثلاثي', 'First Middle Last')}
-                icon="person-outline"
-                error={nameError}
-                value={fullName}
-                onChangeText={(v) => { setFullName(v); setNameError(''); }}
-                autoComplete="name"
-                textContentType="name"
-              />
-              <PremiumInput
-                label={t('phone')}
-                icon="call-outline"
-                value={phone}
-                onChangeText={setPhone}
-                keyboardType="phone-pad"
-                autoComplete="tel"
-                textContentType="telephoneNumber"
-                placeholder="01XXXXXXXXX"
-              />
-              <PremiumInput
-                label={t('password')}
-                icon="lock-closed-outline"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                autoComplete="new-password"
-                textContentType="newPassword"
-                placeholder="••••••••"
-              />
-              <PremiumInput
-                label={t('confirmPassword')}
-                icon="shield-checkmark-outline"
-                value={confirm}
-                onChangeText={setConfirm}
-                secureTextEntry
-                autoComplete="new-password"
-                textContentType="newPassword"
-                returnKeyType="go"
-                onSubmitEditing={onRegister}
-                placeholder="••••••••"
-              />
+              {order.map((key) => {
+                const { next, ...cfg } = fields[key];
+                return (
+                  <TapField key={key} onPress={() => setActive(key)} label={cfg.label}>
+                    <PremiumInput
+                      {...cfg}
+                      error={key === 'name' ? nameError : undefined}
+                      highlighted={active === key}
+                      returnKeyType={next ? 'next' : 'go'}
+                      onSubmitEditing={next ? undefined : onRegister}
+                    />
+                  </TapField>
+                );
+              })}
 
               {error ? (
                 <View style={styles.errorBox}>
@@ -169,7 +235,21 @@ export default function Register() {
           </View>
         </Animated.View>
       </ScrollView>
-    </KeyboardAvoidingView>
+
+      {/* ===== شريط الكتابة فوق الكيبورد ===== */}
+      {USE_BAR && active && bar ? (
+        <KeyboardInputBar
+          key={active}
+          {...(({ next, ...rest }) => rest)(bar)}
+          returnKeyType={bar.next ? 'next' : 'go'}
+          submitBehavior={bar.next ? 'submit' : undefined}
+          onSubmitEditing={goNext}
+          actionIcon={bar.next ? 'arrow-forward' : 'checkmark'}
+          onAction={goNext}
+          onClose={() => setActive(null)}
+        />
+      ) : null}
+    </View>
   );
 }
 
@@ -204,7 +284,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 40,
     shadowOffset: { width: 0, height: 22 },
-    elevation: 10,
+    elevation: 0,
   },
   accent: { height: 4 },
   cardBody: { padding: 26 },

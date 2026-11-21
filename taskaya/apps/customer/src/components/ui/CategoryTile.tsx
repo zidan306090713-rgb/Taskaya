@@ -81,7 +81,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.14,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 8 },
-    elevation: 3,
+    elevation: 0,
   },
   accent: { position: 'absolute', top: 0, left: 0, right: 0, height: 3 },
   iconWrap: {

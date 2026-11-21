@@ -47,7 +47,7 @@ export function Input({ label, error, icon, onFocus, onBlur, secureTextEntry, ..
   return (
     <View style={styles.wrap}>
       <Text style={styles.label}>{label}</Text>
-      <View style={[styles.field, focused && styles.fieldFocus, error ? styles.fieldError : null, insetWeb]}>
+      <View style={[styles.field, focused && Platform.OS !== 'android' && styles.fieldFocus, error ? styles.fieldError : null, insetWeb]}>
         {/* ظل داخلي من فوق (للموبايل، ومكمّل للويب) */}
         <LinearGradient
           colors={['rgba(8,36,100,0.5)', 'rgba(8,36,100,0)']}

@@ -108,3 +108,14 @@ function base64ToBytes(b64: string): Uint8Array {
   }
   return out;
 }
+
+// بيمسح صورة البروفايل: يخلّي avatar_url = null ويمسح الملف من الـ bucket
+export async function removeAvatar(uid: string) {
+  const old = current?.avatar_url;
+  const { data, error } = await supabase.from('profiles').update({ avatar_url: null }).eq('id', uid).select(COLS).single();
+  if (error || !data) return { error: error ?? new Error('update failed') };
+  publish(data as MyProfile);
+  const marker = `/object/public/${BUCKET}/`;
+  if (old?.includes(marker)) void supabase.storage.from(BUCKET).remove([old.split(marker)[1]]);
+  return { error: null };
+}

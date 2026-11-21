@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useMemo, useState } from 'react';
 import { Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
-import { tr } from '@/i18n';
+import { isRTL, tr } from '@/i18n';
 import { useTheme } from '@/providers/ThemeProvider';
 import { fonts, Palette, rgba } from '@/theme';
 
@@ -40,7 +40,7 @@ export function SearchField({ value, onChangeText, placeholder }: Props) {
         autoCorrect={false}
         selectionColor={c.accent}
         accessibilityLabel={placeholder}
-        style={[styles.input, Platform.OS === 'web' && ({ outlineStyle: 'none' } as any)]}
+        style={[styles.input, Platform.OS === 'web' && ({ outlineStyle: 'none', textAlign: isRTL ? 'right' : 'left', direction: isRTL ? 'rtl' : 'ltr' } as any)]}
       />
       {value ? (
         <Pressable
@@ -68,7 +68,7 @@ const makeStyles = (c: Palette) =>
       backgroundColor: c.searchBg,
       borderWidth: 1.5,
       borderColor: c.fieldBorder,
-      shadowColor: c.accent,
+      shadowColor: c.shadow,
       shadowOpacity: 0.12,
       shadowRadius: 12,
       shadowOffset: { width: 0, height: 4 },

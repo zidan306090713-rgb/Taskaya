@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Svg, { Defs, LinearGradient, Path, Stop } from 'react-native-svg';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -105,7 +105,7 @@ export default function FloatingTabBar({ state, descriptors, navigation }: any) 
               <View style={{ opacity: focused ? 0 : 1 }}>
                 {options.tabBarIcon?.({ color, size: 24, focused })}
               </View>
-              <Text style={[styles.label, { color, fontFamily: fonts.semibold }]} numberOfLines={1}>
+              <Text style={[styles.label, { color, fontFamily: fonts.semibold }, Platform.OS === 'web' ? ({ direction: layoutRTL() ? 'rtl' : 'ltr' } as any) : null]} numberOfLines={Platform.OS === 'web' ? undefined : 1}>
                 {label}
               </Text>
             </Pressable>

@@ -26,27 +26,25 @@ export const fonts = {
 
 // ===== نظام الثيم =====
 export type ThemeMode = 'light' | 'dark';
-export type AccentKey = 'blue' | 'green' | 'purple' | 'orange' | 'red' | 'pink' | 'teal' | 'gold';
+// "blue" فضل نفس المفتاح عشان اللي كان مختار الأزرق ياخد الأزرق اللافا تلقائيًا
+export type AccentKey = 'violet' | 'gold' | 'blue' | 'burgundy' | 'pink';
 export type Accent = {
   key: AccentKey;
   ar: string;
   en: string;
-  main: string;
-  light: string;
+  main: string; // اللون الأساسي (كود المستخدم)
+  light: string; // للنص/الأيقونات في الوضع الغامق + بداية التدرّج
   dark: string;
   deep: string;
   textLight: string; // لون النص/الأيقونات فوق الخلفية الفاتحة
 };
 
 export const ACCENTS: Accent[] = [
-  { key: 'blue', ar: 'أزرق', en: 'Blue', main: '#2F80ED', light: '#4AA3FF', dark: '#1D6FE0', deep: '#0B47B0', textLight: '#2F80ED' },
-  { key: 'green', ar: 'أخضر', en: 'Green', main: '#10B981', light: '#34D399', dark: '#059669', deep: '#046C4E', textLight: '#059669' },
-  { key: 'purple', ar: 'بنفسجي', en: 'Purple', main: '#7C3AED', light: '#A78BFA', dark: '#6D28D9', deep: '#4C1D95', textLight: '#6D28D9' },
-  { key: 'orange', ar: 'برتقالي', en: 'Orange', main: '#F97316', light: '#FB923C', dark: '#EA580C', deep: '#9A3412', textLight: '#EA580C' },
-  { key: 'red', ar: 'أحمر', en: 'Red', main: '#EF4444', light: '#F87171', dark: '#DC2626', deep: '#991B1B', textLight: '#DC2626' },
-  { key: 'pink', ar: 'وردي', en: 'Pink', main: '#EC4899', light: '#F472B6', dark: '#DB2777', deep: '#9D174D', textLight: '#DB2777' },
-  { key: 'teal', ar: 'تركوازي', en: 'Teal', main: '#14B8A6', light: '#2DD4BF', dark: '#0D9488', deep: '#115E59', textLight: '#0D9488' },
-  { key: 'gold', ar: 'ذهبي', en: 'Gold', main: '#CA8A04', light: '#EAB308', dark: '#A16207', deep: '#713F12', textLight: '#A16207' },
+  { key: 'blue', ar: 'أزرق لافا', en: 'Lava Blue', main: '#1F5BFF', light: '#5C8DFF', dark: '#1645D9', deep: '#0B2A8F', textLight: '#1F5BFF' },
+  { key: 'burgundy', ar: 'برجندي', en: 'Burgundy', main: '#8E1B3A', light: '#D0506F', dark: '#73122D', deep: '#4A0A1C', textLight: '#8E1B3A' },
+  { key: 'violet', ar: 'بنفسجي غامق', en: 'Violet', main: '#5B21B6', light: '#9B6BFF', dark: '#4C1D95', deep: '#2E1065', textLight: '#5B21B6' },
+  { key: 'gold', ar: 'أصفر ذهبي', en: 'Golden Yellow', main: '#E5A800', light: '#FFC93C', dark: '#B88500', deep: '#6B4A00', textLight: '#946B00' },
+  { key: 'pink', ar: 'وردي', en: 'Pink', main: '#FF9CB5', light: '#FFC2D1', dark: '#E56A8A', deep: '#A8355A', textLight: '#C93F6A' },
 ];
 
 const clamp = (n: number) => Math.max(0, Math.min(255, Math.round(n)));
@@ -86,10 +84,10 @@ export function buildPalette(mode: ThemeMode, key: AccentKey) {
     accentBorder: rgba(A.main, dk ? 0.4 : 0.25),
     accentLine: rgba(A.main, 0.14),
 
-    background: dk ? '#0A0B0D' : mix(A.main, '#FFFFFF', 0.85),
+    background: dk ? '#0A0B0D' : '#F4F6FA',
     bgGradient: (dk
       ? ['#0A0B0D', '#14161A', '#0C0D10']
-      : [mix(A.main, '#FFFFFF', 0.93), mix(A.main, '#FFFFFF', 0.85), mix(A.main, '#FFFFFF', 0.9)]) as [string, string, string],
+      : ['#FAFBFD', '#F2F4F8', '#F6F7FA']) as [string, string, string],
 
     text: accentText,
     ink: dk ? '#F3F5F8' : '#0B1F3A',
@@ -104,14 +102,15 @@ export function buildPalette(mode: ThemeMode, key: AccentKey) {
     panelBorder: dk ? 'rgba(255,255,255,0.10)' : rgba(A.main, 0.18),
     card: dk ? 'rgba(30,33,40,0.96)' : 'rgba(255,255,255,0.95)',
     cardBorder: dk ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.9)',
-    circleGradient: (dk ? ['#2B2F38', '#1B1E24'] : ['#FFFFFF', mix(A.main, '#FFFFFF', 0.8)]) as [string, string],
+    circleGradient: (dk ? ['#2B2F38', '#1B1E24'] : ['#FFFFFF', '#EEF1F6']) as [string, string],
     placeholderGradient: [rgba(A.light, 0.55), rgba(A.main, 0.12)] as [string, string],
 
     ballBg: dk ? '#1B1E24' : '#FFFFFF',
     ballBorder: dk ? rgba(A.light, 0.55) : mix(A.main, '#FFFFFF', 0.75),
     ballIcon: dk ? A.light : A.main,
     switchOff: dk ? 'rgba(255,255,255,0.18)' : 'rgba(11,31,58,0.16)',
-    starGlow: rgba(A.light, 0.55),
+    starGlow: dk ? rgba(A.light, 0.55) : 'rgba(255,255,255,0)',
+    shadow: dk ? A.main : '#64748B',
 
     fieldBg: dk ? '#1B1E24' : '#F4F8FF',
     fieldBgFocus: dk ? '#23262E' : '#FFFFFF',
@@ -119,7 +118,7 @@ export function buildPalette(mode: ThemeMode, key: AccentKey) {
     searchBg: dk ? '#1B1E24' : '#FFFFFF',
     iconMuted: dk ? '#7C8696' : '#8FA6C4',
     placeholder: dk ? '#6B7482' : '#A5B6CD',
-    headerBg: dk ? '#0F1114' : mix(A.main, '#FFFFFF', 0.88),
+    headerBg: dk ? '#0F1114' : '#F4F6FA',
     chipBg: dk ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.7)',
     chipBorder: dk ? 'rgba(255,255,255,0.14)' : rgba(A.main, 0.3),
     summaryBg: dk ? '#14161A' : A.deep,

@@ -122,6 +122,8 @@ export async function getCategoryPage(id: string, sub?: string): Promise<Categor
 // ---------- مقدم الخدمة ----------
 export type PricingModel = 'fixed' | 'starting_from' | 'custom_quote';
 export type ProviderProfile = {
+  logo_url?: string | null;
+  cover_url?: string | null;
   id: string;
   business_name: string;
   description: string | null;

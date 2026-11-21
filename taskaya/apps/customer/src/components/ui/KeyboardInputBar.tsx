@@ -25,6 +25,11 @@ export function KeyboardInputBar({ label, icon, onClose, actionIcon = 'checkmark
   const [hidden, setHidden] = useState(true);
   const isPassword = !!secureTextEntry;
 
+  const inputRef = useRef<TextInput>(null);
+  // أثناء تبديل إظهار/إخفاء الباسورد: أندرويد بيقفل الكيبورد ويفتحه لحظة — منقفلش الشريط بسببها
+  const toggling = useRef(false);
+  const [sel, setSel] = useState<{ start: number; end: number } | undefined>();
+
   const alive = useRef(true);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closeRef = useRef(onClose);
@@ -38,11 +43,28 @@ export function KeyboardInputBar({ label, icon, onClose, actionIcon = 'checkmark
   };
   // تأخير بسيط: عشان لو بننقل من خانة لخانة الشريط ميقفلش بالغلط
   const scheduleClose = () => {
-    if (!alive.current) return;
+    if (!alive.current || toggling.current) return;
     cancelClose();
     timer.current = setTimeout(() => {
-      if (alive.current) closeRef.current();
+      if (alive.current && !toggling.current) closeRef.current();
     }, 250);
+  };
+
+  const toggleHidden = () => {
+    toggling.current = true;
+    cancelClose();
+    setHidden((v) => !v);
+    // المؤشر يفضل في آخر الكلام (أندرويد بيرجّعه للأول لما نوع الخانة يتغير)
+    const len = String(inputProps.value ?? '').length;
+    setSel({ start: len, end: len });
+    setTimeout(() => {
+      if (!alive.current) return;
+      inputRef.current?.focus();
+      setSel(undefined);
+    }, 60);
+    setTimeout(() => {
+      toggling.current = false;
+    }, 700);
   };
 
   useEffect(() => {
@@ -79,6 +101,7 @@ export function KeyboardInputBar({ label, icon, onClose, actionIcon = 'checkmark
           <View style={styles.row}>
             <Ionicons name={icon} size={20} color={c.accentText} />
             <TextInput
+              ref={inputRef}
               autoFocus
               placeholderTextColor={c.placeholder}
               selectionColor={c.accent}
@@ -88,15 +111,16 @@ export function KeyboardInputBar({ label, icon, onClose, actionIcon = 'checkmark
               onBlur={scheduleClose}
               style={[styles.input, { color: c.ink }]}
               {...inputProps}
+              {...(sel ? { selection: sel } : null)}
             />
             {isPassword ? (
               <Pressable
-                onPress={() => setHidden((v) => !v)}
-                hitSlop={10}
+                onPressIn={toggleHidden}
+                hitSlop={12}
                 accessibilityRole="button"
                 accessibilityLabel={hidden ? tr('إظهار كلمة المرور', 'Show password') : tr('إخفاء كلمة المرور', 'Hide password')}
               >
-                <Ionicons name={hidden ? 'eye-outline' : 'eye-off-outline'} size={22} color={c.iconMuted} />
+                <Ionicons name={hidden ? 'eye-outline' : 'eye-off-outline'} size={22} color={hidden ? c.iconMuted : c.accentText} />
               </Pressable>
             ) : null}
             <Pressable

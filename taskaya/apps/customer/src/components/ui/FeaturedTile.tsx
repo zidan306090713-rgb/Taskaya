@@ -89,7 +89,7 @@ const makeStyles = (c: Palette) =>
       backgroundColor: c.card,
       borderWidth: 1.5,
       borderColor: c.cardBorder,
-      shadowColor: c.accent,
+      shadowColor: c.shadow,
       shadowOpacity: c.isDark ? 0.22 : 0.14,
       shadowRadius: 14,
       shadowOffset: { width: 0, height: 8 },

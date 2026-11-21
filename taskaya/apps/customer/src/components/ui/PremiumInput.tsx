@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { ComponentProps, useEffect, useMemo, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, TextInput, TextInputProps, View } from 'react-native';
-import { tr } from '@/i18n';
+import { isRTL, tr } from '@/i18n';
 import { useTheme } from '@/providers/ThemeProvider';
 import { fonts, Palette, rgba } from '@/theme';
 
@@ -63,7 +63,7 @@ export function PremiumInput({ label, icon, error, highlighted = false, labelIns
           onFocus={(e) => { setFocused(true); onFocus?.(e); }}
           onBlur={(e) => { setFocused(false); onBlur?.(e); }}
           secureTextEntry={isPassword ? hidden : false}
-          style={[styles.input, Platform.OS === 'web' && ({ outlineStyle: 'none' } as any)]}
+          style={[styles.input, Platform.OS === 'web' && ({ outlineStyle: 'none', textAlign: isRTL ? 'right' : 'left', direction: isRTL ? 'rtl' : 'ltr' } as any)]}
           {...props}
           placeholder={labelInside ? label : props.placeholder}
         />

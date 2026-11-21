@@ -1,11 +1,11 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { PremiumInput } from '@/components/ui/PremiumInput';
 import { Screen } from '@/components/ui/Screen';
 import { PageSkeleton } from '@/components/ui/Skeleton';
-import { lang, tr } from '@/i18n';
+import { isRTL, lang, tr } from '@/i18n';
 import { Address, Area, getAreas, getMyAddresses, getProviderService, invalidateAddresses, peekAddresses, peekAreas, peekProviderService, ServiceOption } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/AuthProvider';
@@ -110,7 +110,7 @@ export default function Booking() {
     });
     setLoading(false);
     if (bookErr && bookErr.code !== '23505') return setError(bookErr.message);
-    router.replace('/orders');
+    router.dismissTo('/orders');
   };
 
   return (
@@ -159,7 +159,7 @@ export default function Booking() {
           placeholder={tr('اكتب أي تفاصيل تساعد مقدم الخدمة...', 'Add any details for the provider...')}
           placeholderTextColor={c.placeholder}
           selectionColor={c.accent}
-          style={styles.textarea}
+          style={[styles.textarea, Platform.OS === 'web' ? ({ textAlign: isRTL ? 'right' : 'left', direction: isRTL ? 'rtl' : 'ltr' } as any) : null]}
         />
 
         <Text style={styles.section}>{tr('اليوم', 'Day')}</Text>

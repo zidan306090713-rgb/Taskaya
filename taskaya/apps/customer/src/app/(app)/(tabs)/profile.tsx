@@ -3,6 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useMemo, useRef, useState } from 'react';
 import { Animated, Platform, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { AvatarViewer } from '@/components/AvatarViewer';
 import { Avatar, EditProfileSheet } from '@/components/EditProfileSheet';
 import { useThemeReveal } from '@/components/ThemeReveal';
 import { AccentPickerRow } from '@/components/ui/AccentPicker';
@@ -23,6 +24,7 @@ export default function Profile() {
   const me = useMyProfile();
   const router = useRouter();
   const [editing, setEditing] = useState(false);
+  const [viewing, setViewing] = useState(false);
   // الزرار يتحرك فورًا، والوضع الجديد يظهر بدايرة من مكان الضغطة
   const [dark, setDark] = useState(c.isDark);
   const { reveal, prepare } = useThemeReveal();
@@ -61,7 +63,15 @@ export default function Profile() {
           </Pressable>
 
           <View style={styles.heroBody}>
-            <Avatar uri={me?.avatar_url} size={96} />
+            <Pressable
+              onPress={() => me && setViewing(true)}
+              disabled={!me}
+              accessibilityRole="button"
+              accessibilityLabel={tr('عرض الصورة', 'View photo')}
+              style={({ pressed }) => pressed && { opacity: 0.85, transform: [{ scale: 0.96 }] }}
+            >
+              <Avatar uri={me?.avatar_url} size={96} />
+            </Pressable>
             {name ? <Text style={styles.name} numberOfLines={2}>{name}</Text> : null}
             {secondary ? (
               <View style={styles.phonePill}>
@@ -131,6 +141,7 @@ export default function Profile() {
       </Animated.View>
 
       {editing && me ? <EditProfileSheet me={me} onClose={() => setEditing(false)} /> : null}
+      {viewing && me ? <AvatarViewer me={me} onClose={() => setViewing(false)} /> : null}
     </Screen>
   );
 }
@@ -143,7 +154,7 @@ const makeStyles = (c: Palette) =>
       backgroundColor: c.panelBg,
       borderWidth: 1,
       borderColor: c.panelBorder,
-      shadowColor: c.accent,
+      shadowColor: c.shadow,
       shadowOpacity: c.isDark ? 0.28 : 0.2,
       shadowRadius: 36,
       shadowOffset: { width: 0, height: 18 },
@@ -187,7 +198,7 @@ const makeStyles = (c: Palette) =>
       borderColor: c.panelBorder,
       paddingHorizontal: 16,
       paddingVertical: 6,
-      shadowColor: c.accent,
+      shadowColor: c.shadow,
       shadowOpacity: c.isDark ? 0.2 : 0.12,
       shadowRadius: 24,
       shadowOffset: { width: 0, height: 10 },

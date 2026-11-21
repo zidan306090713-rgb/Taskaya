@@ -92,7 +92,7 @@ export function NebulaBackground() {
   const look: StarLook = {
     color: c.isDark ? c.accentLight : c.accent,
     glow: c.starGlow,
-    glowColor: c.accentLight,
+    glowColor: c.isDark ? c.accentLight : 'transparent',
   };
 
   return (

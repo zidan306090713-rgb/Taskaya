@@ -1,14 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { Screen } from '@/components/ui/Screen';
 import { ListSkeleton, PageSkeleton } from '@/components/ui/Skeleton';
-import { useEntrance } from '@/hooks/use-screen-entrance';
+import { useEntrance, useFocusHide } from '@/hooks/use-screen-entrance';
 import { lang, tr } from '@/i18n';
-import { getAreas, getMyAddresses, getProvider, peekProvider, ProviderSvc, seedProviderService } from '@/lib/api';
+import { getProvider, peekProvider, ProviderSvc, seedProviderService } from '@/lib/api';
 import { useAuth } from '@/providers/AuthProvider';
 import { useTheme } from '@/providers/ThemeProvider';
 import { fonts, Palette, spacing } from '@/theme';
@@ -28,6 +29,8 @@ export default function ProviderScreen() {
 
   const heroAnim = useEntrance(0);
   const bodyAnim = useEntrance(80);
+  // الشاشة شفافة: نخفيها أول ما صفحة الحجز تفتح فوقها عشان متبانش وراها
+  const hide = useFocusHide();
 
   useEffect(() => {
     let alive = true;
@@ -48,7 +51,7 @@ export default function ProviderScreen() {
   const p = data?.profile;
   if (!p) {
     return (
-      <Screen>
+      <Screen padTop={0}>
         <View style={styles.loading}>
           {failed ? (
             <Text style={styles.muted}>{tr('تعذّر التحميل، حاول تاني', 'Could not load, please try again')}</Text>
@@ -60,6 +63,8 @@ export default function ProviderScreen() {
     );
   }
   const services = data?.services ?? null;
+  // نفس الصورة اللي بتظهر في كارت الرئيسية
+  const coverUri = p.cover_url ?? p.logo_url ?? null;
 
   const priceLabel = (s: ProviderSvc) =>
     s.pricing_model === 'custom_quote'
@@ -100,70 +105,78 @@ export default function ProviderScreen() {
           headerTintColor: c.accentText,
         }}
       />
-      <Screen>
-        {/* ===== Hero ===== */}
-        <Animated.View style={heroAnim}>
-          <View style={[styles.hero, webGlass]}>
-            <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.accent} />
-            <View style={styles.heroBody}>
-              <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.avatar}>
-                <Text style={styles.avatarText}>{p.business_name.charAt(0)}</Text>
-              </LinearGradient>
-              <View style={styles.row}>
-                <Text style={styles.name}>{p.business_name}</Text>
-                {p.is_verified ? <Ionicons name="checkmark-circle" size={22} color={c.accentText} /> : null}
-              </View>
-              <View style={styles.ratingPill}>
-                <Ionicons name="star" size={15} color="#F59E0B" />
-                <Text style={styles.ratingText}>
-                  {Number(p.rating_avg).toFixed(1)} ({p.rating_count} {tr('تقييم', 'reviews')})
-                </Text>
+      <View style={[styles.fill, hide]}>
+        <Screen padTop={0}>
+          {/* ===== Hero ===== */}
+          <Animated.View style={heroAnim}>
+            <View style={[styles.hero, webGlass]}>
+              <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.accent} />
+              {coverUri ? (
+                <View style={styles.cover}><Image source={{ uri: coverUri }} style={StyleSheet.absoluteFill} contentFit="cover" blurRadius={24} /><Image source={{ uri: coverUri }} style={StyleSheet.absoluteFill} contentFit="contain" transition={200} /></View>
+              ) : null}
+              <View style={[styles.heroBody, coverUri ? styles.heroBodyWithCover : null]}>
+                {coverUri ? null : (
+                  <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.avatar}>
+                    <Text style={styles.avatarText}>{p.business_name.charAt(0)}</Text>
+                  </LinearGradient>
+                )}
+                <View style={styles.row}>
+                  <Text style={styles.name}>{p.business_name}</Text>
+                  {p.is_verified ? <Ionicons name="checkmark-circle" size={22} color={c.accentText} /> : null}
+                </View>
+                <View style={styles.ratingPill}>
+                  <Ionicons name="star" size={15} color="#F59E0B" />
+                  <Text style={styles.ratingText}>
+                    {Number(p.rating_avg).toFixed(1)} ({p.rating_count} {tr('تقييم', 'reviews')})
+                  </Text>
+                </View>
               </View>
             </View>
-          </View>
-        </Animated.View>
+          </Animated.View>
 
-        <Animated.View style={bodyAnim}>
-          {/* ===== Description ===== */}
-          {p.description ? (
-            <View style={styles.descCard}>
-              <Ionicons name="chatbox-ellipses-outline" size={20} color={c.accentText} />
-              <Text style={styles.desc}>{p.description}</Text>
+          <Animated.View style={bodyAnim}>
+            {/* ===== Description ===== */}
+            {p.description ? (
+              <View style={styles.descCard}>
+                <Ionicons name="chatbox-ellipses-outline" size={20} color={c.accentText} />
+                <Text style={styles.desc}>{p.description}</Text>
+              </View>
+            ) : null}
+
+            {/* ===== Services ===== */}
+            <View style={styles.sectionRow}>
+              <LinearGradient colors={c.gradient} style={styles.sectionBar} />
+              <Text style={styles.section}>{tr('الخدمات', 'Services')}</Text>
             </View>
-          ) : null}
+            {services ? (
+              services.map((s) => {
+                const on = sel === s.id;
+                return (
+                  <Pressable key={s.id} onPress={() => setSel(s.id)} accessibilityRole="radio" accessibilityState={{ selected: on }}>
+                    <View style={[styles.svc, on && styles.svcOn]}>
+                      <Ionicons name={on ? 'radio-button-on' : 'radio-button-off'} size={22} color={on ? c.accentText : c.iconMuted} />
+                      <Text style={styles.svcName} numberOfLines={2}>{lang === 'ar' ? s.services.name_ar : s.services.name_en}</Text>
+                      <Text style={styles.svcPrice}>{priceLabel(s)}</Text>
+                    </View>
+                  </Pressable>
+                );
+              })
+            ) : (
+              <ListSkeleton rows={3} />
+            )}
 
-          {/* ===== Services ===== */}
-          <View style={styles.sectionRow}>
-            <LinearGradient colors={c.gradient} style={styles.sectionBar} />
-            <Text style={styles.section}>{tr('الخدمات', 'Services')}</Text>
-          </View>
-          {services ? (
-            services.map((s) => {
-              const on = sel === s.id;
-              return (
-                <Pressable key={s.id} onPress={() => setSel(s.id)} accessibilityRole="radio" accessibilityState={{ selected: on }}>
-                  <View style={[styles.svc, on && styles.svcOn]}>
-                    <Ionicons name={on ? 'radio-button-on' : 'radio-button-off'} size={22} color={on ? c.accentText : c.iconMuted} />
-                    <Text style={styles.svcName} numberOfLines={2}>{lang === 'ar' ? s.services.name_ar : s.services.name_en}</Text>
-                    <Text style={styles.svcPrice}>{priceLabel(s)}</Text>
-                  </View>
-                </Pressable>
-              );
-            })
-          ) : (
-            <ListSkeleton rows={3} />
-          )}
-
-          <View style={{ height: spacing.lg }} />
-          <Button title={tr('احجز الآن', 'Book now')} onPress={book} />
-        </Animated.View>
-      </Screen>
+            <View style={{ height: spacing.lg }} />
+            <Button title={tr('احجز الآن', 'Book now')} onPress={book} />
+          </Animated.View>
+        </Screen>
+      </View>
     </>
   );
 }
 
 const makeStyles = (c: Palette) =>
   StyleSheet.create({
+    fill: { flex: 1 },
     loading: { paddingVertical: 8, alignItems: 'center' },
     hero: {
       borderRadius: 28,
@@ -171,14 +184,16 @@ const makeStyles = (c: Palette) =>
       backgroundColor: c.panelBg,
       borderWidth: 1,
       borderColor: c.panelBorder,
-      shadowColor: c.accent,
+      shadowColor: c.shadow,
       shadowOpacity: c.isDark ? 0.28 : 0.2,
       shadowRadius: 36,
       shadowOffset: { width: 0, height: 18 },
       elevation: 0,
     },
     accent: { height: 4 },
+    cover: { width: '100%', aspectRatio: 16 / 10, overflow: 'hidden', backgroundColor: c.accentSoft },
     heroBody: { alignItems: 'center', gap: 12, paddingVertical: 28, paddingHorizontal: spacing.lg },
+    heroBodyWithCover: { paddingVertical: 18 },
     avatar: {
       width: 92,
       height: 92,

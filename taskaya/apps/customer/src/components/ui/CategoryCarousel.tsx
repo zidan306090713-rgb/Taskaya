@@ -1,121 +1,71 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useMemo, useRef, useState } from 'react';
-import { NativeScrollEvent, NativeSyntheticEvent, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useMemo } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { tr } from '@/i18n';
 import { Category } from '@/lib/api';
 import { useTheme } from '@/providers/ThemeProvider';
 import { fonts, Palette } from '@/theme';
 
-const ITEM_W = 86;
-
+// الأيقونة بالـ id (مش بالاسم) عشان تفضل ثابتة لو الاسم اتغير
 const ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
-  Cleaning: 'sparkles',
-  'Home Keeping': 'home',
-  'Home Maintenance': 'construct',
+  '10000000-0000-0000-0000-000000000001': 'sparkles', // مغاسل السجاد
+  '10000000-0000-0000-0000-000000000002': 'home', // هاوس كيبينج
+  '10000000-0000-0000-0000-000000000003': 'construct', // الفنيين
 };
 
-const labelOf = (c: any): string => (c.name_ar && c.name_en ? tr(c.name_ar, c.name_en) : c.name ?? c.name_en ?? '');
-const iconOf = (c: any): keyof typeof Ionicons.glyphMap =>
-  c.fakeIcon ?? ICONS[c.name_en ?? c.name ?? ''] ?? 'apps';
+const labelOf = (c: Category) => tr(c.name_ar, c.name_en);
+const iconOf = (c: Category): keyof typeof Ionicons.glyphMap => ICONS[c.id] ?? 'apps';
 
-// أقسام وهمية للتجربة فقط (مش بتفتح صفحة)
-const EXTRA = (): any[] =>
-  [
-    ['plumbing', 'سباكة', 'Plumbing', 'water'],
-    ['electric', 'كهرباء', 'Electrical', 'flash'],
-    ['painting', 'دهانات', 'Painting', 'color-palette'],
-    ['carpentry', 'نجارة', 'Carpentry', 'hammer'],
-    ['ac', 'تكييف', 'AC Repair', 'snow'],
-    ['pest', 'مكافحة حشرات', 'Pest Control', 'bug'],
-    ['carwash', 'غسيل سيارات', 'Car Wash', 'car'],
-    ['garden', 'حدائق', 'Gardening', 'leaf'],
-    ['moving', 'نقل أثاث', 'Moving', 'cube'],
-    ['laundry', 'مغسلة', 'Laundry', 'shirt'],
-  ].map(([id, ar, en, icon]) => ({ id: 'fake-' + id, name: tr(ar, en), fakeIcon: icon, fake: true }));
-
-// شريط أيقونات أفقي لا نهائي: 3 نسخ من القائمة، ولما السكرول يقرّب من طرف نرجّعه للنص بدون ما يبان
+// صف ثابت للأقسام الرئيسية (3 أقسام) موزّعين بالتساوي
 export function CategoryCarousel({ data }: { data: Category[] }) {
   const { c: th } = useTheme();
   const styles = useMemo(() => makeStyles(th), [th]);
-  const ref = useRef<ScrollView>(null);
-  const [w, setW] = useState(0);
-  const inited = useRef(0);
-  const all = useMemo<any[]>(() => [...data, ...EXTRA()], [data]);
-  const n = all.length;
 
-  // نكرر القائمة لحد ما عرض النسخة الواحدة يغطي عرض الشاشة
-  const reps = w > 0 && n > 0 ? Math.max(1, Math.ceil((w + ITEM_W) / (n * ITEM_W))) : 1;
-  const base = useMemo(() => Array.from({ length: reps }, () => all).flat(), [all, reps]);
-  const items = useMemo(() => [...base, ...base, ...base], [base]);
-  const S = base.length * ITEM_W; // عرض نسخة واحدة
-
-  const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    if (!S) return;
-    const x = e.nativeEvent.contentOffset.x;
-    if (x < S * 0.5) ref.current?.scrollTo({ x: x + S, animated: false });
-    else if (x > S * 1.5) ref.current?.scrollTo({ x: x - S, animated: false });
-  };
-
-  if (n === 0) return null;
+  if (data.length === 0) return null;
 
   return (
-    <View onLayout={(e) => setW(e.nativeEvent.layout.width)} style={styles.wrap}>
-      <ScrollView
-        ref={ref}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        scrollEventThrottle={16}
-        onScroll={onScroll}
-        onContentSizeChange={() => {
-          if (S && inited.current !== S) {
-            inited.current = S;
-            ref.current?.scrollTo({ x: S, animated: false });
-          }
-        }}
-        contentContainerStyle={{ paddingVertical: 6 }}
-      >
-        {items.map((c, i) => (
-          <View key={`${c.id}-${i}`} style={styles.item}>
-            <Pressable
-              onPress={() => {
-                if (!c.fake) router.push(`/category/${c.id}` as any);
-              }}
-              style={({ pressed }) => [styles.circleWrap, pressed && { opacity: 0.7, transform: [{ scale: 0.94 }] }]}
-            >
-              <LinearGradient colors={th.circleGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.circle}>
-                <Ionicons name={iconOf(c)} size={30} color={th.accentText} />
-              </LinearGradient>
-            </Pressable>
-            <Text style={styles.label} numberOfLines={2}>
-              {labelOf(c)}
-            </Text>
-          </View>
-        ))}
-      </ScrollView>
+    <View style={styles.row}>
+      {data.map((c) => (
+        <View key={c.id} style={styles.item}>
+          <Pressable
+            onPress={() => router.push(`/category/${c.id}` as any)}
+            accessibilityRole="button"
+            accessibilityLabel={labelOf(c)}
+            style={({ pressed }) => [styles.circleWrap, pressed && { opacity: 0.7, transform: [{ scale: 0.94 }] }]}
+          >
+            <LinearGradient colors={th.circleGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.circle}>
+              <Ionicons name={iconOf(c)} size={32} color={th.accentText} />
+            </LinearGradient>
+          </Pressable>
+          <Text style={styles.label} numberOfLines={2}>
+            {labelOf(c)}
+          </Text>
+        </View>
+      ))}
     </View>
   );
 }
 
 const makeStyles = (th: Palette) =>
   StyleSheet.create({
-    wrap: { marginHorizontal: -16 },
-    item: { width: ITEM_W, alignItems: 'center', gap: 6 },
-    circleWrap: { borderRadius: 32 },
+    row: { flexDirection: 'row', justifyContent: 'space-evenly', paddingVertical: 6 },
+    item: { flex: 1, maxWidth: 120, alignItems: 'center', gap: 8 },
+    circleWrap: { borderRadius: 36 },
     circle: {
-      width: 64,
-      height: 64,
-      borderRadius: 32,
+      width: 72,
+      height: 72,
+      borderRadius: 36,
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: 1.5,
       borderColor: th.cardBorder,
-      shadowColor: th.accent,
+      shadowColor: th.shadow,
       shadowOpacity: 0.28,
       shadowRadius: 12,
       shadowOffset: { width: 0, height: 6 },
       elevation: 0,
     },
-    label: { fontFamily: fonts.bold, fontSize: 12, color: th.text, textAlign: 'center', paddingHorizontal: 4 },
+    label: { fontFamily: fonts.bold, fontSize: 13, color: th.text, textAlign: 'center', paddingHorizontal: 4 },
   });

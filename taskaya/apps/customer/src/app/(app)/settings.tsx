@@ -166,7 +166,7 @@ const makeStyles = (c: Palette) =>
       backgroundColor: c.isDark ? '#151A24' : '#FFFFFF',
       padding: 20,
       gap: 10,
-      shadowColor: c.accent,
+      shadowColor: c.shadow,
       shadowOpacity: 0.3,
       shadowRadius: 24,
       shadowOffset: { width: 0, height: 10 },

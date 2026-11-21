@@ -1,35 +1,28 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useMemo, useState } from 'react';
-import { Animated, Easing, Platform, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { startTransition, useEffect, useMemo, useState } from 'react';
+import { Animated, Platform, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { AccentPickerRow } from '@/components/ui/AccentPicker';
 import { Screen } from '@/components/ui/Screen';
+import { useEntrance } from '@/hooks/use-screen-entrance';
 import { t, tr } from '@/i18n';
 import { toLocalDisplay } from '@/lib/phone';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/AuthProvider';
 import { useTheme } from '@/providers/ThemeProvider';
-import { ACCENTS, fonts, Palette, spacing } from '@/theme';
-
-function useEntrance(delay: number) {
-  const [v] = useState(() => new Animated.Value(0));
-  useEffect(() => {
-    Animated.timing(v, { toValue: 1, duration: 650, delay, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
-  }, [v, delay]);
-  return {
-    opacity: v,
-    transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [22, 0] }) }],
-  };
-}
+import { fonts, Palette, spacing } from '@/theme';
 
 export default function Profile() {
-  const { c, accent, setMode, setAccent } = useTheme();
+  const { c, setMode } = useTheme();
   const styles = useMemo(() => makeStyles(c), [c]);
   const { session } = useAuth();
   const [info, setInfo] = useState<{ full_name: string | null; phone: string | null } | null>(null);
+  // الزرار يتحرك فورًا، وإعادة رسم التطبيق بالوضع الجديد تحصل في الخلفية
+  const [dark, setDark] = useState(c.isDark);
 
   const heroAnim = useEntrance(0);
-  const setAnim = useEntrance(90);
-  const btnAnim = useEntrance(180);
+  const setAnim = useEntrance(60);
+  const btnAnim = useEntrance(120);
 
   useEffect(() => {
     if (!session) return;
@@ -46,7 +39,6 @@ export default function Profile() {
   const phone = rawPhone ? toLocalDisplay(rawPhone) : '';
   const secondary = phone || session?.user.email || '';
   const initial = name ? name.charAt(0).toUpperCase() : '';
-  const current = ACCENTS.find((a) => a.key === accent) ?? ACCENTS[0];
 
   const webGlass =
     Platform.OS === 'web'
@@ -78,12 +70,15 @@ export default function Profile() {
         <View style={[styles.card, webGlass]}>
           <View style={styles.row}>
             <View style={styles.rowIcon}>
-              <Ionicons name={c.isDark ? 'moon' : 'sunny'} size={20} color={c.accentText} />
+              <Ionicons name={dark ? 'moon' : 'sunny'} size={20} color={c.accentText} />
             </View>
             <Text style={styles.rowLabel}>{tr('الوضع الغامق', 'Dark mode')}</Text>
             <Switch
-              value={c.isDark}
-              onValueChange={(v) => setMode(v ? 'dark' : 'light')}
+              value={dark}
+              onValueChange={(v) => {
+                setDark(v);
+                startTransition(() => setMode(v ? 'dark' : 'light'));
+              }}
               trackColor={{ false: c.switchOff, true: c.accent }}
               thumbColor="#FFFFFF"
               accessibilityLabel={tr('الوضع الغامق', 'Dark mode')}
@@ -92,31 +87,7 @@ export default function Profile() {
 
           <View style={styles.sep} />
 
-          <View style={styles.row}>
-            <View style={styles.rowIcon}>
-              <Ionicons name="color-palette" size={20} color={c.accentText} />
-            </View>
-            <Text style={styles.rowLabel}>{tr('لون التطبيق', 'App color')}</Text>
-            <Text style={styles.rowValue}>{tr(current.ar, current.en)}</Text>
-          </View>
-          <View style={styles.swatches}>
-            {ACCENTS.map((a) => {
-              const on = a.key === accent;
-              return (
-                <Pressable
-                  key={a.key}
-                  onPress={() => setAccent(a.key)}
-                  accessibilityRole="button"
-                  accessibilityLabel={tr(a.ar, a.en)}
-                  style={[styles.swatchWrap, on && { borderColor: a.main }]}
-                >
-                  <LinearGradient colors={[a.light, a.dark]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.swatch}>
-                    {on ? <Ionicons name="checkmark" size={17} color="#FFFFFF" /> : null}
-                  </LinearGradient>
-                </Pressable>
-              );
-            })}
-          </View>
+          <AccentPickerRow />
         </View>
       </Animated.View>
 
@@ -208,19 +179,7 @@ const makeStyles = (c: Palette) =>
       backgroundColor: c.accentSoft,
     },
     rowLabel: { flex: 1, fontFamily: fonts.semibold, fontSize: 15, color: c.ink },
-    rowValue: { fontFamily: fonts.semibold, fontSize: 13, color: c.accentText },
     sep: { height: 1, backgroundColor: c.accentLine },
-    swatches: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, paddingTop: 4, paddingBottom: 14 },
-    swatchWrap: {
-      width: 38,
-      height: 38,
-      borderRadius: 19,
-      borderWidth: 2,
-      borderColor: 'transparent',
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    swatch: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
 
     logout: {
       flexDirection: 'row',

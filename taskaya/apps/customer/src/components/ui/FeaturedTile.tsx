@@ -5,11 +5,11 @@ import { Link } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { tr } from '@/i18n';
-import { ProviderCard as P } from '@/lib/api';
+import { prefetchProvider, ProviderCard as P } from '@/lib/api';
 import { useTheme } from '@/providers/ThemeProvider';
 import { fonts, Palette } from '@/theme';
 
-export function FeaturedTile({ p, size }: { p: P; size: number }) {
+export function FeaturedTile({ p, size, height = size }: { p: P; size: number; height?: number }) {
   const { c } = useTheme();
   const styles = useMemo(() => makeStyles(c), [c]);
   const [scale] = useState(() => new Animated.Value(1));
@@ -17,7 +17,7 @@ export function FeaturedTile({ p, size }: { p: P; size: number }) {
     Animated.spring(scale, { toValue: to, useNativeDriver: true, speed: 30, bounciness: 4 }).start();
 
   const uri = p.cover_url ?? p.logo_url;
-  const fs = Math.max(10, Math.min(13, size / 10));
+  const fs = Math.max(11, Math.min(14.5, size / 10.5));
   const price =
     p.min_price != null ? `${tr('من', 'From')} ${p.min_price} ${tr('ج.م', 'EGP')}` : tr('حسب العرض', 'Custom quote');
   const circle = Math.round(size * 0.34);
@@ -27,11 +27,11 @@ export function FeaturedTile({ p, size }: { p: P; size: number }) {
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={p.business_name}
-        onPressIn={() => press(0.96)}
+        onPressIn={() => { prefetchProvider(p); press(0.96); }}
         onPressOut={() => press(1)}
-        style={{ width: size, height: size }}
+        style={{ width: size, height }}
       >
-        <Animated.View style={[styles.card, { width: size, height: size, transform: [{ scale }] }]}>
+        <Animated.View style={[styles.card, { width: size, height, transform: [{ scale }] }]}>
           <View style={styles.imageWrap}>
             {uri ? (
               <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
@@ -67,7 +67,7 @@ export function FeaturedTile({ p, size }: { p: P; size: number }) {
               {p.is_verified ? <Ionicons name="checkmark-circle" size={fs + 1} color={c.accentText} /> : null}
             </View>
             {p.description ? (
-              <Text style={[styles.desc, { fontSize: fs - 1.5, lineHeight: fs + 2 }]} numberOfLines={1}>
+              <Text style={[styles.desc, { fontSize: fs - 1.5, lineHeight: fs + 2 }]} numberOfLines={size < 130 ? 1 : 2}>
                 {p.description}
               </Text>
             ) : null}
@@ -95,7 +95,7 @@ const makeStyles = (c: Palette) =>
       shadowOffset: { width: 0, height: 8 },
       elevation: 0,
     },
-    imageWrap: { flex: 1.35, overflow: 'hidden' },
+    imageWrap: { flex: 1, overflow: 'hidden' },
     placeholder: { alignItems: 'center', justifyContent: 'center' },
     circle: {
       alignItems: 'center',
@@ -120,7 +120,7 @@ const makeStyles = (c: Palette) =>
       borderColor: c.accentBorder,
     },
     ratingText: { fontFamily: fonts.semibold, color: c.ink },
-    info: { flex: 1, paddingHorizontal: 8, paddingVertical: 5, justifyContent: 'space-evenly' },
+    info: { paddingHorizontal: 10, paddingTop: 7, paddingBottom: 9, gap: 3 },
     nameRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
     name: { fontFamily: fonts.bold, color: c.text, flexShrink: 1 },
     desc: { fontFamily: fonts.regular, color: c.textSecondary },

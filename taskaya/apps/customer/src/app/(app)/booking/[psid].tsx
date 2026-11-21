@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { PremiumInput } from '@/components/ui/PremiumInput';
 import { Screen } from '@/components/ui/Screen';
 import { lang, tr } from '@/i18n';
-import { Address, Area, getAreas, getMyAddresses, getProviderService, ServiceOption } from '@/lib/api';
+import { Address, Area, getAreas, getMyAddresses, getProviderService, invalidateAddresses, peekAddresses, peekAreas, peekProviderService, ServiceOption } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/AuthProvider';
 import { useTheme } from '@/providers/ThemeProvider';
@@ -22,10 +22,10 @@ export default function Booking() {
   const { session } = useAuth();
   const uid = session?.user.id ?? '';
 
-  const [svc, setSvc] = useState<ServiceOption | null>(null);
-  const [addresses, setAddresses] = useState<Address[]>([]);
-  const [areas, setAreas] = useState<Area[]>([]);
-  const [addrId, setAddrId] = useState<string | undefined>();
+  const [svc, setSvc] = useState<ServiceOption | null>(() => peekProviderService(psid));
+  const [addresses, setAddresses] = useState<Address[]>(() => peekAddresses(uid) ?? []);
+  const [areas, setAreas] = useState<Area[]>(() => peekAreas() ?? []);
+  const [addrId, setAddrId] = useState<string | undefined>(() => { const a = peekAddresses(uid); return a ? (a[0]?.id ?? 'new') : undefined; });
   const [areaId, setAreaId] = useState<string | undefined>();
   const [street, setStreet] = useState('');
   const [building, setBuilding] = useState('');
@@ -92,6 +92,7 @@ export default function Booking() {
         return setError(addrErr?.message ?? 'Error');
       }
       address_id = data.id;
+      invalidateAddresses(uid);
       setAddrId(data.id);
       setAddresses((a) => [{ id: data.id, label: null, street: street.trim(), building: building.trim() || null, area_id: areaId ?? null }, ...a]);
     }

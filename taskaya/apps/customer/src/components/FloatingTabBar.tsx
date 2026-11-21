@@ -13,6 +13,8 @@ const BALL = 50;
 const BALL_TOP = -18;
 const BALL_CY = BALL_TOP + BALL / 2;
 const NOTCH_R = 31;
+const NOTCH_DX = Math.sqrt(Math.max(NOTCH_R * NOTCH_R - BALL_CY * BALL_CY, 1));
+const MIN_C = BAR_HEIGHT / 2 + NOTCH_DX + 2;
 
 function buildPath(w: number, h: number, cx: number) {
   const r = h / 2;
@@ -43,13 +45,15 @@ export default function FloatingTabBar({ state, descriptors, navigation }: any) 
   const barWidth = Math.min(width - SIDE_GAP * 2, BAR_MAX_WIDTH);
   const side = Math.round((width - barWidth) / 2);
   const count = state.routes.length;
-  const tabWidth = barWidth / count;
+  // مسافة داخلية من الطرفين: عشان التجويف ميخبطش في الحواف الدايرية، فيفضل تحت الكورة بالظبط
+  const pad = count > 1 ? Math.ceil(Math.max(0, (MIN_C - barWidth / (2 * count)) / (1 - 1 / count))) : 0;
+  const tabWidth = (barWidth - pad * 2) / count;
 
   // الكورة بتتحرك على الـ native thread (مش بتشغل JavaScript خالص أثناء الحركة)
   const [x] = useState(() => new Animated.Value(state.index * tabWidth));
 
   // التجويف بيتحسب مرة واحدة لكل تاب — مش 60 مرة في الثانية
-  const notchX = state.index * tabWidth + tabWidth / 2;
+  const notchX = pad + state.index * tabWidth + tabWidth / 2;
   const path = useMemo(() => buildPath(barWidth, BAR_HEIGHT, notchX), [barWidth, notchX]);
 
   useEffect(() => {
@@ -78,7 +82,7 @@ export default function FloatingTabBar({ state, descriptors, navigation }: any) 
         <Path d={path} fill="url(#navGrad)" stroke="rgba(255,255,255,0.45)" strokeWidth={1.5} />
       </Svg>
 
-      <View style={styles.row}>
+      <View style={[styles.row, { paddingHorizontal: pad }]}>
         {state.routes.map((route: any, index: number) => {
           const { options } = descriptors[route.key];
           const focused = state.index === index;
@@ -110,7 +114,7 @@ export default function FloatingTabBar({ state, descriptors, navigation }: any) 
         style={[
           styles.ball,
           {
-            left: tabWidth / 2 - BALL / 2,
+            left: pad + tabWidth / 2 - BALL / 2,
             transform: [{ translateX: x }],
             backgroundColor: c.ballBg,
             borderColor: c.ballBorder,

@@ -8,7 +8,7 @@ import { Category } from '@/lib/api';
 import { useTheme } from '@/providers/ThemeProvider';
 import { fonts, Palette } from '@/theme';
 
-const ITEM_W = 76;
+const ITEM_W = 86;
 
 const ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   Cleaning: 'sparkles',
@@ -85,7 +85,7 @@ export function CategoryCarousel({ data }: { data: Category[] }) {
               style={({ pressed }) => [styles.circleWrap, pressed && { opacity: 0.7, transform: [{ scale: 0.94 }] }]}
             >
               <LinearGradient colors={th.circleGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.circle}>
-                <Ionicons name={iconOf(c)} size={24} color={th.accentText} />
+                <Ionicons name={iconOf(c)} size={30} color={th.accentText} />
               </LinearGradient>
             </Pressable>
             <Text style={styles.label} numberOfLines={2}>
@@ -102,11 +102,11 @@ const makeStyles = (th: Palette) =>
   StyleSheet.create({
     wrap: { marginHorizontal: -16 },
     item: { width: ITEM_W, alignItems: 'center', gap: 6 },
-    circleWrap: { borderRadius: 26 },
+    circleWrap: { borderRadius: 32 },
     circle: {
-      width: 52,
-      height: 52,
-      borderRadius: 26,
+      width: 64,
+      height: 64,
+      borderRadius: 32,
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: 1.5,
@@ -117,5 +117,5 @@ const makeStyles = (th: Palette) =>
       shadowOffset: { width: 0, height: 6 },
       elevation: 0,
     },
-    label: { fontFamily: fonts.bold, fontSize: 11, color: th.text, textAlign: 'center', paddingHorizontal: 4 },
+    label: { fontFamily: fonts.bold, fontSize: 12, color: th.text, textAlign: 'center', paddingHorizontal: 4 },
   });

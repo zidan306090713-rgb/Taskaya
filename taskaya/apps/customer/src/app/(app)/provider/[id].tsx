@@ -2,51 +2,87 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { Screen } from '@/components/ui/Screen';
+import { useEntrance } from '@/hooks/use-screen-entrance';
 import { lang, tr } from '@/i18n';
-import { getProvider } from '@/lib/api';
+import { getAreas, getMyAddresses, getProvider, peekProvider, ProviderSvc, seedProviderService } from '@/lib/api';
+import { useAuth } from '@/providers/AuthProvider';
 import { useTheme } from '@/providers/ThemeProvider';
 import { fonts, Palette, spacing } from '@/theme';
-
-type Svc = { id: string; pricing_model: string; base_price: number | null; services: { name_ar: string; name_en: string } };
-
-function useEntrance(delay: number) {
-  const [v] = useState(() => new Animated.Value(0));
-  useEffect(() => {
-    Animated.timing(v, { toValue: 1, duration: 650, delay, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
-  }, [v, delay]);
-  return {
-    opacity: v,
-    transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [22, 0] }) }],
-  };
-}
 
 export default function ProviderScreen() {
   const { c } = useTheme();
   const styles = useMemo(() => makeStyles(c), [c]);
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [data, setData] = useState<Awaited<ReturnType<typeof getProvider>> | null>(null);
-  const [sel, setSel] = useState<string | undefined>();
+  const { session } = useAuth();
+  const uid = session?.user.id;
   const router = useRouter();
 
+  // لو الكارت اتلمس قبل كده: الاسم والتقييم (أو الصفحة كلها) جاهزين فورًا
+  const [data, setData] = useState(() => peekProvider(id));
+  const [sel, setSel] = useState<string | undefined>(() => peekProvider(id)?.services?.[0]?.id);
+  const [failed, setFailed] = useState(false);
+
   const heroAnim = useEntrance(0);
-  const bodyAnim = useEntrance(150);
+  const bodyAnim = useEntrance(80);
 
   useEffect(() => {
-    getProvider(id).then((d) => {
-      setData(d);
-      setSel((d.services as unknown as Svc[])[0]?.id);
-    });
-  }, [id]);
-  const p = data?.profile;
-  if (!p) return <Screen><Text style={styles.muted}>...</Text></Screen>;
+    let alive = true;
+    getProvider(id)
+      .then((d) => {
+        if (!alive) return;
+        setData(d);
+        setSel((s) => s ?? d.services[0]?.id);
+      })
+      .catch(() => {
+        if (alive) setFailed(true);
+      });
+    // نجهّز بيانات صفحة الحجز في الخلفية من دلوقتي
+    getAreas().catch(() => {});
+    if (uid) getMyAddresses(uid).catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [id, uid]);
 
-  const priceLabel = (s: Svc) =>
+  const p = data?.profile;
+  if (!p) {
+    return (
+      <Screen>
+        <View style={styles.loading}>
+          {failed ? (
+            <Text style={styles.muted}>{tr('تعذّر التحميل، حاول تاني', 'Could not load, please try again')}</Text>
+          ) : (
+            <ActivityIndicator color={c.accent} />
+          )}
+        </View>
+      </Screen>
+    );
+  }
+  const services = data?.services ?? null;
+
+  const priceLabel = (s: ProviderSvc) =>
     s.pricing_model === 'custom_quote'
       ? tr('حسب العرض', 'Custom quote')
       : `${s.pricing_model === 'starting_from' ? tr('يبدأ من', 'From') + ' ' : ''}${s.base_price} ${tr('ج.م', 'EGP')}`;
+
+  const book = () => {
+    const s = services?.find((x) => x.id === sel);
+    if (!s) return;
+    // صفحة الحجز تفتح فورًا ببيانات الخدمة اللي معانا
+    seedProviderService({
+      id: s.id,
+      provider_id: p.id,
+      pricing_model: s.pricing_model,
+      base_price: s.base_price,
+      estimated_duration_minutes: s.estimated_duration_minutes,
+      provider_profiles: { business_name: p.business_name },
+      services: s.services,
+    });
+    router.push(`/booking/${s.id}`);
+  };
 
   const webGlass =
     Platform.OS === 'web'
@@ -82,7 +118,7 @@ export default function ProviderScreen() {
               <View style={styles.ratingPill}>
                 <Ionicons name="star" size={15} color="#F59E0B" />
                 <Text style={styles.ratingText}>
-                  {p.rating_avg.toFixed(1)} ({p.rating_count} {tr('تقييم', 'reviews')})
+                  {Number(p.rating_avg).toFixed(1)} ({p.rating_count} {tr('تقييم', 'reviews')})
                 </Text>
               </View>
             </View>
@@ -103,21 +139,25 @@ export default function ProviderScreen() {
             <LinearGradient colors={c.gradient} style={styles.sectionBar} />
             <Text style={styles.section}>{tr('الخدمات', 'Services')}</Text>
           </View>
-          {(data!.services as unknown as Svc[]).map((s) => {
-            const on = sel === s.id;
-            return (
-              <Pressable key={s.id} onPress={() => setSel(s.id)} accessibilityRole="radio" accessibilityState={{ selected: on }}>
-                <View style={[styles.svc, on && styles.svcOn]}>
-                  <Ionicons name={on ? 'radio-button-on' : 'radio-button-off'} size={22} color={on ? c.accentText : c.iconMuted} />
-                  <Text style={styles.svcName} numberOfLines={2}>{lang === 'ar' ? s.services.name_ar : s.services.name_en}</Text>
-                  <Text style={styles.svcPrice}>{priceLabel(s)}</Text>
-                </View>
-              </Pressable>
-            );
-          })}
+          {services ? (
+            services.map((s) => {
+              const on = sel === s.id;
+              return (
+                <Pressable key={s.id} onPress={() => setSel(s.id)} accessibilityRole="radio" accessibilityState={{ selected: on }}>
+                  <View style={[styles.svc, on && styles.svcOn]}>
+                    <Ionicons name={on ? 'radio-button-on' : 'radio-button-off'} size={22} color={on ? c.accentText : c.iconMuted} />
+                    <Text style={styles.svcName} numberOfLines={2}>{lang === 'ar' ? s.services.name_ar : s.services.name_en}</Text>
+                    <Text style={styles.svcPrice}>{priceLabel(s)}</Text>
+                  </View>
+                </Pressable>
+              );
+            })
+          ) : (
+            <ActivityIndicator color={c.accent} style={{ marginVertical: spacing.lg }} />
+          )}
 
           <View style={{ height: spacing.lg }} />
-          <Button title={tr('احجز الآن', 'Book now')} onPress={() => sel && router.push(`/booking/${sel}`)} />
+          <Button title={tr('احجز الآن', 'Book now')} onPress={book} />
         </Animated.View>
       </Screen>
     </>
@@ -126,6 +166,7 @@ export default function ProviderScreen() {
 
 const makeStyles = (c: Palette) =>
   StyleSheet.create({
+    loading: { paddingVertical: 80, alignItems: 'center' },
     hero: {
       borderRadius: 28,
       overflow: 'hidden',

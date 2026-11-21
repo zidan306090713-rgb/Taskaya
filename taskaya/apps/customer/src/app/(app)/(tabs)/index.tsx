@@ -91,7 +91,7 @@ export default function Home() {
 
   return (
     <Screen>
-      <Animated.View style={[{ marginTop: -40 }, heroAnim]}>
+      <Animated.View style={[{ marginTop: -40, marginHorizontal: -12 }, heroAnim]}>
         {/* ===== كارت واحد: ترحيب + بحث + تصنيفات + مقدمو خدمة ===== */}
         <Panel bodyStyle={styles.mergedBody}>
           <View style={styles.header}>
@@ -121,7 +121,7 @@ export default function Home() {
                     <Text style={styles.empty}>{tr('لا يوجد نتائج', 'No results')}</Text>
                   </View>
                 ) : (
-                  <TileGrid data={results} keyOf={(p) => p.id} render={(p, size) => <FeaturedTile p={p} size={size} />} />
+                  <TileGrid data={results} keyOf={(p) => p.id} columns={3} aspect={1.4} render={(p, size, h) => <FeaturedTile p={p} size={size} height={h} />} />
                 )}
               </>
             ) : (
@@ -129,7 +129,7 @@ export default function Home() {
                 <CategoryCarousel data={cats} />
 
                 <View style={{ height: spacing.lg }} />
-                <TileGrid data={featured} keyOf={(p) => p.id} render={(p, size) => <FeaturedTile p={p} size={size} />} />
+                <TileGrid data={featured} keyOf={(p) => p.id} columns={3} aspect={1.4} render={(p, size, h) => <FeaturedTile p={p} size={size} height={h} />} />
               </>
             )}
           </Animated.View>

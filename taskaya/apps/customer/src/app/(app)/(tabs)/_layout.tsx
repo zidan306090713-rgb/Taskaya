@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { Tabs } from 'expo-router';
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { tr } from '@/i18n';
 import { colors, fonts } from '@/theme';
@@ -38,7 +38,7 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         sceneStyle: { backgroundColor: 'transparent' },
-        animation: 'none',
+        animation: Platform.OS === 'web' ? 'fade' : 'none',
         tabBarActiveTintColor: colors.primaryLight,
         tabBarInactiveTintColor: colors.textSecondary,
         tabBarActiveBackgroundColor: 'rgba(47,140,255,0.2)',

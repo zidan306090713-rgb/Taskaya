@@ -16,6 +16,27 @@ export type ProviderCard = {
   description: string | null;
 };
 
+// ---------- كاش بسيط في الذاكرة: بيمنع تكرار نفس الطلب، وبيرجّع النتيجة فورًا لو لسه جديدة ----------
+type Entry<T> = { at: number; data?: T; p?: Promise<T> };
+
+function cached<T>(store: Map<string, Entry<T>>, key: string, ttl: number, load: () => Promise<T>): Promise<T> {
+  const e = store.get(key);
+  if (e?.data !== undefined && Date.now() - e.at < ttl) return Promise.resolve(e.data);
+  if (e?.p) return e.p;
+  const p = load()
+    .then((data) => {
+      store.set(key, { at: Date.now(), data });
+      return data;
+    })
+    .catch((err) => {
+      if (e?.data !== undefined) store.set(key, { at: e.at, data: e.data });
+      else store.delete(key);
+      throw err;
+    });
+  store.set(key, { at: e?.at ?? 0, data: e?.data, p });
+  return p;
+}
+
 export async function getCategories(): Promise<Category[]> {
   const { data } = await supabase
     .from('service_categories')
@@ -71,57 +92,145 @@ export async function getProviders(opts: { categoryId?: string; subcategoryId?: 
   return [...map.values()].sort((a, b) => b.rating_avg - a.rating_avg);
 }
 
-export async function getProvider(id: string) {
-  const { data: profile } = await supabase
-    .from('provider_profiles')
-    .select('id, business_name, description, is_verified, is_available, rating_avg, rating_count, business_address')
-    .eq('id', id)
-    .single();
-  const { data: services } = await supabase
-    .from('provider_services')
-    .select('id, pricing_model, base_price, estimated_duration_minutes, services(name_ar, name_en)')
-    .eq('provider_id', id)
-    .eq('is_active', true);
-  return { profile, services: services ?? [] };
+// ---------- مقدم الخدمة ----------
+export type PricingModel = 'fixed' | 'starting_from' | 'custom_quote';
+export type ProviderProfile = {
+  id: string;
+  business_name: string;
+  description: string | null;
+  is_verified: boolean;
+  is_available: boolean;
+  rating_avg: number;
+  rating_count: number;
+  business_address?: string | null;
+};
+export type ProviderSvc = {
+  id: string;
+  pricing_model: PricingModel;
+  base_price: number | null;
+  estimated_duration_minutes: number | null;
+  services: { name_ar: string; name_en: string };
+};
+export type ProviderData = { profile: ProviderProfile | null; services: ProviderSvc[] };
+
+const PROVIDER_TTL = 2 * 60_000;
+const providerStore = new Map<string, Entry<ProviderData>>();
+const providerSeed = new Map<string, ProviderProfile>();
+
+export function getProvider(id: string): Promise<ProviderData> {
+  return cached(providerStore, id, PROVIDER_TTL, async () => {
+    // الطلبين بيتبعتوا في نفس اللحظة بدل واحد ورا التاني
+    const [{ data: profile }, { data: services }] = await Promise.all([
+      supabase
+        .from('provider_profiles')
+        .select('id, business_name, description, is_verified, is_available, rating_avg, rating_count, business_address')
+        .eq('id', id)
+        .single(),
+      supabase
+        .from('provider_services')
+        .select('id, pricing_model, base_price, estimated_duration_minutes, services(name_ar, name_en)')
+        .eq('provider_id', id)
+        .eq('is_active', true),
+    ]);
+    return { profile: profile as ProviderProfile | null, services: (services ?? []) as unknown as ProviderSvc[] };
+  });
 }
 
+// بيتنادى أول ما الصباع يلمس الكارت: بيحفظ بيانات الكارت ويبدأ يحمّل الباقي
+export function prefetchProvider(card: ProviderCard) {
+  providerSeed.set(card.id, {
+    id: card.id,
+    business_name: card.business_name,
+    description: card.description,
+    is_verified: card.is_verified,
+    is_available: card.is_available,
+    rating_avg: card.rating_avg,
+    rating_count: card.rating_count,
+  });
+  getProvider(card.id).catch(() => {});
+}
+
+// اللي موجود عندنا دلوقتي فورًا (كامل، أو بيانات الكارت بس من غير الخدمات)
+export function peekProvider(id: string): { profile: ProviderProfile | null; services: ProviderSvc[] | null } | null {
+  const full = providerStore.get(id)?.data;
+  if (full) return full;
+  const seed = providerSeed.get(id);
+  return seed ? { profile: seed, services: null } : null;
+}
+
+// ---------- خدمة معينة (صفحة الحجز) ----------
 export type ServiceOption = {
   id: string;
   provider_id: string;
-  pricing_model: 'fixed' | 'starting_from' | 'custom_quote';
+  pricing_model: PricingModel;
   base_price: number | null;
   estimated_duration_minutes: number | null;
   provider_profiles: { business_name: string };
   services: { name_ar: string; name_en: string };
 };
 
-export async function getProviderService(id: string) {
-  const { data } = await supabase
-    .from('provider_services')
-    .select('id, provider_id, pricing_model, base_price, estimated_duration_minutes, provider_profiles(business_name), services(name_ar, name_en)')
-    .eq('id', id)
-    .single();
-  return data as unknown as ServiceOption | null;
+const psStore = new Map<string, Entry<ServiceOption | null>>();
+
+export function getProviderService(id: string): Promise<ServiceOption | null> {
+  return cached(psStore, id, PROVIDER_TTL, async () => {
+    const { data } = await supabase
+      .from('provider_services')
+      .select('id, provider_id, pricing_model, base_price, estimated_duration_minutes, provider_profiles(business_name), services(name_ar, name_en)')
+      .eq('id', id)
+      .single();
+    return data as unknown as ServiceOption | null;
+  });
 }
 
+// صفحة مقدم الخدمة عندها كل بيانات الخدمة، فبتسلّمها لصفحة الحجز على طول
+export function seedProviderService(s: ServiceOption) {
+  psStore.set(s.id, { at: Date.now(), data: s });
+}
+
+export function peekProviderService(id: string): ServiceOption | null {
+  return psStore.get(id)?.data ?? null;
+}
+
+// ---------- المناطق والعناوين ----------
 export type Area = { id: string; name_ar: string; name_en: string };
 
-export async function getAreas(): Promise<Area[]> {
-  const { data } = await supabase.from('service_areas').select('id, name_ar, name_en').order('name_en');
-  return data ?? [];
+const areasStore = new Map<string, Entry<Area[]>>();
+
+export function getAreas(): Promise<Area[]> {
+  return cached(areasStore, 'all', 30 * 60_000, async () => {
+    const { data } = await supabase.from('service_areas').select('id, name_ar, name_en').order('name_en');
+    return data ?? [];
+  });
+}
+
+export function peekAreas(): Area[] | null {
+  return areasStore.get('all')?.data ?? null;
 }
 
 export type Address = { id: string; label: string | null; street: string | null; building: string | null; area_id: string | null };
 
-export async function getMyAddresses(uid: string): Promise<Address[]> {
-  const { data } = await supabase
-    .from('addresses')
-    .select('id, label, street, building, area_id')
-    .eq('customer_id', uid)
-    .order('created_at', { ascending: false });
-  return data ?? [];
+const addrStore = new Map<string, Entry<Address[]>>();
+
+export function getMyAddresses(uid: string): Promise<Address[]> {
+  return cached(addrStore, uid, 60_000, async () => {
+    const { data } = await supabase
+      .from('addresses')
+      .select('id, label, street, building, area_id')
+      .eq('customer_id', uid)
+      .order('created_at', { ascending: false });
+    return data ?? [];
+  });
 }
 
+export function peekAddresses(uid: string): Address[] | null {
+  return addrStore.get(uid)?.data ?? null;
+}
+
+export function invalidateAddresses(uid: string) {
+  addrStore.delete(uid);
+}
+
+// ---------- الحجوزات ----------
 export type Booking = {
   id: string;
   booking_number: number;

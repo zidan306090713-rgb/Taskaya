@@ -6,14 +6,15 @@ import { useTheme } from '@/providers/ThemeProvider';
 import { fonts, Palette, rgba } from '@/theme';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
-type Props = TextInputProps & { label: string; icon: IconName; error?: string };
+type Props = TextInputProps & { label: string; icon: IconName; error?: string; highlighted?: boolean };
 
-export function PremiumInput({ label, icon, error, secureTextEntry, onFocus, onBlur, ...props }: Props) {
+export function PremiumInput({ label, icon, error, highlighted = false, secureTextEntry, onFocus, onBlur, ...props }: Props) {
   const { c } = useTheme();
   const styles = useMemo(() => makeStyles(c), [c]);
   const [focused, setFocused] = useState(false);
   const [hidden, setHidden] = useState(true);
   const isPassword = !!secureTextEntry;
+  const lit = focused || highlighted;
 
   // يمنع لون الـ autofill بتاع Chrome، ويتبع الثيم الحالي
   useEffect(() => {
@@ -39,8 +40,8 @@ export function PremiumInput({ label, icon, error, secureTextEntry, onFocus, onB
   const webField =
     Platform.OS === 'web'
       ? ({
-          transition: 'box-shadow .2s ease, border-color .2s ease, background-color .2s ease',
-          boxShadow: focused
+          transition: 'box-shadow .2s ease',
+          boxShadow: lit
             ? `0 0 0 4px ${rgba(c.accent, 0.16)}, 0 8px 18px ${rgba(c.accent, 0.12)}`
             : 'inset 0 1px 2px rgba(11,31,58,0.06)',
         } as any)
@@ -49,15 +50,18 @@ export function PremiumInput({ label, icon, error, secureTextEntry, onFocus, onB
   return (
     <View style={styles.wrap}>
       <Text style={styles.label}>{label}</Text>
-      <View style={[styles.field, focused && Platform.OS !== 'android' && styles.fieldFocus, !!error && styles.fieldError, webField]}>
-        <Ionicons name={icon} size={20} color={focused ? c.accentText : c.iconMuted} />
+      {/* ستايل الصندوق ده ثابت ومش بيتغير مع الفوكس — تغييره كان بيطرد المؤشر على أندرويد */}
+      <View style={[styles.field, !!error && styles.fieldError, webField]}>
+        {/* الضوء الأزرق: طبقة منفصلة بتظهر بالشفافية بس */}
+        <View style={[styles.ring, { opacity: lit && !error ? 1 : 0 }]} />
+        <Ionicons name={icon} size={20} color={lit ? c.accentText : c.iconMuted} />
         <TextInput
           {...({ dataSet: { premium: '1' } } as any)}
           placeholderTextColor={c.placeholder}
           accessibilityLabel={label}
           selectionColor={c.accent}
-          onFocus={(e) => { console.log('🔵 FOCUS', label); setFocused(true); onFocus?.(e); }}
-          onBlur={(e) => { console.log('⚪ BLUR', label); setFocused(false); onBlur?.(e); }}
+          onFocus={(e) => { setFocused(true); onFocus?.(e); }}
+          onBlur={(e) => { setFocused(false); onBlur?.(e); }}
           secureTextEntry={isPassword ? hidden : false}
           style={[styles.input, Platform.OS === 'web' && ({ outlineStyle: 'none' } as any)]}
           {...props}
@@ -69,7 +73,7 @@ export function PremiumInput({ label, icon, error, secureTextEntry, onFocus, onB
             accessibilityRole="button"
             accessibilityLabel={hidden ? tr('إظهار كلمة المرور', 'Show password') : tr('إخفاء كلمة المرور', 'Hide password')}
           >
-            <Ionicons name={hidden ? 'eye-outline' : 'eye-off-outline'} size={21} color={focused ? c.accentText : c.iconMuted} />
+            <Ionicons name={hidden ? 'eye-outline' : 'eye-off-outline'} size={21} color={lit ? c.accentText : c.iconMuted} />
           </Pressable>
         ) : null}
       </View>
@@ -98,9 +102,17 @@ const makeStyles = (c: Palette) =>
       borderWidth: 1.5,
       borderColor: c.fieldBorder,
     },
-    fieldFocus: {
-      backgroundColor: c.fieldBgFocus,
+    ring: {
+      position: 'absolute',
+      top: -1.5,
+      left: -1.5,
+      right: -1.5,
+      bottom: -1.5,
+      borderRadius: 16,
+      borderWidth: 2,
       borderColor: c.accent,
+      backgroundColor: rgba(c.accent, 0.07),
+      pointerEvents: 'none',
       shadowColor: c.accent,
       shadowOpacity: 0.25,
       shadowRadius: 12,

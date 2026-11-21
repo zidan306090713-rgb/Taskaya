@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import {
-  ActivityIndicator, Animated, Easing, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View,
+  ActivityIndicator, Animated, Easing, Keyboard, Platform, Pressable, ScrollView, StyleSheet, Text, View,
 } from 'react-native';
+import { KeyboardInputBar } from '@/components/ui/KeyboardInputBar';
 import { PremiumInput } from '@/components/ui/PremiumInput';
 import { t, tr } from '@/i18n';
 import { signInWithPhone } from '@/lib/auth';
@@ -13,6 +14,10 @@ import { colors, fonts, spacing } from '@/theme';
 import { useTheme } from '@/providers/ThemeProvider';
 
 const BLUE = '#2F80ED';
+// على الموبايل: الكتابة بتحصل في شريط فوق الكيبورد والشاشة ثابتة. على الويب: خانات عادية.
+const USE_BAR = Platform.OS !== 'web';
+
+type Field = 'phone' | 'password' | null;
 
 function useEntrance(delay: number) {
   const [v] = useState(() => new Animated.Value(0));
@@ -25,13 +30,23 @@ function useEntrance(delay: number) {
   };
 }
 
+// على الموبايل: الخانة في الكارت بتبقى "زرار" يفتح الشريط، ومش بتاخد المؤشر نفسها
+function TapField({ onPress, label, children }: { onPress: () => void; label: string; children: ReactNode }) {
+  if (!USE_BAR) return <>{children}</>;
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label}>
+      <View style={{ pointerEvents: 'none' }}>{children}</View>
+    </Pressable>
+  );
+}
+
 export default function Login() {
-  useEffect(() => { console.log('🟢 LOGIN MOUNT'); return () => console.log('🔴 LOGIN UNMOUNT'); }, []);
   const { c } = useTheme();
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [active, setActive] = useState<Field>(null);
 
   const brandAnim = useEntrance(0);
   const cardAnim = useEntrance(150);
@@ -50,13 +65,19 @@ export default function Login() {
     // عند النجاح: AuthProvider يلتقط الجلسة و (auth)/_layout يحوّل للرئيسية تلقائيًا
   };
 
+  const submitFromBar = () => {
+    setActive(null);
+    Keyboard.dismiss();
+    onLogin();
+  };
+
   const webGlass =
     Platform.OS === 'web'
       ? ({ backdropFilter: 'blur(8px) saturate(160%)', WebkitBackdropFilter: 'blur(8px) saturate(160%)' } as any)
       : null;
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: 'transparent' }} behavior="padding">
+    <View style={{ flex: 1, backgroundColor: 'transparent' }}>
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         {/* ===== Brand ===== */}
         <Animated.View style={[styles.brandWrap, brandAnim]}>
@@ -71,39 +92,51 @@ export default function Login() {
 
         {/* ===== Card ===== */}
         <Animated.View style={cardAnim}>
-          <View style={[styles.card, { backgroundColor: Platform.OS === 'android' ? (c.isDark ? 'rgba(28,31,38,0.94)' : 'rgba(255,255,255,0.88)') : c.glassBg, borderColor: c.panelBorder, shadowColor: c.accent }, webGlass]}>
-            <LinearGradient
-              colors={c.gradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.accent}
-            />
+          <View
+            style={[
+              styles.card,
+              {
+                backgroundColor:
+                  Platform.OS === 'android' ? (c.isDark ? 'rgba(28,31,38,0.94)' : 'rgba(255,255,255,0.88)') : c.glassBg,
+                borderColor: c.panelBorder,
+                shadowColor: c.accent,
+              },
+              webGlass,
+            ]}
+          >
+            <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.accent} />
             <View style={styles.cardBody}>
               <Text style={[styles.welcome, { color: c.text }]}>{tr('أهلاً بعودتك', 'Welcome back')}</Text>
               <Text style={[styles.welcomeSub, { color: c.textSecondary }]}>{tr('سجّل دخولك لمتابعة طلباتك', 'Sign in to manage your orders')}</Text>
 
-              <PremiumInput
-                label={t('phone')}
-                icon="call-outline"
-                value={phone}
-                onChangeText={setPhone}
-                keyboardType="phone-pad"
-                autoComplete="tel"
-                textContentType="telephoneNumber"
-                placeholder="01XXXXXXXXX"
-              />
-              <PremiumInput
-                label={t('password')}
-                icon="lock-closed-outline"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                autoComplete="current-password"
-                textContentType="password"
-                returnKeyType="go"
-                onSubmitEditing={onLogin}
-                placeholder="••••••••"
-              />
+              <TapField onPress={() => setActive('phone')} label={t('phone')}>
+                <PremiumInput
+                  label={t('phone')}
+                  icon="call-outline"
+                  value={phone}
+                  onChangeText={setPhone}
+                  keyboardType="phone-pad"
+                  autoComplete="tel"
+                  textContentType="telephoneNumber"
+                  placeholder="01XXXXXXXXX"
+                  highlighted={active === 'phone'}
+                />
+              </TapField>
+              <TapField onPress={() => setActive('password')} label={t('password')}>
+                <PremiumInput
+                  label={t('password')}
+                  icon="lock-closed-outline"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  autoComplete="current-password"
+                  textContentType="password"
+                  returnKeyType="go"
+                  onSubmitEditing={onLogin}
+                  placeholder="••••••••"
+                  highlighted={active === 'password'}
+                />
+              </TapField>
 
               {error ? (
                 <View style={styles.errorBox}>
@@ -146,7 +179,46 @@ export default function Login() {
           </View>
         </Animated.View>
       </ScrollView>
-    </KeyboardAvoidingView>
+
+      {/* ===== شريط الكتابة فوق الكيبورد ===== */}
+      {USE_BAR && active === 'phone' ? (
+        <KeyboardInputBar
+          key="phone"
+          label={t('phone')}
+          icon="call-outline"
+          value={phone}
+          onChangeText={setPhone}
+          keyboardType="phone-pad"
+          autoComplete="tel"
+          textContentType="telephoneNumber"
+          placeholder="01XXXXXXXXX"
+          returnKeyType="next"
+          submitBehavior="submit"
+          onSubmitEditing={() => setActive('password')}
+          actionIcon="arrow-forward"
+          onAction={() => setActive('password')}
+          onClose={() => setActive(null)}
+        />
+      ) : null}
+      {USE_BAR && active === 'password' ? (
+        <KeyboardInputBar
+          key="password"
+          label={t('password')}
+          icon="lock-closed-outline"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          autoComplete="current-password"
+          textContentType="password"
+          placeholder="••••••••"
+          returnKeyType="go"
+          onSubmitEditing={submitFromBar}
+          actionIcon="checkmark"
+          onAction={submitFromBar}
+          onClose={() => setActive(null)}
+        />
+      ) : null}
+    </View>
   );
 }
 

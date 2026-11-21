@@ -20,12 +20,13 @@ function useEntrance(delay: number) {
     Animated.timing(v, { toValue: 1, duration: 700, delay, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
   }, [v, delay]);
   return {
-    opacity: v,
+    opacity: Platform.OS === 'android' ? 1 : v,
     transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) }],
   };
 }
 
 export default function Login() {
+  useEffect(() => { console.log('🟢 LOGIN MOUNT'); return () => console.log('🔴 LOGIN UNMOUNT'); }, []);
   const { c } = useTheme();
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
@@ -55,7 +56,7 @@ export default function Login() {
       : null;
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: 'transparent' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: 'transparent' }} behavior="padding">
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         {/* ===== Brand ===== */}
         <Animated.View style={[styles.brandWrap, brandAnim]}>
@@ -70,7 +71,7 @@ export default function Login() {
 
         {/* ===== Card ===== */}
         <Animated.View style={cardAnim}>
-          <View style={[styles.card, { backgroundColor: c.glassBg, borderColor: c.panelBorder, shadowColor: c.accent }, webGlass]}>
+          <View style={[styles.card, { backgroundColor: Platform.OS === 'android' ? (c.isDark ? 'rgba(28,31,38,0.94)' : 'rgba(255,255,255,0.88)') : c.glassBg, borderColor: c.panelBorder, shadowColor: c.accent }, webGlass]}>
             <LinearGradient
               colors={c.gradient}
               start={{ x: 0, y: 0 }}
@@ -87,8 +88,8 @@ export default function Login() {
                 value={phone}
                 onChangeText={setPhone}
                 keyboardType="phone-pad"
-                autoComplete="username"
-                textContentType="username"
+                autoComplete="tel"
+                textContentType="telephoneNumber"
                 placeholder="01XXXXXXXXX"
               />
               <PremiumInput
@@ -181,7 +182,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 40,
     shadowOffset: { width: 0, height: 22 },
-    elevation: 10,
+    elevation: Platform.OS === 'android' ? 0 : 10,
   },
   accent: { height: 4 },
   cardBody: { padding: 26 },

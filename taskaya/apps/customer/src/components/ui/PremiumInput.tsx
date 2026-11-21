@@ -49,15 +49,15 @@ export function PremiumInput({ label, icon, error, secureTextEntry, onFocus, onB
   return (
     <View style={styles.wrap}>
       <Text style={styles.label}>{label}</Text>
-      <View style={[styles.field, focused && styles.fieldFocus, !!error && styles.fieldError, webField]}>
+      <View style={[styles.field, focused && Platform.OS !== 'android' && styles.fieldFocus, !!error && styles.fieldError, webField]}>
         <Ionicons name={icon} size={20} color={focused ? c.accentText : c.iconMuted} />
         <TextInput
           {...({ dataSet: { premium: '1' } } as any)}
           placeholderTextColor={c.placeholder}
           accessibilityLabel={label}
           selectionColor={c.accent}
-          onFocus={(e) => { setFocused(true); onFocus?.(e); }}
-          onBlur={(e) => { setFocused(false); onBlur?.(e); }}
+          onFocus={(e) => { console.log('🔵 FOCUS', label); setFocused(true); onFocus?.(e); }}
+          onBlur={(e) => { console.log('⚪ BLUR', label); setFocused(false); onBlur?.(e); }}
           secureTextEntry={isPassword ? hidden : false}
           style={[styles.input, Platform.OS === 'web' && ({ outlineStyle: 'none' } as any)]}
           {...props}

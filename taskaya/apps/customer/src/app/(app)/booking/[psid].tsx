@@ -13,7 +13,7 @@ import { useTheme } from '@/providers/ThemeProvider';
 import { fonts, Palette, radius, spacing } from '@/theme';
 
 const SLOTS = [9, 11, 13, 15, 17, 19];
-const locale = lang === 'ar' ? 'ar-EG' : 'en-US';
+const locale = () => (lang === 'ar' ? 'ar-EG' : 'en-US');
 
 export default function Booking() {
   const { c } = useTheme();
@@ -57,8 +57,8 @@ export default function Booking() {
     []
   );
   const isPast = (h: number) => dayIdx === 0 && h <= new Date().getHours();
-  const dayLabel = (d: Date) => d.toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short' });
-  const hourLabel = (h: number) => new Date(2000, 0, 1, h).toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' });
+  const dayLabel = (d: Date) => d.toLocaleDateString(locale(), { weekday: 'short', day: 'numeric', month: 'short' });
+  const hourLabel = (h: number) => new Date(2000, 0, 1, h).toLocaleTimeString(locale(), { hour: 'numeric', minute: '2-digit' });
 
   if (!svc) return <Screen><Text style={styles.muted}>...</Text></Screen>;
 

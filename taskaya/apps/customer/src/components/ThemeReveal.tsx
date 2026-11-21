@@ -155,7 +155,7 @@ export function ThemeRevealProvider({ children }: { children: ReactNode }) {
         </View>
 
         {snap ? (
-          <View style={StyleSheet.absoluteFill}>
+          <View style={[StyleSheet.absoluteFill, { direction: 'ltr' }]}>
             <Image source={{ uri: snap.old }} style={{ width: w, height: h }} fadeDuration={0} onLoad={snap.fresh ? undefined : loaded} />
             {snap.fresh ? (
               <Animated.View

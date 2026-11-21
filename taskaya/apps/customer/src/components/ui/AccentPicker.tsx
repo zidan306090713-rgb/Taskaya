@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { startTransition, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import { tr } from '@/i18n';
+import { isRTL, layoutRTL, tr } from '@/i18n';
 import { useTheme } from '@/providers/ThemeProvider';
 import { ACCENTS, AccentKey, fonts, rgba } from '@/theme';
 
@@ -41,10 +41,11 @@ export function AccentPickerRow() {
         <Text style={[styles.rowLabel, { color: c.ink }]}>{tr('لون التطبيق', 'App color')}</Text>
         <LinearGradient colors={[current.light, current.dark]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.dot} />
         <Text style={[styles.rowValue, { color: c.accentText }]}>{tr(current.ar, current.en)}</Text>
-        <Ionicons name="chevron-forward" size={18} color={c.iconMuted} />
+        <Ionicons name={layoutRTL() ? 'chevron-back' : 'chevron-forward'} size={18} color={c.iconMuted} />
       </Pressable>
 
       <Modal visible={open} transparent animationType="fade" statusBarTranslucent onRequestClose={() => setOpen(false)}>
+      <View style={{ flex: 1, direction: isRTL ? 'rtl' : 'ltr' }}>
         <Pressable style={[StyleSheet.absoluteFill, styles.backdrop]} onPress={() => setOpen(false)} accessibilityLabel={tr('إغلاق', 'Close')} />
         <View style={styles.center}>
           <View
@@ -101,6 +102,7 @@ export function AccentPickerRow() {
               </Pressable>
             </View>
           </View>
+        </View>
         </View>
       </Modal>
     </>

@@ -25,7 +25,7 @@ const STATUS: Record<string, { ar: string; en: string; color: string; icon: Icon
   rejected: { ar: 'مرفوض', en: 'Rejected', color: '#DC2626', icon: 'ban-outline' },
 };
 
-const locale = lang === 'ar' ? 'ar-EG' : 'en-US';
+const locale = () => (lang === 'ar' ? 'ar-EG' : 'en-US');
 
 function useEntrance(delay: number) {
   const [v] = useState(() => new Animated.Value(0));
@@ -47,7 +47,7 @@ function OrderCard({ b, index }: { b: Booking; index: number }) {
   const title = b.services ? (lang === 'ar' ? b.services.name_ar : b.services.name_en) : '-';
   const provider = b.provider_profiles?.business_name ?? tr('بانتظار ترشيح مقدم خدمة', 'Awaiting provider match');
   const when = b.scheduled_at
-    ? new Date(b.scheduled_at).toLocaleString(locale, { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })
+    ? new Date(b.scheduled_at).toLocaleString(locale(), { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })
     : null;
 
   return (

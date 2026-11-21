@@ -1,3 +1,4 @@
+import { bootstrap } from '@/lib/bootstrap';
 import { supabase } from '@/lib/supabase';
 
 export type Category = { id: string; name_ar: string; name_en: string; description_ar: string | null; description_en: string | null };
@@ -37,7 +38,10 @@ function cached<T>(store: Map<string, Entry<T>>, key: string, ttl: number, load:
   return p;
 }
 
+// ---------- الأقسام (جاية مع طلب الرئيسية الواحد) ----------
 export async function getCategories(): Promise<Category[]> {
+  const boot = await bootstrap();
+  if (boot) return boot.categories as Category[];
   const { data } = await supabase
     .from('service_categories')
     .select('id, name_ar, name_en, description_ar, description_en')
@@ -69,6 +73,20 @@ type Row = {
   provider_profiles: Omit<ProviderCard, 'min_price'>;
 };
 
+// بيجمع صفوف (خدمة لكل صف) لمقدم خدمة واحد بأقل سعر
+function aggregateProviders(rows: Row[]): ProviderCard[] {
+  const map = new Map<string, ProviderCard>();
+  rows.forEach((r) => {
+    const p = r.provider_profiles;
+    if (!p) return;
+    const existing = map.get(p.id);
+    const price = r.base_price;
+    if (!existing) map.set(p.id, { ...p, min_price: price });
+    else if (price != null && (existing.min_price == null || price < existing.min_price)) existing.min_price = price;
+  });
+  return [...map.values()].sort((a, b) => b.rating_avg - a.rating_avg);
+}
+
 export async function getProviders(opts: { categoryId?: string; subcategoryId?: string; search?: string }): Promise<ProviderCard[]> {
   let q = supabase
     .from('provider_services')
@@ -80,16 +98,25 @@ export async function getProviders(opts: { categoryId?: string; subcategoryId?: 
   if (opts.categoryId) q = q.eq('services.service_subcategories.category_id', opts.categoryId);
   if (opts.search) q = q.ilike('provider_profiles.business_name', `%${opts.search}%`);
   const { data } = await q;
+  return aggregateProviders((data ?? []) as unknown as Row[]);
+}
 
-  const map = new Map<string, ProviderCard>();
-  ((data ?? []) as unknown as Row[]).forEach((r) => {
-    const p = r.provider_profiles;
-    const existing = map.get(p.id);
-    const price = r.base_price;
-    if (!existing) map.set(p.id, { ...p, min_price: price });
-    else if (price != null && (existing.min_price == null || price < existing.min_price)) existing.min_price = price;
-  });
-  return [...map.values()].sort((a, b) => b.rating_avg - a.rating_avg);
+// ---------- صفحة القسم: طلب واحد ----------
+export type CategoryPage = { category: Category | null; subcategories: Subcategory[]; providers: ProviderCard[] };
+
+export async function getCategoryPage(id: string, sub?: string): Promise<CategoryPage> {
+  const { data, error } = await supabase.rpc('app_category', { p_id: id, p_sub: sub ?? null });
+  if (!error && data) {
+    const d = data as { category: Category | null; subcategories: Subcategory[]; providers: Row[] };
+    return { category: d.category, subcategories: d.subcategories ?? [], providers: aggregateProviders(d.providers ?? []) };
+  }
+  // احتياطي: الطريقة القديمة
+  const [category, subcategories, providers] = await Promise.all([
+    getCategory(id),
+    getSubcategories(id),
+    getProviders({ categoryId: id, subcategoryId: sub }),
+  ]);
+  return { category, subcategories, providers };
 }
 
 // ---------- مقدم الخدمة ----------
@@ -119,7 +146,21 @@ const providerSeed = new Map<string, ProviderProfile>();
 
 export function getProvider(id: string): Promise<ProviderData> {
   return cached(providerStore, id, PROVIDER_TTL, async () => {
-    // الطلبين بيتبعتوا في نفس اللحظة بدل واحد ورا التاني
+    // طلب واحد: بيانات مقدم الخدمة + خدماته + (تجهيز الحجز) المناطق وعناويني
+    const { data, error } = await supabase.rpc('app_provider', { p_id: id });
+    if (!error && data) {
+      const d = data as {
+        me: string | null;
+        profile: ProviderProfile | null;
+        services: ProviderSvc[];
+        areas: Area[];
+        addresses: Address[];
+      };
+      areasStore.set('all', { at: Date.now(), data: d.areas ?? [] });
+      if (d.me) addrStore.set(d.me, { at: Date.now(), data: d.addresses ?? [] });
+      return { profile: d.profile, services: d.services ?? [] };
+    }
+    // احتياطي: الطريقة القديمة
     const [{ data: profile }, { data: services }] = await Promise.all([
       supabase
         .from('provider_profiles')
@@ -182,7 +223,6 @@ export function getProviderService(id: string): Promise<ServiceOption | null> {
   });
 }
 
-// صفحة مقدم الخدمة عندها كل بيانات الخدمة، فبتسلّمها لصفحة الحجز على طول
 export function seedProviderService(s: ServiceOption) {
   psStore.set(s.id, { at: Date.now(), data: s });
 }
@@ -207,7 +247,16 @@ export function peekAreas(): Area[] | null {
   return areasStore.get('all')?.data ?? null;
 }
 
-export type Address = { id: string; label: string | null; street: string | null; building: string | null; area_id: string | null };
+export type Address = {
+  id: string;
+  label: string | null;
+  street: string | null;
+  building: string | null;
+  area_id: string | null;
+  floor?: string | null;
+  apartment?: string | null;
+  notes?: string | null;
+};
 
 const addrStore = new Map<string, Entry<Address[]>>();
 
@@ -215,7 +264,7 @@ export function getMyAddresses(uid: string): Promise<Address[]> {
   return cached(addrStore, uid, 60_000, async () => {
     const { data } = await supabase
       .from('addresses')
-      .select('id, label, street, building, area_id')
+      .select('id, label, street, building, floor, apartment, notes, area_id')
       .eq('customer_id', uid)
       .order('created_at', { ascending: false });
     return data ?? [];
@@ -250,4 +299,29 @@ export async function getMyBookings(uid: string): Promise<Booking[]> {
     .eq('customer_id', uid)
     .order('created_at', { ascending: false });
   return (data ?? []) as unknown as Booking[];
+}
+
+// ---------- إدارة العناوين ----------
+export type AddressInput = {
+  label: string | null;
+  area_id: string | null;
+  street: string;
+  building: string | null;
+  floor: string | null;
+  apartment: string | null;
+  notes: string | null;
+};
+
+export async function saveAddress(uid: string, input: AddressInput, id?: string) {
+  const { error } = id
+    ? await supabase.from('addresses').update(input).eq('id', id)
+    : await supabase.from('addresses').insert({ ...input, customer_id: uid });
+  invalidateAddresses(uid);
+  return { error };
+}
+
+export async function deleteAddress(uid: string, id: string) {
+  const { error } = await supabase.from('addresses').delete().eq('id', id);
+  invalidateAddresses(uid);
+  return { error };
 }

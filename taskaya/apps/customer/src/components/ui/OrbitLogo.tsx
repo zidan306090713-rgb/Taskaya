@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Animated, Easing, Platform, View } from 'react-native';
-import Svg, { Circle, Ellipse, G } from 'react-native-svg';
+import Svg, { Circle, Ellipse } from 'react-native-svg';
 import { useTheme } from '@/providers/ThemeProvider';
 
 // أبعاد الرسمة الأصلية (بتتكبر/تتصغر حسب size)
@@ -59,9 +59,7 @@ export function OrbitLogo({ size = 110, animated = true }: { size?: number; anim
         <Circle cx={CX} cy={CY} r={24} fill={c.accent} />
         <Circle cx={CX - 8} cy={CY - 8} r={7} fill={c.accentLight} opacity={0.85} />
         {/* المدار */}
-        <G rotation={TILT_DEG} origin={`${CX}, ${CY}`}>
-          <Ellipse cx={CX} cy={CY} rx={RX} ry={RY} fill="none" stroke={c.accentLight} strokeWidth={4} />
-        </G>
+          <Ellipse transform={`rotate(${TILT_DEG} ${CX} ${CY})`} cx={CX} cy={CY} rx={RX} ry={RY} fill="none" stroke={c.accentLight} strokeWidth={4} />
       </Svg>
       {/* النجمة اللي بتلف */}
       <Animated.View

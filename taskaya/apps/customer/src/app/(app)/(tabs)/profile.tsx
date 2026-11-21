@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import { useMemo, useRef, useState } from 'react';
 import { Animated, Platform, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { Avatar, EditProfileSheet } from '@/components/EditProfileSheet';
@@ -7,7 +8,7 @@ import { useThemeReveal } from '@/components/ThemeReveal';
 import { AccentPickerRow } from '@/components/ui/AccentPicker';
 import { Screen } from '@/components/ui/Screen';
 import { useEntrance } from '@/hooks/use-screen-entrance';
-import { t, tr } from '@/i18n';
+import { layoutRTL, t, tr } from '@/i18n';
 import { toLocalDisplay } from '@/lib/phone';
 import { useMyProfile } from '@/lib/profile';
 import { supabase } from '@/lib/supabase';
@@ -20,6 +21,7 @@ export default function Profile() {
   const styles = useMemo(() => makeStyles(c), [c]);
   const { session } = useAuth();
   const me = useMyProfile();
+  const router = useRouter();
   const [editing, setEditing] = useState(false);
   // الزرار يتحرك فورًا، والوضع الجديد يظهر بدايرة من مكان الضغطة
   const [dark, setDark] = useState(c.isDark);
@@ -93,6 +95,7 @@ export default function Profile() {
               }}
               trackColor={{ false: c.switchOff, true: c.accent }}
               thumbColor="#FFFFFF"
+              style={Platform.OS === 'web' ? ({ direction: 'ltr' } as any) : undefined}
               accessibilityLabel={tr('الوضع الغامق', 'Dark mode')}
             />
           </View>
@@ -104,6 +107,13 @@ export default function Profile() {
       </Animated.View>
 
       <Animated.View style={[{ marginTop: spacing.lg }, btnAnim]}>
+        <Pressable onPress={() => router.push("/settings")} accessibilityRole="button" style={({ pressed }) => [styles.card, styles.row, styles.settingsRow, pressed && { opacity: 0.8 }]}>
+          <View style={styles.rowIcon}>
+            <Ionicons name="settings-outline" size={20} color={c.accentText} />
+          </View>
+          <Text style={styles.rowLabel}>{tr("الإعدادات", "Settings")}</Text>
+          <Ionicons name={layoutRTL() ? "chevron-back" : "chevron-forward"} size={18} color={c.iconMuted} />
+        </Pressable>
         <Pressable
           onPress={() => supabase.auth.signOut()}
           accessibilityRole="button"
@@ -194,6 +204,7 @@ const makeStyles = (c: Palette) =>
     },
     rowLabel: { flex: 1, fontFamily: fonts.semibold, fontSize: 15, color: c.ink },
     sep: { height: 1, backgroundColor: c.accentLine },
+    settingsRow: { marginBottom: spacing.md, paddingVertical: 4 },
 
     logout: {
       flexDirection: 'row',

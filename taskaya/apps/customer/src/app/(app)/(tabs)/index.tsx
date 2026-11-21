@@ -76,15 +76,6 @@ export default function Home() {
 
   useEffect(() => {
     getCategories().then(setCats);
-    if (session) {
-      // نطلب الاسم الأول فقط (عمود محسوب في الداتابيز)
-      supabase
-        .from('profiles')
-        .select('first_name')
-        .eq('id', session.user.id)
-        .single()
-        .then(({ data }) => setFirstName(data?.first_name ?? ''));
-    }
   }, [session]);
 
   const searching = q.trim().length > 0;
@@ -98,7 +89,7 @@ export default function Home() {
         {/* ===== كارت واحد: ترحيب + بحث + تصنيفات + مقدمو خدمة ===== */}
         <Panel bodyStyle={styles.mergedBody}>
           <View style={styles.header}>
-            <View style={{ flex: 1 }}>
+            <View style={{ flex: 1, alignItems: 'flex-start' }}>
               <Text style={styles.hello}>{hello}</Text>
               <Text style={styles.name} numberOfLines={1}>
                 {(me?.first_name || firstName).toUpperCase()}
@@ -129,6 +120,7 @@ export default function Home() {
                 {cats.length ? <CategoryCarousel data={cats} /> : <CategoriesSkeleton />}
 
                 <View style={{ height: spacing.lg }} />
+                {!dir ? <TilesSkeleton columns={3} aspect={1.4} count={6} /> : null}
                 <TileGrid data={featured} keyOf={(p) => p.id} columns={3} aspect={1.4} render={(p, size, h) => <FeaturedTile p={p} size={size} height={h} />} />
               </>
             )}

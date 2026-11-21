@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { bootstrap } from '@/lib/bootstrap';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/AuthProvider';
 
@@ -26,6 +27,12 @@ function publish(p: MyProfile | null) {
 async function load(uid: string) {
   if (loadingFor === uid) return;
   loadingFor = uid;
+  const boot = await bootstrap();
+  if (boot?.profile?.id === uid) {
+    loadingFor = null;
+    publish(boot.profile as MyProfile);
+    return;
+  }
   const { data } = await supabase.from('profiles').select(COLS).eq('id', uid).single();
   loadingFor = null;
   if (data) publish(data as MyProfile);

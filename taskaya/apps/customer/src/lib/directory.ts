@@ -1,5 +1,6 @@
 import type { ProviderCard } from '@/lib/api';
 import { normalizeAr } from '@/lib/arabic';
+import { bootstrap } from '@/lib/bootstrap';
 import { supabase } from '@/lib/supabase';
 
 export type DirItem = ProviderCard & { text: string; nameN: string };
@@ -66,7 +67,8 @@ export function loadDirectory(force = false): Promise<Directory> {
   if (dirInflight) return dirInflight;
 
   dirInflight = (async () => {
-    const { data, error } = await supabase
+    const boot = await bootstrap(force);
+    const { data, error } = boot ? { data: boot.directory, error: null } : await supabase
       .from('provider_services')
       .select(
         `base_price, provider_profiles!inner(${PROFILE_COLS}), services!inner(name_ar, name_en, service_subcategories!inner(name_ar, name_en, service_categories!inner(name_ar, name_en)))`

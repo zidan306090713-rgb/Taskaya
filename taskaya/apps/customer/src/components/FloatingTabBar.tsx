@@ -3,6 +3,7 @@ import { Animated, Easing, Pressable, StyleSheet, Text, View, useWindowDimension
 import Svg, { Defs, LinearGradient, Path, Stop } from 'react-native-svg';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { layoutRTL } from '@/i18n';
 import { useTheme } from '@/providers/ThemeProvider';
 import { fonts } from '@/theme';
 
@@ -48,17 +49,19 @@ export default function FloatingTabBar({ state, descriptors, navigation }: any) 
   // مسافة داخلية من الطرفين: عشان التجويف ميخبطش في الحواف الدايرية، فيفضل تحت الكورة بالظبط
   const pad = count > 1 ? Math.ceil(Math.max(0, (MIN_C - barWidth / (2 * count)) / (1 - 1 / count))) : 0;
   const tabWidth = (barWidth - pad * 2) / count;
+  // في العربي التابات بتتقلب (الأول على اليمين)، فبنقلب مكان الكورة والتجويف معاها
+  const vIndex = layoutRTL() ? count - 1 - state.index : state.index;
 
   // الكورة بتتحرك على الـ native thread (مش بتشغل JavaScript خالص أثناء الحركة)
-  const [x] = useState(() => new Animated.Value(state.index * tabWidth));
+  const [x] = useState(() => new Animated.Value(vIndex * tabWidth));
 
   // التجويف بيتحسب مرة واحدة لكل تاب — مش 60 مرة في الثانية
-  const notchX = pad + state.index * tabWidth + tabWidth / 2;
+  const notchX = pad + vIndex * tabWidth + tabWidth / 2;
   const path = useMemo(() => buildPath(barWidth, BAR_HEIGHT, notchX), [barWidth, notchX]);
 
   useEffect(() => {
     Animated.timing(x, {
-      toValue: state.index * tabWidth,
+      toValue: vIndex * tabWidth,
       duration: 240,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
@@ -70,7 +73,7 @@ export default function FloatingTabBar({ state, descriptors, navigation }: any) 
 
   return (
     <View
-      style={{ position: 'absolute', left: side, width: barWidth, bottom: Math.max(insets.bottom, 12), height: BAR_HEIGHT, pointerEvents: 'box-none' }}
+      style={{ position: 'absolute', left: side, width: barWidth, bottom: Math.max(insets.bottom, 12), height: BAR_HEIGHT, pointerEvents: 'box-none', direction: 'ltr' }}
     >
       <Svg width={barWidth} height={BAR_HEIGHT} style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]}>
         <Defs>
@@ -83,9 +86,9 @@ export default function FloatingTabBar({ state, descriptors, navigation }: any) 
       </Svg>
 
       <View style={[styles.row, { paddingHorizontal: pad }]}>
-        {state.routes.map((route: any, index: number) => {
+        {(layoutRTL() ? [...state.routes].reverse() : state.routes).map((route: any) => {
           const { options } = descriptors[route.key];
-          const focused = state.index === index;
+          const focused = route.key === state.routes[state.index].key;
           const color = focused ? '#FFFFFF' : 'rgba(255,255,255,0.72)';
           const label = options.title ?? route.name;
           const onPress = () => {
@@ -131,7 +134,7 @@ export default function FloatingTabBar({ state, descriptors, navigation }: any) 
 const styles = StyleSheet.create({
   row: { flex: 1, flexDirection: 'row' },
   item: { flex: 1, alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 9, paddingTop: 14 },
-  label: { fontSize: 11, marginTop: 2 },
+  label: { fontSize: 11, marginTop: 2, alignSelf: 'stretch', textAlign: 'center' },
   ball: {
     position: 'absolute',
     top: BALL_TOP,

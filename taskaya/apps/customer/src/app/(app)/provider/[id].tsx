@@ -40,9 +40,6 @@ export default function ProviderScreen() {
       .catch(() => {
         if (alive) setFailed(true);
       });
-    // نجهّز بيانات صفحة الحجز في الخلفية من دلوقتي
-    getAreas().catch(() => {});
-    if (uid) getMyAddresses(uid).catch(() => {});
     return () => {
       alive = false;
     };

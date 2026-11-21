@@ -5,7 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { PremiumInput } from '@/components/ui/PremiumInput';
-import { tr } from '@/i18n';
+import { isRTL, tr } from '@/i18n';
 import { toLocalDisplay } from '@/lib/phone';
 import { isThreePartName, MyProfile, updateMyName, uploadAvatar } from '@/lib/profile';
 import { useTheme } from '@/providers/ThemeProvider';
@@ -90,6 +90,7 @@ export function EditProfileSheet({ me, onClose }: { me: MyProfile; onClose: () =
 
   return (
     <Modal visible transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
+      <View style={{ flex: 1, direction: isRTL ? 'rtl' : 'ltr' }}>
       <Pressable style={[StyleSheet.absoluteFill, styles.backdrop]} onPress={onClose} accessibilityLabel={tr('إغلاق', 'Close')} />
       <View style={styles.wrap}>
         <View
@@ -161,6 +162,7 @@ export function EditProfileSheet({ me, onClose }: { me: MyProfile; onClose: () =
             </Pressable>
           </View>
         </View>
+      </View>
       </View>
     </Modal>
   );

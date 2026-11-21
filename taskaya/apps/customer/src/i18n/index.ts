@@ -1,4 +1,6 @@
-import { I18nManager } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Updates from 'expo-updates';
+import { DevSettings, I18nManager, Platform } from 'react-native';
 import { getLocales } from 'expo-localization';
 
 const dict = {
@@ -75,14 +77,71 @@ const dict = {
 };
 
 export type Lang = 'ar' | 'en';
-export const lang: Lang = getLocales()[0]?.languageCode === 'en' ? 'en' : 'ar';
-export const isRTL = lang === 'ar';
 
-if (I18nManager.isRTL !== isRTL) {
-  I18nManager.allowRTL(isRTL);
-  I18nManager.forceRTL(isRTL);
+const LANG_KEY = 'taskaya.lang.v1';
+const deviceLang: Lang = getLocales()[0]?.languageCode === 'en' ? 'en' : 'ar';
+
+// اللغة الحالية: بتتحدد مرة واحدة عند فتح التطبيق (initLang)، وتغييرها بيعيد تشغيل التطبيق
+export let lang: Lang = deviceLang;
+export let isRTL = lang === 'ar';
+
+function applyDirection() {
+  if (Platform.OS === 'web') {
+    if (typeof document !== 'undefined') {
+      document.documentElement.dir = isRTL ? 'rtl' : 'ltr';
+      document.documentElement.lang = lang;
+    }
+    return;
+  }
+  // الاتجاه بيتطبق من الـ style على أول صندوق في التطبيق (فوري ومن غير إعادة تشغيل)
+  // فبنخلّي اتجاه أندرويد نفسه ثابت، عشان ميتقلبش فجأة في النص
+  if (I18nManager.isRTL) {
+    I18nManager.allowRTL(false);
+    I18nManager.forceRTL(false);
+  }
+}
+
+// بتتنادى مرة واحدة قبل رسم التطبيق: بتقرا اللغة المحفوظة (لو مفيش: لغة الموبايل)
+export async function initLang() {
+  try {
+    const saved = await AsyncStorage.getItem(LANG_KEY);
+    if (saved === 'ar' || saved === 'en') {
+      lang = saved;
+      isRTL = saved === 'ar';
+    }
+  } catch {}
+  applyDirection();
+}
+
+// بتحفظ اللغة الجديدة، تقلب الاتجاه، وتعيد تشغيل التطبيق
+export async function setLanguage(next: Lang) {
+  try {
+    await AsyncStorage.setItem(LANG_KEY, next);
+  } catch {}
+  lang = next;
+  isRTL = next === 'ar';
+  applyDirection();
+  await restartApp();
+}
+
+async function restartApp() {
+  if (Platform.OS === 'web') {
+    if (typeof window !== 'undefined') window.location.reload();
+    return;
+  }
+  try {
+    await Updates.reloadAsync();
+    return;
+  } catch {}
+  try {
+    DevSettings.reload();
+  } catch {}
 }
 
 export const t = (key: keyof typeof dict.ar) => dict[lang][key];
 
 export const tr = (ar: string, en: string) => (lang === 'ar' ? ar : en);
+
+// اتجاه الشاشة الفعلي: على الموبايل بيتطبق بعد إعادة تشغيل كاملة، فممكن يختلف عن اللغة لحظيًا.
+// استخدمه لأي حاجة مكانها محسوب بالأرقام (زي الكورة) أو للأسهم.
+export const layoutRTL = () => isRTL;

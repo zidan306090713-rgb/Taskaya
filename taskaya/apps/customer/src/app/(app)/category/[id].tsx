@@ -6,7 +6,7 @@ import { ProviderCard } from '@/components/ui/ProviderCard';
 import { Screen } from '@/components/ui/Screen';
 import { ListSkeleton, Skeleton } from '@/components/ui/Skeleton';
 import { lang, tr } from '@/i18n';
-import { Category, getCategory, getProviders, getSubcategories, ProviderCard as P, Subcategory } from '@/lib/api';
+import { Category, getCategoryPage, ProviderCard as P, Subcategory } from '@/lib/api';
 import { useTheme } from '@/providers/ThemeProvider';
 import { fonts, Palette, spacing } from '@/theme';
 
@@ -20,15 +20,16 @@ export default function CategoryScreen() {
   const [list, setList] = useState<P[] | null>(null);
 
   useEffect(() => {
-    getCategory(id).then(setCat);
-    getSubcategories(id).then(setSubs);
   }, [id]);
 
   useEffect(() => {
     let alive = true;
     setList(null);
-    getProviders({ categoryId: id, subcategoryId: active }).then((r) => {
-      if (alive) setList(r);
+    getCategoryPage(id, active).then((r) => {
+      if (!alive) return;
+      setCat(r.category);
+      setSubs(r.subcategories);
+      setList(r.providers);
     });
     return () => {
       alive = false;
@@ -52,6 +53,7 @@ export default function CategoryScreen() {
       <Screen subtitle={cat ? (lang === 'ar' ? cat.description_ar ?? '' : cat.description_en ?? '') : ''}>
         <View style={styles.chips}>
           <Chip label={tr('الكل', 'All')} on={!active} onPress={() => setActive(undefined)} />
+          {!cat ? [0, 1, 2].map((i) => <Skeleton key={i} width={84} height={38} radius={999} />) : null}
           {subs.map((s) => (
             <Chip key={s.id} label={name(s)} on={active === s.id} onPress={() => setActive(s.id)} />
           ))}

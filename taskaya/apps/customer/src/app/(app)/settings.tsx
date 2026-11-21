@@ -112,7 +112,7 @@ function LanguageSheet({ onClose }: { onClose: () => void }) {
           <Text style={styles.note}>
             {hint
               ? tr('لو اللغة ما اتغيرتش، اقفل التطبيق وافتحه تاني', "If it didn't change, close and reopen the app")
-              : tr('التطبيق هيعيد تشغيل نفسه عشان يطبّق اللغة', 'The app will restart to apply the language')}
+              : tr('اللغة والاتجاه هيتغيروا فورًا', 'Language and direction will change instantly')}
           </Text>
           <View style={styles.actions}>
             <Pressable

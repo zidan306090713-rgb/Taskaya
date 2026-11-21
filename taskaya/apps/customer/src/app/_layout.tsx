@@ -7,7 +7,7 @@ import { NebulaBackground } from '@/components/ui/NebulaBackground';
 import { AuthProvider } from '@/providers/AuthProvider';
 import { ThemeRevealProvider } from '@/components/ThemeReveal';
 import { AppThemeProvider, useTheme } from '@/providers/ThemeProvider';
-import { initLang, isRTL } from '@/i18n';
+import { initLang, isRTL, onLangChange } from '@/i18n';
 
 function Blank() {
   const { c } = useTheme();
@@ -48,13 +48,16 @@ function Shell() {
 
 export default function RootLayout() {
   const [langReady, setLangReady] = useState(false);
+  // لما اللغة تتغير: نعيد بناء التطبيق كله فورًا باللغة والاتجاه الجديد
+  const [langKey, setLangKey] = useState(0);
+  useEffect(() => onLangChange(() => setLangKey((k) => k + 1)), []);
   useEffect(() => {
     initLang().finally(() => setLangReady(true));
   }, []);
   const [loaded] = useFonts({ Cairo_400Regular, Cairo_600SemiBold, Cairo_700Bold });
   return (
     <AppThemeProvider>
-      <ThemeRevealProvider>{loaded && langReady ? <Shell /> : <Blank />}</ThemeRevealProvider>
+      <ThemeRevealProvider>{loaded && langReady ? <Shell key={langKey} /> : <Blank />}</ThemeRevealProvider>
     </AppThemeProvider>
   );
 }

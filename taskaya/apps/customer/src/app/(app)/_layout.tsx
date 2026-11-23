@@ -10,7 +10,7 @@ import { fonts } from '@/theme';
  * بنخفيها فورًا، عشان متبانش ورا الجديدة. ده بيتطبق على كل شاشات التطبيق مرة واحدة.
  */
 function HideWhenBlurred({ navigation, children }: { navigation: any; children: ReactNode }) {
-  const [focused, setFocused] = useState<boolean>(() => navigation.isFocused());
+  const [focused, setFocused] = useState(true);
   useEffect(() => {
     setFocused(navigation.isFocused());
     const offFocus = navigation.addListener('focus', () => setFocused(true));

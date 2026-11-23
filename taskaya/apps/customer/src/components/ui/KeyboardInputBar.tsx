@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import { ComponentProps, useEffect, useRef, useState } from 'react';
+import { ComponentProps, ComponentRef, useEffect, useRef, useState } from 'react';
 import { Keyboard, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, TextInputProps, View } from 'react-native';
-import { tr } from '@/i18n';
+import { isRTL, tr } from '@/i18n';
 import { useTheme } from '@/providers/ThemeProvider';
 import { fonts, rgba } from '@/theme';
 
@@ -25,7 +25,7 @@ export function KeyboardInputBar({ label, icon, onClose, actionIcon = 'checkmark
   const [hidden, setHidden] = useState(true);
   const isPassword = !!secureTextEntry;
 
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<ComponentRef<typeof TextInput>>(null);
   // أثناء تبديل إظهار/إخفاء الباسورد: أندرويد بيقفل الكيبورد ويفتحه لحظة — منقفلش الشريط بسببها
   const toggling = useRef(false);
   const [sel, setSel] = useState<{ start: number; end: number } | undefined>();
@@ -109,7 +109,7 @@ export function KeyboardInputBar({ label, icon, onClose, actionIcon = 'checkmark
               secureTextEntry={isPassword ? hidden : false}
               onFocus={cancelClose}
               onBlur={scheduleClose}
-              style={[styles.input, { color: c.ink }]}
+              style={[styles.input, { color: c.ink, textAlign: isRTL ? 'right' : 'left' }]}
               {...inputProps}
               {...(sel ? { selection: sel } : null)}
             />

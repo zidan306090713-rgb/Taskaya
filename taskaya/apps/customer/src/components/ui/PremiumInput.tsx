@@ -63,7 +63,7 @@ export function PremiumInput({ label, icon, error, highlighted = false, labelIns
           onFocus={(e) => { setFocused(true); onFocus?.(e); }}
           onBlur={(e) => { setFocused(false); onBlur?.(e); }}
           secureTextEntry={isPassword ? hidden : false}
-          style={[styles.input, Platform.OS === 'web' && ({ outlineStyle: 'none', textAlign: isRTL ? 'right' : 'left', direction: isRTL ? 'rtl' : 'ltr' } as any)]}
+          style={[styles.input, { textAlign: isRTL ? 'right' : 'left' }, Platform.OS === 'web' && ({ outlineStyle: 'none', textAlign: isRTL ? 'right' : 'left', direction: isRTL ? 'rtl' : 'ltr' } as any)]}
           {...props}
           placeholder={labelInside ? label : props.placeholder}
         />

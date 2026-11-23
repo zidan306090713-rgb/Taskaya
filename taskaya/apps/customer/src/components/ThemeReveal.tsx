@@ -1,5 +1,5 @@
-import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, Image, LayoutChangeEvent, Platform, StyleSheet, View } from 'react-native';
+import { ComponentRef, createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Easing, Image, LayoutChangeEvent, PixelRatio, Platform, StyleSheet, View } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 import { flushSync } from '@/lib/flush-sync';
 
@@ -11,7 +11,12 @@ export const useThemeReveal = () => useContext(RevealCtx);
 
 const MIN_SCALE = 0.01;
 const DURATION = 520;
-const SHOT = { format: 'jpg' as const, quality: 0.85 };
+// الصورة بدقة 1.5x بس (مش دقة الشاشة الكاملة): أسرع بكتير على الشاشات العالية، والفرق مش بيبان في نص ثانية
+const SHOT_DENSITY = Math.min(PixelRatio.get(), 1.5);
+const shotOpts = (w: number, h: number) =>
+  Math.min(w, h) > 0
+    ? { format: 'jpg' as const, quality: 0.8, width: Math.round(w * SHOT_DENSITY), height: Math.round(h * SHOT_DENSITY) }
+    : { format: 'jpg' as const, quality: 0.8 };
 const nextFrame = () => new Promise<void>((r) => requestAnimationFrame(() => r()));
 const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
@@ -51,7 +56,7 @@ function webReveal(x: number, y: number, apply: () => void) {
 
 // ===================== الموبايل: صورتين + دايرة بتكبر =====================
 export function ThemeRevealProvider({ children }: { children: ReactNode }) {
-  const rootRef = useRef<View>(null);
+  const rootRef = useRef<ComponentRef<typeof View>>(null);
   const busy = useRef(false);
   const size = useRef({ w: 0, h: 0 });
   const onImage = useRef<(() => void) | null>(null);
@@ -83,7 +88,7 @@ export function ThemeRevealProvider({ children }: { children: ReactNode }) {
   // بيتنادى أول ما الصباع يلمس: بياخد صورة الثيم القديم بدري عشان نوفّر وقت
   const prepare = useCallback(() => {
     if (Platform.OS === 'web' || busy.current || !rootRef.current) return;
-    const p = captureRef(rootRef, SHOT);
+    const p = captureRef(rootRef, shotOpts(size.current.w, size.current.h));
     p.catch(() => {});
     prepared.current = { at: Date.now(), p };
   }, []);
@@ -106,7 +111,7 @@ export function ThemeRevealProvider({ children }: { children: ReactNode }) {
 
         const early = prepared.current && Date.now() - prepared.current.at < 2000 ? prepared.current.p : null;
         prepared.current = null;
-        const old = early ? await early : await captureRef(rootRef, SHOT);
+        const old = early ? await early : await captureRef(rootRef, shotOpts(size.current.w, size.current.h));
 
         const oldReady = imageLoaded();
         setSnap({ old, x, y, r });
@@ -118,7 +123,7 @@ export function ThemeRevealProvider({ children }: { children: ReactNode }) {
         await nextFrame();
         await wait(30);
 
-        const fresh = await captureRef(rootRef, SHOT);
+        const fresh = await captureRef(rootRef, shotOpts(size.current.w, size.current.h));
         scale.setValue(MIN_SCALE);
         const freshReady = imageLoaded();
         setSnap({ old, fresh, x, y, r });

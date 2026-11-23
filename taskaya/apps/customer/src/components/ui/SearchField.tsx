@@ -40,7 +40,7 @@ export function SearchField({ value, onChangeText, placeholder }: Props) {
         autoCorrect={false}
         selectionColor={c.accent}
         accessibilityLabel={placeholder}
-        style={[styles.input, Platform.OS === 'web' && ({ outlineStyle: 'none', textAlign: isRTL ? 'right' : 'left', direction: isRTL ? 'rtl' : 'ltr' } as any)]}
+        style={[styles.input, { textAlign: isRTL ? 'right' : 'left' }, Platform.OS === 'web' && ({ outlineStyle: 'none', textAlign: isRTL ? 'right' : 'left', direction: isRTL ? 'rtl' : 'ltr' } as any)]}
       />
       {value ? (
         <Pressable

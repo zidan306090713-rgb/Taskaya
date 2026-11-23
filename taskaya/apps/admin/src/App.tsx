@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import Layout from './components/Layout';
 import { useAuth } from './lib/auth';
+import Bookings from './pages/Bookings';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Soon from './pages/Soon';
@@ -19,7 +20,7 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route element={<RequireAdmin><Layout /></RequireAdmin>}>
         <Route index element={<Home />} />
-        <Route path="bookings" element={<Soon title="الحجوزات" />} />
+        <Route path="bookings" element={<Bookings />} />
         <Route path="providers" element={<Soon title="مقدمي الخدمة" />} />
         <Route path="catalog" element={<Soon title="الأقسام والخدمات" />} />
       </Route>

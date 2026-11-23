@@ -5,6 +5,7 @@ import { useAuth } from './lib/auth';
 import Bookings from './pages/Bookings';
 import Home from './pages/Home';
 import Login from './pages/Login';
+import Providers from './pages/Providers';
 import Soon from './pages/Soon';
 
 function RequireAdmin({ children }: { children: ReactNode }) {
@@ -21,7 +22,7 @@ export default function App() {
       <Route element={<RequireAdmin><Layout /></RequireAdmin>}>
         <Route index element={<Home />} />
         <Route path="bookings" element={<Bookings />} />
-        <Route path="providers" element={<Soon title="مقدمي الخدمة" />} />
+        <Route path="providers" element={<Providers />} />
         <Route path="catalog" element={<Soon title="الأقسام والخدمات" />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

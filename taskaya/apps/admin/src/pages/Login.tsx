@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Navigate } from 'react-router-dom';
+import { OrbitLogo } from '../components/OrbitLogo';
 import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 
@@ -24,9 +25,9 @@ export default function Login() {
   return (
     <div className="login-page">
       <form className="login-card" onSubmit={submit}>
-        <div className="brand">
-          <span className="brand-dot" />
-          تاسكاية
+        <div className="login-logo">
+          <OrbitLogo size={96} />
+          <div className="brand-name big">TASKAYA</div>
         </div>
         <h1>لوحة التحكم</h1>
         <p className="sub">سجّل دخول بحساب الأدمن</p>

@@ -63,7 +63,7 @@ export default function ProviderModal({ p, onClose }: { p: Provider; onClose: ()
   return (
     <div className="drawer-overlay" onClick={onClose}>
       <aside className="drawer" onClick={(e) => e.stopPropagation()}>
-        <header className="drawer-head pm-head" style={p.cover_url ? { backgroundImage: `linear-gradient(135deg, #0b1b3fee, #183681cc), url(${p.cover_url})` } : undefined}>
+        <header className="drawer-head pm-head" style={p.cover_url ? { backgroundImage: `linear-gradient(135deg, var(--head-a), var(--head-b)), url(${p.cover_url})` } : undefined}>
           <ProviderLogo p={p} size={56} />
           <div>
             <div className="drawer-title">{p.business_name}</div>

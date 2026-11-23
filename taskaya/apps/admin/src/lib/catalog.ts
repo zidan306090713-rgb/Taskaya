@@ -70,15 +70,23 @@ export async function saveRow(kind: Kind, id: string | null, row: Record<string,
 }
 
 export async function deleteRow(kind: Kind, id: string) {
-  const { error } = await supabase.from(TABLE[kind]).delete().eq('id', id);
+  const { error } = await supabase.rpc('admin_delete_catalog', { p_kind: kind, p_id: id });
   if (error) throw error;
 }
 
-// قاعدة البيانات بترفض حذف حاجة مستخدمة (foreign key = 23503)
+// IN_USE:<عدد مقدمي الخدمة>:<عدد الحجوزات> جاية من دالة الحذف
 export function catalogError(e: unknown) {
   const err = e as { code?: string; message?: string };
-  if (err?.code === '23503' || (err?.message ?? '').includes('foreign key')) {
-    return 'مش هينفع تتحذف لأنها مستخدمة (في حجوزات، أو عند مقدمي خدمة، أو جواها خدمات). اقفلها بالمفتاح بدل الحذف.';
+  const m = err?.message ?? String(e);
+  const used = m.match(/IN_USE:(\d+):(\d+)/);
+  if (used) {
+    const parts: string[] = [];
+    if (Number(used[1])) parts.push(`${used[1]} مقدم خدمة بيقدّمها`);
+    if (Number(used[2])) parts.push(`${used[2]} حجز عليها`);
+    return `مش هينفع تتحذف: ${parts.join(' و')}. اقفلها بالمفتاح بدل الحذف.`;
   }
-  return err?.message ?? String(e);
+  if (err?.code === '23503' || m.includes('foreign key')) {
+    return 'مش هينفع تتحذف لأنها مرتبطة ببيانات تانية. اقفلها بالمفتاح بدل الحذف.';
+  }
+  return m;
 }

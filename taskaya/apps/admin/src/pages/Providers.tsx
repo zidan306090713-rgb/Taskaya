@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
+import NewProviderModal from '../components/NewProviderModal';
 import ProviderModal, { ProviderLogo } from '../components/ProviderModal';
 import { fetchProviders, P_ORDER, P_STATUS, type PStatus } from '../lib/providers';
 
@@ -10,6 +11,7 @@ export default function Providers() {
   const [tab, setTab] = useState<Tab>('all');
   const [q, setQ] = useState('');
   const [openId, setOpenId] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
 
   const counts = useMemo(() => {
     const m: Partial<Record<PStatus, number>> = {};
@@ -34,7 +36,10 @@ export default function Providers() {
 
   return (
     <>
-      <h1 className="page-title">مقدمي الخدمة</h1>
+      <div className="sub-head">
+        <h1 className="page-title" style={{ margin: 0 }}>مقدمي الخدمة</h1>
+        <button className="btn btn-primary" onClick={() => setAdding(true)}>+ مقدم خدمة جديد</button>
+      </div>
 
       <div className="toolbar">
         <input className="inp search" placeholder="ابحث باسم النشاط، صاحب الحساب أو الموبايل" value={q} onChange={(e) => setQ(e.target.value)} />
@@ -80,6 +85,7 @@ export default function Providers() {
       </div>
 
       {open ? <ProviderModal key={open.id} p={open} onClose={() => setOpenId(null)} /> : null}
+      {adding ? <NewProviderModal onClose={() => setAdding(false)} /> : null}
     </>
   );
 }

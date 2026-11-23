@@ -1,6 +1,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useEffect, useMemo, useState } from 'react';
 import type { ProviderCard } from '@/lib/api';
+import { useCatalogVersion } from '@/lib/catalogVersion';
 import { normalizeAr } from '@/lib/arabic';
 import {
   Directory,
@@ -17,6 +18,7 @@ import {
 export function useDirectory() {
   const [dir, setDir] = useState<Directory | null>(null);
   const [serverFeatured, setServerFeatured] = useState<ProviderCard[]>([]);
+  const ver = useCatalogVersion();
 
   useEffect(() => {
     let alive = true;
@@ -31,7 +33,7 @@ export function useDirectory() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [ver]);
 
   const featured: ProviderCard[] = useMemo(() => {
     if (!dir) return [];

@@ -11,7 +11,7 @@ export type HomeData = {
   directory: unknown[];
 };
 
-const TTL = 5 * 60_000;
+const TTL = 6 * 60 * 60_000;
 let cache: { at: number; data: HomeData } | null = null;
 let inflight: Promise<HomeData | null> | null = null;
 

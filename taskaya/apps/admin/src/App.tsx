@@ -3,10 +3,10 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import Layout from './components/Layout';
 import { useAuth } from './lib/auth';
 import Bookings from './pages/Bookings';
+import Catalog from './pages/Catalog';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Providers from './pages/Providers';
-import Soon from './pages/Soon';
 
 function RequireAdmin({ children }: { children: ReactNode }) {
   const { loading, admin } = useAuth();
@@ -23,7 +23,7 @@ export default function App() {
         <Route index element={<Home />} />
         <Route path="bookings" element={<Bookings />} />
         <Route path="providers" element={<Providers />} />
-        <Route path="catalog" element={<Soon title="الأقسام والخدمات" />} />
+        <Route path="catalog" element={<Catalog />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

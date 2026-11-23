@@ -1,7 +1,7 @@
 import { bootstrap } from '@/lib/bootstrap';
 import { supabase } from '@/lib/supabase';
 
-export type Category = { id: string; name_ar: string; name_en: string; description_ar: string | null; description_en: string | null };
+export type Category = { id: string; name_ar: string; name_en: string; description_ar: string | null; description_en: string | null; icon?: string | null };
 export type Subcategory = { id: string; category_id: string; name_ar: string; name_en: string };
 export type ProviderCard = {
   id: string;
@@ -326,4 +326,11 @@ export async function deleteAddress(uid: string, id: string) {
   const { error } = await supabase.from('addresses').delete().eq('id', id);
   invalidateAddresses(uid);
   return { error };
+}
+
+// ---------- بيتنادى لما رقم نسخة الأقسام يتغير ----------
+export function clearCatalogCaches() {
+  providerStore.clear();
+  providerSeed.clear();
+  psStore.clear();
 }

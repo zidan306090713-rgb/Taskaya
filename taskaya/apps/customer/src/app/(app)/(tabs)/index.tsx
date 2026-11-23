@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ReactNode, useEffect, useMemo, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { Animated, Easing, Platform, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { CategoryCarousel } from '@/components/ui/CategoryCarousel';
 import { CategoriesSkeleton, TilesSkeleton } from '@/components/ui/Skeleton';
@@ -10,6 +11,7 @@ import { SearchField } from '@/components/ui/SearchField';
 import { TileGrid } from '@/components/ui/TileGrid';
 import { t, tr } from '@/i18n';
 import { Category, getCategories } from '@/lib/api';
+import { checkCatalog, useCatalogVersion, wireCatalogChecks } from '@/lib/catalogVersion';
 import { supabase } from '@/lib/supabase';
 import { useDirectory, useProviderSearch } from '@/lib/useProviderSearch';
 import { useMyProfile } from '@/lib/profile';
@@ -74,9 +76,18 @@ export default function Home() {
   const heroAnim = useEntrance(0);
   const bodyAnim = useEntrance(60);
 
+  const ver = useCatalogVersion();
   useEffect(() => {
     getCategories().then(setCats);
-  }, [session]);
+  }, [session, ver]);
+
+  // رقم النسخة: يتشيك لما الرئيسية تتفتح أو التطبيق يرجع من الخلفية (مش بتوقيت)
+  useFocusEffect(
+    useCallback(() => {
+      wireCatalogChecks();
+      void checkCatalog();
+    }, []),
+  );
 
   const searching = q.trim().length > 0;
   const hello =

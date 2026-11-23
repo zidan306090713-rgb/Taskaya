@@ -12,6 +12,7 @@ import { useEntrance } from '@/hooks/use-screen-entrance';
 import { layoutRTL, t, tr } from '@/i18n';
 import { toLocalDisplay } from '@/lib/phone';
 import { useMyProfile } from '@/lib/profile';
+import { unregisterPush } from '@/lib/push';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/AuthProvider';
 import { useTheme } from '@/providers/ThemeProvider';
@@ -125,7 +126,10 @@ export default function Profile() {
           <Ionicons name={layoutRTL() ? "chevron-back" : "chevron-forward"} size={18} color={c.iconMuted} />
         </Pressable>
         <Pressable
-          onPress={() => supabase.auth.signOut()}
+          onPress={async () => {
+            await unregisterPush();
+            await supabase.auth.signOut();
+          }}
           accessibilityRole="button"
           accessibilityLabel={t('logout')}
           style={({ pressed }) => [styles.logout, pressed && { opacity: 0.85, transform: [{ scale: 0.985 }] }]}

@@ -19,7 +19,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.zidan144544.customer"
+      "package": "com.zidan144544.customer",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "output": "single",
@@ -38,7 +39,14 @@
       "expo-localization",
       "expo-secure-store",
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-notifications",
+        {
+          "color": "#1F5BFF",
+          "icon": "./assets/images/android-icon-monochrome.png"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

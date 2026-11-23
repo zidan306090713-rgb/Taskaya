@@ -290,6 +290,10 @@ export type Booking = {
   quoted_price: number | null;
   final_price: number | null;
   pricing_model: string | null;
+  quote_prev_status: string | null;
+  quote_prev_price: number | null;
+  quote_note: string | null;
+  cancel_reason: string | null;
   provider_profiles: { business_name: string } | null;
   services: { name_ar: string; name_en: string } | null;
 };
@@ -297,7 +301,7 @@ export type Booking = {
 export async function getMyBookings(uid: string): Promise<Booking[]> {
   const { data } = await supabase
     .from('bookings')
-    .select('id, booking_number, status, scheduled_at, quoted_price, final_price, pricing_model, provider_profiles(business_name), services(name_ar, name_en)')
+    .select('id, booking_number, status, scheduled_at, quoted_price, final_price, pricing_model, quote_prev_status, quote_prev_price, quote_note, cancel_reason, provider_profiles(business_name), services(name_ar, name_en)')
     .eq('customer_id', uid)
     .order('created_at', { ascending: false });
   return (data ?? []) as unknown as Booking[];
@@ -333,4 +337,10 @@ export function clearCatalogCaches() {
   providerStore.clear();
   providerSeed.clear();
   psStore.clear();
+}
+
+// ---------- رد العميل على عرض السعر ----------
+export async function answerQuote(bookingId: string, accept: boolean) {
+  const { data, error } = await supabase.rpc('answer_quote', { p_booking: bookingId, p_accept: accept });
+  return { status: (data as string | null) ?? null, error };
 }

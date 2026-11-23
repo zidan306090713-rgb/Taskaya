@@ -1,33 +1,33 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
+import { useAuth } from '../lib/auth';
 import {
-  ACTIONS,
+  actionsFor,
   addressText,
+  answerQuote,
   fetchHistory,
   fmtDate,
   friendlyError,
   money,
   PRICING,
+  sendQuote,
   STATUS,
-  updatePrices,
   updateStatus,
   type Action,
   type Booking,
   type Status,
 } from '../lib/bookings';
 
-const toNum = (s: string) => (s.trim() === '' ? null : Number(s));
-const LOCKED: Status[] = ['completed', 'cancelled', 'rejected'];
-
 export default function BookingDrawer({ b, onClose }: { b: Booking; onClose: () => void }) {
   const qc = useQueryClient();
+  const canEdit = useAuth().can('bookings', true);
   const history = useQuery({ queryKey: ['booking-history', b.id], queryFn: () => fetchHistory(b.id) });
-  const [quoted, setQuoted] = useState(b.quoted_price?.toString() ?? '');
-  const [final, setFinal] = useState(b.final_price?.toString() ?? '');
   const [ask, setAsk] = useState<Action | null>(null);
   const [reason, setReason] = useState('');
+  const [quoting, setQuoting] = useState(false);
+  const [qPrice, setQPrice] = useState('');
+  const [qNote, setQNote] = useState('');
   const [err, setErr] = useState('');
-  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
@@ -40,6 +40,7 @@ export default function BookingDrawer({ b, onClose }: { b: Booking; onClose: () 
     void qc.invalidateQueries({ queryKey: ['booking-history', b.id] });
     void qc.invalidateQueries({ queryKey: ['stats'] });
   };
+  const onError = (e: unknown) => setErr(friendlyError(e));
 
   const statusM = useMutation({
     mutationFn: (v: { to: Status; reason?: string }) => updateStatus(b.id, v.to, v.reason),
@@ -48,38 +49,46 @@ export default function BookingDrawer({ b, onClose }: { b: Booking; onClose: () 
       setReason('');
       refresh();
     },
-    onError: (e) => setErr(friendlyError(e)),
+    onError,
   });
-
-  const priceM = useMutation({
+  const quoteM = useMutation({
     mutationFn: () => {
-      const qn = toNum(quoted);
-      const fn = toNum(final);
-      if ((qn != null && (isNaN(qn) || qn < 0)) || (fn != null && (isNaN(fn) || fn < 0))) {
-        throw new Error('اكتب السعر أرقام بس');
-      }
-      return updatePrices(b.id, qn, fn);
+      const n = Number(qPrice);
+      if (qPrice.trim() === '' || isNaN(n) || n < 0) throw new Error('اكتب السعر الجديد أرقام');
+      return sendQuote(b.id, n, qNote);
     },
     onSuccess: () => {
-      setSaved(true);
-      setTimeout(() => setSaved(false), 1500);
+      setQuoting(false);
+      setQNote('');
       refresh();
     },
-    onError: (e) => setErr(friendlyError(e)),
+    onError,
   });
+  const answerM = useMutation({ mutationFn: (accept: boolean) => answerQuote(b.id, accept), onSuccess: refresh, onError });
 
+  const busy = statusM.isPending || quoteM.isPending || answerM.isPending;
   const price = b.final_price ?? b.quoted_price;
-  const locked = LOCKED.includes(b.status);
-  const busy = statusM.isPending || priceM.isPending;
+  const awaiting = b.status === 'awaiting_customer_approval';
+  // لو العميل رفض: يرجع بالسعر القديم ولا يتلغي؟
+  const base = awaiting ? b.quote_prev_status : b.status;
+  const keepsOnReject = base === 'confirmed' || base === 'in_progress';
 
   const run = (a: Action) => {
     setErr('');
-    if ((a.to === 'completed' || a.to === 'quotation_submitted') && price == null) {
-      return setErr('حدد السعر واضغط "حفظ السعر" الأول');
+    if (a.special === 'quote') {
+      setQPrice(price != null ? String(price) : '');
+      setQuoting(true);
+      return;
     }
+    if (a.special === 'approve') return answerM.mutate(true);
+    if (a.special === 'decline') return answerM.mutate(false);
+    if (!a.to) return;
+    if (a.to === 'completed' && price == null) return setErr('مفيش سعر — ابعت عرض سعر الأول');
     if (a.needsReason) return setAsk(a);
     statusM.mutate({ to: a.to });
   };
+
+  const actions = actionsFor(b);
 
   return (
     <div className="drawer-overlay" onClick={onClose}>
@@ -118,37 +127,59 @@ export default function BookingDrawer({ b, onClose }: { b: Booking; onClose: () 
 
           <section className="section">
             <h3>السعر <span className="muted small">({PRICING[b.pricing_model ?? ''] ?? '—'})</span></h3>
-            <div className="price-row">
-              <label className="field">
-                السعر المعروض
-                <input className="inp" inputMode="decimal" dir="ltr" disabled={locked} value={quoted} onChange={(e) => setQuoted(e.target.value)} />
-              </label>
-              <label className="field">
-                السعر النهائي
-                <input className="inp" inputMode="decimal" dir="ltr" disabled={locked} value={final} onChange={(e) => setFinal(e.target.value)} />
-              </label>
+            <div className="kv">
+              <span>{awaiting ? 'العرض الجديد' : 'السعر'}</span>
+              <b className="num">{money(price)}</b>
+              {awaiting && b.quote_prev_price != null ? (
+                <>
+                  <span>قبل العرض</span>
+                  <b className="num strike">{money(b.quote_prev_price)}</b>
+                </>
+              ) : null}
+              {b.status === 'completed' ? (
+                <>
+                  <span>العمولة</span>
+                  <b>{money(b.commission_amount)}</b>
+                  <span>نصيب مقدم الخدمة</span>
+                  <b>{money(b.provider_earning)}</b>
+                </>
+              ) : null}
             </div>
-            {!locked ? (
-              <button className="btn btn-neutral" disabled={busy} onClick={() => { setErr(''); priceM.mutate(); }}>
-                {saved ? 'اتحفظ ✓' : 'حفظ السعر'}
-              </button>
+            {awaiting ? (
+              <p className="note">
+                💬 مستني رد العميل{b.quote_note ? ` — «${b.quote_note}»` : ''}.
+                {keepsOnReject ? ' لو رفض: الحجز يرجع بالسعر القديم.' : ' لو رفض: الحجز يتلغي.'}
+              </p>
             ) : null}
-            {b.status === 'completed' ? (
-              <div className="kv mt">
-                <span>العمولة</span>
-                <b>{money(b.commission_amount)}</b>
-                <span>نصيب مقدم الخدمة</span>
-                <b>{money(b.provider_earning)}</b>
-              </div>
-            ) : null}
+            <p className="muted small mt">🔒 السعر مايتغيرش غير بعرض سعر يوافق عليه العميل.</p>
           </section>
 
           {err ? <div className="alert">{err}</div> : null}
 
-          {ACTIONS[b.status].length ? (
+          {actions.length && canEdit ? (
             <section className="section">
               <h3>الإجراءات</h3>
-              {ask ? (
+              {quoting ? (
+                <div className="reason">
+                  <label className="field">
+                    السعر الجديد (ج.م)
+                    <input className="inp" dir="ltr" inputMode="decimal" value={qPrice} onChange={(e) => setQPrice(e.target.value)} />
+                  </label>
+                  <label className="field">
+                    ملاحظة للعميل (اختياري)
+                    <textarea className="inp" rows={2} placeholder="مثلاً: السجادة أكبر من المتفق عليه" value={qNote} onChange={(e) => setQNote(e.target.value)} />
+                  </label>
+                  <p className="muted small">
+                    العميل لازم يوافق. {keepsOnReject ? 'لو رفض، الحجز يرجع بالسعر الحالي.' : 'لو رفض، الحجز يتلغي.'}
+                  </p>
+                  <div className="actions">
+                    <button className="btn btn-neutral" disabled={busy} onClick={() => setQuoting(false)}>رجوع</button>
+                    <button className="btn btn-primary" disabled={busy} onClick={() => { setErr(''); quoteM.mutate(); }}>
+                      {quoteM.isPending ? '…' : 'إرسال العرض للعميل'}
+                    </button>
+                  </div>
+                </div>
+              ) : ask ? (
                 <div className="reason">
                   <label className="field">
                     {ask.to === 'rejected' ? 'سبب الرفض' : 'سبب الإلغاء'}
@@ -159,7 +190,7 @@ export default function BookingDrawer({ b, onClose }: { b: Booking; onClose: () 
                     <button
                       className="btn btn-danger"
                       disabled={busy || !reason.trim()}
-                      onClick={() => statusM.mutate({ to: ask.to, reason: reason.trim() })}
+                      onClick={() => ask.to && statusM.mutate({ to: ask.to, reason: reason.trim() })}
                     >
                       {busy ? '…' : `تأكيد ${ask.label}`}
                     </button>
@@ -167,8 +198,8 @@ export default function BookingDrawer({ b, onClose }: { b: Booking; onClose: () 
                 </div>
               ) : (
                 <div className="actions">
-                  {ACTIONS[b.status].map((a) => (
-                    <button key={a.to} className={`btn btn-${a.kind}`} disabled={busy} onClick={() => run(a)}>
+                  {actions.map((a) => (
+                    <button key={a.label} className={`btn btn-${a.kind}`} disabled={busy} onClick={() => run(a)}>
                       {a.label}
                     </button>
                   ))}

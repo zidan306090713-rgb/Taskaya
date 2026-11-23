@@ -1,19 +1,20 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { useAuth, type Admin } from '../lib/auth';
+import { useAuth, type Admin, type Section } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 import { ACCENTS, useTheme } from '../lib/theme';
 import { OrbitLogo } from './OrbitLogo';
 
-const LINKS = [
-  { to: '/', label: 'الرئيسية', short: 'الرئيسية', icon: '🏠', end: true },
-  { to: '/bookings', label: 'الحجوزات', short: 'الحجوزات', icon: '📋', end: false },
-  { to: '/providers', label: 'مقدمي الخدمة', short: 'المقدمين', icon: '🏢', end: false },
-  { to: '/catalog', label: 'الأقسام والخدمات', short: 'الأقسام', icon: '🧰', end: false },
+const LINKS: { to: string; label: string; short: string; icon: string; end: boolean; section: Section }[] = [
+  { to: '/', label: 'الرئيسية', short: 'الرئيسية', icon: '🏠', end: true, section: 'home' },
+  { to: '/bookings', label: 'الحجوزات', short: 'الحجوزات', icon: '📋', end: false, section: 'bookings' },
+  { to: '/providers', label: 'مقدمي الخدمة', short: 'المقدمين', icon: '🏢', end: false, section: 'providers' },
+  { to: '/catalog', label: 'الأقسام والخدمات', short: 'الأقسام', icon: '🧰', end: false, section: 'catalog' },
+  { to: '/team', label: 'الفريق', short: 'الفريق', icon: '👥', end: false, section: 'team' },
 ];
 
 // أول حرفين من الاسم (Zidan Ahmed → ZA)
-function initials(a: Admin | null) {
+export function initials(a: { full_name: string | null; email: string | null } | null) {
   const parts = (a?.full_name || a?.email || '').trim().split(/\s+/).filter(Boolean);
   return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase() || '؟';
 }
@@ -33,13 +34,13 @@ function Brand({ size }: { size: number }) {
 }
 
 export default function Layout() {
-  const { admin } = useAuth();
+  const { admin, can } = useAuth();
   const [menu, setMenu] = useState(false);
   const ini = initials(admin);
+  const links = LINKS.filter((l) => can(l.section));
 
   return (
     <div className="shell">
-      {/* موبايل: شريط علوي رفيع */}
       <header className="topbar">
         <Brand size={30} />
         <button className="avatar-btn" onClick={() => setMenu(true)} aria-label="الحساب والإعدادات">
@@ -47,11 +48,10 @@ export default function Layout() {
         </button>
       </header>
 
-      {/* كمبيوتر: القايمة الجانبية (لينكات بس + صف الحساب) */}
       <aside className="sidebar">
         <Brand size={42} />
         <nav className="nav">
-          {LINKS.map((l) => (
+          {links.map((l) => (
             <NavLink key={l.to} to={l.to} end={l.end}>
               <span>{l.icon}</span>
               {l.label}
@@ -72,9 +72,8 @@ export default function Layout() {
         <Outlet />
       </main>
 
-      {/* موبايل: شريط التابات العايم (زي التطبيق) */}
       <nav className="tabbar">
-        {LINKS.map((l) => (
+        {links.map((l) => (
           <NavLink key={l.to} to={l.to} end={l.end}>
             <span>{l.icon}</span>
             {l.short}
@@ -90,12 +89,27 @@ export default function Layout() {
 function AccountMenu({ admin, initials: ini, onClose }: { admin: Admin | null; initials: string; onClose: () => void }) {
   const { mode, toggle, accent, setAccent } = useTheme();
   const current = ACCENTS.find((a) => a.key === accent);
+  const [pwOpen, setPwOpen] = useState(false);
+  const [pw, setPw] = useState('');
+  const [pwMsg, setPwMsg] = useState('');
+  const [pwBusy, setPwBusy] = useState(false);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
+
+  const savePw = async () => {
+    if (pw.length < 8) return setPwMsg('كلمة السر لازم 8 حروف على الأقل');
+    setPwBusy(true);
+    const { error } = await supabase.auth.updateUser({ password: pw });
+    setPwBusy(false);
+    if (error) return setPwMsg('تعذّر التغيير: ' + error.message);
+    setPw('');
+    setPwOpen(false);
+    setPwMsg('✅ كلمة السر اتغيرت');
+  };
 
   return (
     <div className="sheet-overlay" onClick={onClose}>
@@ -107,6 +121,7 @@ function AccountMenu({ admin, initials: ini, onClose }: { admin: Admin | null; i
           <div>
             <b>{admin?.full_name || 'أدمن'}</b>
             <div className="muted small" dir="ltr">{admin?.email}</div>
+            <div className="role-tag">{admin?.role === 'admin' ? '👑 المالك' : '👤 عضو فريق'}</div>
           </div>
         </div>
 
@@ -132,6 +147,20 @@ function AccountMenu({ admin, initials: ini, onClose }: { admin: Admin | null; i
             ))}
           </div>
         </div>
+
+        {pwOpen ? (
+          <div className="sheet-row col">
+            <span>🔑 كلمة السر الجديدة</span>
+            <input className="inp" type="password" dir="ltr" autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} />
+            <div className="actions">
+              <button className="btn btn-neutral" onClick={() => { setPwOpen(false); setPwMsg(''); }}>رجوع</button>
+              <button className="btn btn-primary" disabled={pwBusy} onClick={() => void savePw()}>{pwBusy ? '…' : 'حفظ'}</button>
+            </div>
+          </div>
+        ) : (
+          <button className="btn btn-neutral btn-block" onClick={() => { setPwOpen(true); setPwMsg(''); }}>🔑 تغيير كلمة السر</button>
+        )}
+        {pwMsg ? <div className="muted small">{pwMsg}</div> : null}
 
         <button className="btn btn-danger btn-block" onClick={() => void supabase.auth.signOut()}>
           🚪 تسجيل الخروج

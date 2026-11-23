@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
+import { useAuth } from '../lib/auth';
 import { fmtDate, friendlyError, money, PRICING } from '../lib/bookings';
 import { P_ACTIONS, P_STATUS, updateProvider, type PAction, type Provider } from '../lib/providers';
 
@@ -20,6 +21,7 @@ const FLAGS = [
 
 export default function ProviderModal({ p, onClose }: { p: Provider; onClose: () => void }) {
   const qc = useQueryClient();
+  const canEdit = useAuth().can('providers', true);
   const [name, setName] = useState(p.business_name);
   const [desc, setDesc] = useState(p.description ?? '');
   const [addr, setAddr] = useState(p.business_address ?? '');
@@ -73,7 +75,7 @@ export default function ProviderModal({ p, onClose }: { p: Provider; onClose: ()
           <button className="icon-btn" onClick={onClose} aria-label="إغلاق">✕</button>
         </header>
 
-        <div className="drawer-body">
+        <fieldset className="drawer-body" disabled={!canEdit}>
           <section className="section">
             <div className="kv">
               <span>صاحب الحساب</span>
@@ -173,7 +175,7 @@ export default function ProviderModal({ p, onClose }: { p: Provider; onClose: ()
               </div>
             )}
           </section>
-        </div>
+        </fieldset>
       </aside>
     </div>
   );

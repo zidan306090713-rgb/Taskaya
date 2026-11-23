@@ -12,6 +12,7 @@ import { TileGrid } from '@/components/ui/TileGrid';
 import { t, tr } from '@/i18n';
 import { Category, getCategories } from '@/lib/api';
 import { checkCatalog, useCatalogVersion, wireCatalogChecks } from '@/lib/catalogVersion';
+import { usePushSetup } from '@/lib/push';
 import { supabase } from '@/lib/supabase';
 import { useDirectory, useProviderSearch } from '@/lib/useProviderSearch';
 import { useMyProfile } from '@/lib/profile';
@@ -65,6 +66,7 @@ function SectionTitle({ children, first }: { children: string; first?: boolean }
 export default function Home() {
   const { c, styles } = useThemed();
   const { session } = useAuth();
+  usePushSetup(session?.user.id);
   const me = useMyProfile();
   const [firstName, setFirstName] = useState('');
   const [cats, setCats] = useState<Category[]>([]);

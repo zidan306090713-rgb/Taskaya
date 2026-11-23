@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
+import { useAuth } from '../lib/auth';
 import { catalogError, deleteRow, fetchCatalog, iconEmoji, ICONS, saveRow, type Kind } from '../lib/catalog';
 
 type Field = { key: string; label: string; multiline?: boolean; ltr?: boolean; num?: boolean; icon?: boolean };
@@ -37,6 +38,7 @@ type Editing = { kind: Kind; id: string | null; parent?: Record<string, string>;
 export default function Catalog() {
   const qc = useQueryClient();
   const { data, isLoading, error } = useQuery({ queryKey: ['catalog'], queryFn: fetchCatalog });
+  const canEdit = useAuth().can('catalog', true);
   const [catId, setCatId] = useState<string | null>(null);
   const [editing, setEditing] = useState<Editing | null>(null);
 
@@ -74,7 +76,7 @@ export default function Catalog() {
   );
 
   return (
-    <>
+    <fieldset className="page-fs" disabled={!canEdit}>
       <div className="sub-head">
         <h1 className="page-title" style={{ margin: 0 }}>الأقسام والخدمات</h1>
         <button className="btn btn-primary" onClick={newCat}>+ قسم رئيسي</button>
@@ -156,7 +158,7 @@ export default function Catalog() {
           }}
         />
       ) : null}
-    </>
+    </fieldset>
   );
 }
 

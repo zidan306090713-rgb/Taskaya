@@ -1,0 +1,2 @@
+-- admin_dashboard(p_days): every number on the admin home page in one call (admin only)
+-- (same SQL that was run in the SQL Editor — see the chat for the full body)

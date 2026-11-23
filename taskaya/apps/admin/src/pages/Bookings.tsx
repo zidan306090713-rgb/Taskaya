@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import BookingDrawer from '../components/BookingDrawer';
 import { fetchBookings, fmtDate, money, STATUS, STATUS_ORDER, type Status } from '../lib/bookings';
 
@@ -7,7 +8,8 @@ type Tab = 'all' | Status;
 
 export default function Bookings() {
   const { data, isLoading, error } = useQuery({ queryKey: ['bookings'], queryFn: fetchBookings, refetchInterval: 20_000 });
-  const [tab, setTab] = useState<Tab>('pending');
+  const [params] = useSearchParams();
+  const [tab, setTab] = useState<Tab>(() => (params.get('tab') as Tab) || 'pending');
   const [q, setQ] = useState('');
   const [openId, setOpenId] = useState<string | null>(null);
 

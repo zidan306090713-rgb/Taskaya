@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "977008490185",
+    "project_id": "taskaya-b43a5",
+    "storage_bucket": "taskaya-b43a5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:977008490185:android:93c5ccafe2ac8122f2ff18",
+        "android_client_info": {
+          "package_name": "com.zidan144544.customer"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDM_N-r52xWqhMnv2LQugPpqWVJf5HzuPM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

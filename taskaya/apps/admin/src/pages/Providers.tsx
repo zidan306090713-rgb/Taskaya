@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
+import { useAuth } from '../lib/auth';
 import NewProviderModal from '../components/NewProviderModal';
 import ProviderModal, { ProviderLogo } from '../components/ProviderModal';
 import { fetchProviders, P_ORDER, P_STATUS, type PStatus } from '../lib/providers';
@@ -12,6 +13,7 @@ export default function Providers() {
   const [q, setQ] = useState('');
   const [openId, setOpenId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const canEdit = useAuth().can('providers', true);
 
   const counts = useMemo(() => {
     const m: Partial<Record<PStatus, number>> = {};
@@ -38,7 +40,7 @@ export default function Providers() {
     <>
       <div className="sub-head">
         <h1 className="page-title" style={{ margin: 0 }}>مقدمي الخدمة</h1>
-        <button className="btn btn-primary" onClick={() => setAdding(true)}>+ مقدم خدمة جديد</button>
+        {canEdit ? <button className="btn btn-primary" onClick={() => setAdding(true)}>+ مقدم خدمة جديد</button> : null}
       </div>
 
       <div className="toolbar">

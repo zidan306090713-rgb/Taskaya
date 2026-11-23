@@ -1,12 +1,13 @@
 import type { ReactNode } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import Layout from './components/Layout';
-import { useAuth } from './lib/auth';
+import { useAuth, type Section } from './lib/auth';
 import Bookings from './pages/Bookings';
 import Catalog from './pages/Catalog';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Providers from './pages/Providers';
+import Team from './pages/Team';
 
 function RequireAdmin({ children }: { children: ReactNode }) {
   const { loading, admin } = useAuth();
@@ -15,15 +16,31 @@ function RequireAdmin({ children }: { children: ReactNode }) {
   return children;
 }
 
+// القسم بيفتح بس لو العضو معاه صلاحيته — غير كده بيروح لأول قسم مسموح له
+function Guard({ section, children }: { section: Section; children: ReactNode }) {
+  const { can, firstPath } = useAuth();
+  if (can(section)) return children;
+  const to = firstPath();
+  if (to) return <Navigate to={to} replace />;
+  return (
+    <div className="card no-perms">
+      <div className="big">🔒</div>
+      <h3>حسابك مالوش صلاحيات لسه</h3>
+      <p className="muted">كلّم المسؤول عشان يدّيك صلاحية على قسم.</p>
+    </div>
+  );
+}
+
 export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route element={<RequireAdmin><Layout /></RequireAdmin>}>
-        <Route index element={<Home />} />
-        <Route path="bookings" element={<Bookings />} />
-        <Route path="providers" element={<Providers />} />
-        <Route path="catalog" element={<Catalog />} />
+        <Route index element={<Guard section="home"><Home /></Guard>} />
+        <Route path="bookings" element={<Guard section="bookings"><Bookings /></Guard>} />
+        <Route path="providers" element={<Guard section="providers"><Providers /></Guard>} />
+        <Route path="catalog" element={<Guard section="catalog"><Catalog /></Guard>} />
+        <Route path="team" element={<Guard section="team"><Team /></Guard>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

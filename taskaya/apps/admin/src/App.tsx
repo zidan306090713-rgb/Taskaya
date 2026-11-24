@@ -5,6 +5,7 @@ import Layout from './components/Layout';
 import { useAuth, type Section } from './lib/auth';
 import Bookings from './pages/Bookings';
 import Catalog from './pages/Catalog';
+import Commission from './pages/Commission';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Providers from './pages/Providers';
@@ -40,6 +41,7 @@ export default function App() {
         <Route index element={<Guard section="home"><Home /></Guard>} />
         <Route path="bookings" element={<Guard section="bookings"><Bookings /></Guard>} />
         <Route path="providers" element={<Guard section="providers"><Providers /></Guard>} />
+        <Route path="commission" element={<Guard section="money"><Commission /></Guard>} />
         <Route path="catalog" element={<Guard section="catalog"><Catalog /></Guard>} />
         <Route path="team" element={<Guard section="team"><Team /></Guard>} />
       </Route>

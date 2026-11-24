@@ -10,6 +10,7 @@ const LINKS: { to: string; label: string; short: string; icon: string; end: bool
   { to: '/', label: 'الرئيسية', short: 'الرئيسية', icon: '🏠', end: true, section: 'home' },
   { to: '/bookings', label: 'الحجوزات', short: 'الحجوزات', icon: '📋', end: false, section: 'bookings' },
   { to: '/providers', label: 'مقدمي الخدمة', short: 'المقدمين', icon: '🏢', end: false, section: 'providers' },
+  { to: '/commission', label: 'العمولات', short: 'العمولات', icon: '💰', end: false, section: 'money' },
   { to: '/catalog', label: 'الأقسام والخدمات', short: 'الأقسام', icon: '🧰', end: false, section: 'catalog' },
   { to: '/team', label: 'الفريق', short: 'الفريق', icon: '👥', end: false, section: 'team' },
 ];

@@ -500,3 +500,38 @@ fieldset.drawer-body:disabled .switch { opacity: 0.6; cursor: default; }
 
 /* أيقونات Lucide الخطية */
 .ico { display: inline-block; vertical-align: -0.2em; flex-shrink: 0; }
+
+/* ===== صفحة العمولات ===== */
+.cm-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin: 14px 0 18px; }
+.cm-kpi { display: flex; flex-direction: column; gap: 6px; }
+.cm-kpi-top { display: flex; align-items: center; gap: 8px; font-size: 13px; opacity: .75; }
+.cm-kpi-val { font-size: 24px; font-weight: 800; }
+.cm-kpi.red .cm-kpi-val { color: #E5484D; }
+.cm-kpi.green .cm-kpi-val { color: #12A150; }
+.cm-scroll { overflow-x: auto; }
+.cm-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.cm-table th { text-align: start; font-weight: 600; font-size: 12.5px; opacity: .65; padding: 10px 12px; white-space: nowrap;
+  border-bottom: 1px solid color-mix(in srgb, currentColor 14%, transparent); }
+.cm-table td { padding: 12px; vertical-align: middle; border-bottom: 1px solid color-mix(in srgb, currentColor 8%, transparent); }
+.cm-table tr:last-child td { border-bottom: 0; }
+.cm-row { cursor: pointer; transition: background .15s; }
+.cm-row:hover { background: color-mix(in srgb, currentColor 5%, transparent); }
+.cm-plus { color: #E5484D; font-weight: 700; white-space: nowrap; }
+.cm-minus { color: #12A150; font-weight: 700; white-space: nowrap; }
+.cm-legend { padding: 10px 12px 2px; }
+.cm-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
+.cm-head .page-title { margin: 0; }
+.cm-form { display: grid; gap: 10px; margin-bottom: 14px; }
+.cm-form-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.cm-form-row > .inp { flex: 1; min-width: 150px; }
+.cm-days { margin: 0; }
+.cm-title { margin: 6px 0; display: flex; align-items: center; gap: 8px; }
+.cm-rules { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 14px; margin: 14px 0; }
+.cm-rule { display: flex; align-items: center; gap: 8px; padding: 9px 0; flex-wrap: wrap;
+  border-bottom: 1px dashed color-mix(in srgb, currentColor 12%, transparent); }
+.cm-rule.cm-new { border-bottom: 0; opacity: .9; }
+.cm-num { width: 90px !important; flex: 0 0 auto; text-align: center; }
+.cm-mini { padding: 6px 12px; }
+.cm-err { color: #E5484D; font-size: 12.5px; width: 100%; }
+.cm-empty { padding: 10px 0; }
+.cm-try { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }

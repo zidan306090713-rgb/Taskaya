@@ -1,3 +1,4 @@
+import { Ico } from './Ico';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../lib/auth';
@@ -99,7 +100,7 @@ export default function BookingDrawer({ b, onClose }: { b: Booking; onClose: () 
             <div className="drawer-title">#{b.booking_number}</div>
           </div>
           <span className={`badge t-${STATUS[b.status].tone}`}>{STATUS[b.status].label}</span>
-          <button className="icon-btn" onClick={onClose} aria-label="إغلاق">✕</button>
+          <button className="icon-btn" onClick={onClose} aria-label="إغلاق"><Ico e="✕" /></button>
         </header>
 
         <div className="drawer-body">
@@ -120,8 +121,8 @@ export default function BookingDrawer({ b, onClose }: { b: Booking; onClose: () 
               <span>العنوان</span>
               <b>{addressText(b.address)}</b>
             </div>
-            {b.address?.notes ? <p className="note">📍 {b.address.notes}</p> : null}
-            {b.details ? <p className="note">📝 {b.details}</p> : null}
+            {b.address?.notes ? <p className="note"><Ico e="📍" /> {b.address.notes}</p> : null}
+            {b.details ? <p className="note"><Ico e="📝" /> {b.details}</p> : null}
             {b.cancel_reason ? <p className="note danger">سبب الإلغاء / الرفض: {b.cancel_reason}</p> : null}
           </section>
 
@@ -147,11 +148,11 @@ export default function BookingDrawer({ b, onClose }: { b: Booking; onClose: () 
             </div>
             {awaiting ? (
               <p className="note">
-                💬 مستني رد العميل{b.quote_note ? ` — «${b.quote_note}»` : ''}.
+                <Ico e="💬" /> مستني رد العميل{b.quote_note ? ` — «${b.quote_note}»` : ''}.
                 {keepsOnReject ? ' لو رفض: الحجز يرجع بالسعر القديم.' : ' لو رفض: الحجز يتلغي.'}
               </p>
             ) : null}
-            <p className="muted small mt">🔒 السعر مايتغيرش غير بعرض سعر يوافق عليه العميل.</p>
+            <p className="muted small mt"><Ico e="🔒" /> السعر مايتغيرش غير بعرض سعر يوافق عليه العميل.</p>
           </section>
 
           {err ? <div className="alert">{err}</div> : null}

@@ -1,3 +1,4 @@
+import { Ico } from '../components/Ico';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../lib/auth';
@@ -88,7 +89,7 @@ export default function Catalog() {
         {data?.map((c) => (
           <div key={c.id} className={`cat-card${c.id === cat?.id ? ' on' : ''}${c.is_active ? '' : ' off'}`} onClick={() => setCatId(c.id)}>
             <div className="cat-top">
-              <span className="cat-icon">{iconEmoji(c.icon)}</span>
+              <span className="cat-icon"><Ico e={iconEmoji(c.icon)} /></span>
               <div>
                 <div className="cat-name">{c.name_ar}</div>
                 <div className="small muted" dir="ltr">{c.name_en}</div>
@@ -98,7 +99,7 @@ export default function Catalog() {
               {c.subs.length} قسم فرعي · {c.subs.reduce((n, s) => n + s.services.length, 0)} خدمة
             </div>
             <div className="cat-tools" onClick={(e) => e.stopPropagation()}>
-              <button className="mini" onClick={() => openEdit('cat', c)}>✏️ تعديل</button>
+              <button className="mini" onClick={() => openEdit('cat', c)}><Ico e="✏" /> تعديل</button>
               {sw('cat', c.id, c.is_active)}
             </div>
           </div>
@@ -108,7 +109,7 @@ export default function Catalog() {
       {cat ? (
         <>
           <div className="sub-head">
-            <h2>{iconEmoji(cat.icon)} {cat.name_ar}</h2>
+            <h2><Ico e={iconEmoji(cat.icon)} /> {cat.name_ar}</h2>
             <button className="btn btn-neutral" onClick={() => openEdit('sub', null, { category_id: cat.id })}>+ قسم فرعي</button>
           </div>
           {cat.subs.length === 0 ? <div className="card muted">مفيش أقسام فرعية لسه — ابدأ بإضافة واحد</div> : null}
@@ -121,7 +122,7 @@ export default function Catalog() {
                     <b>{s.name_ar}</b> <span className="muted small" dir="ltr">{s.name_en}</span>
                   </div>
                   <div className="row-tools">
-                    <button className="mini" onClick={() => openEdit('sub', s)}>✏️</button>
+                    <button className="mini" onClick={() => openEdit('sub', s)}><Ico e="✏" /></button>
                     {sw('sub', s.id, s.is_active)}
                   </div>
                 </div>
@@ -135,7 +136,7 @@ export default function Catalog() {
                         <div className="muted small">{v.description_ar || v.name_en}</div>
                       </div>
                       <div className="row-tools">
-                        <button className="mini" onClick={() => openEdit('svc', v)}>✏️</button>
+                        <button className="mini" onClick={() => openEdit('svc', v)}><Ico e="✏" /></button>
                         {sw('svc', v.id, v.is_active)}
                       </div>
                     </div>
@@ -221,7 +222,7 @@ function EditModal({ editing, onClose, onDeleted }: { editing: Editing; onClose:
           <div>
             <div className="drawer-title">{editing.id ? 'تعديل' : 'إضافة'} {TITLE[editing.kind]}</div>
           </div>
-          <button className="icon-btn" onClick={onClose} aria-label="إغلاق">✕</button>
+          <button className="icon-btn" onClick={onClose} aria-label="إغلاق"><Ico e="✕" /></button>
         </header>
         <div className="drawer-body single">
           <section className="section">
@@ -238,7 +239,7 @@ function EditModal({ editing, onClose, onDeleted }: { editing: Editing; onClose:
                         onClick={() => set('icon', i.value)}
                         title={i.label}
                       >
-                        <span>{i.emoji}</span>
+                        <span><Ico e={i.emoji} /></span>
                         <small>{i.label}</small>
                       </button>
                     ))}
@@ -273,7 +274,7 @@ function EditModal({ editing, onClose, onDeleted }: { editing: Editing; onClose:
             ) : (
               <div className="actions">
                 {editing.id ? (
-                  <button className="btn btn-danger" disabled={busy} onClick={() => { setErr(''); setConfirmDel(true); }}>🗑️ حذف</button>
+                  <button className="btn btn-danger" disabled={busy} onClick={() => { setErr(''); setConfirmDel(true); }}><Ico e="🗑" /> حذف</button>
                 ) : null}
                 <button className="btn btn-neutral" disabled={busy} onClick={onClose}>إلغاء</button>
                 <button className="btn btn-primary" disabled={busy} onClick={() => { setErr(''); save.mutate(); }}>

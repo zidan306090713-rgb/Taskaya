@@ -1,3 +1,4 @@
+import { Ico } from '../components/Ico';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { initials } from '../components/Layout';
@@ -19,8 +20,8 @@ function PermChips({ p }: { p: Perms | null }) {
     ? SECTIONS.flatMap((s) => {
         const v = p[s.k];
         if (v === false || v === 'none') return [];
-        const mode = v === 'edit' ? ' ✏️' : v === 'view' ? ' 👁️' : '';
-        return [<span key={s.k} className="pchip">{s.icon} {s.label}{mode}</span>];
+        const mode = v === 'edit' ? <Ico e="✏" /> : v === 'view' ? <Ico e="👁" /> : null;
+        return [<span key={s.k} className="pchip"><Ico e={s.icon} /> {s.label} {mode}</span>];
       })
     : [];
   return chips.length ? <div className="pchips">{chips}</div> : <span className="muted small">بدون صلاحيات</span>;
@@ -38,15 +39,15 @@ export default function Team() {
         <button className="btn btn-primary" onClick={() => setEdit('new')}>+ عضو جديد</button>
       </div>
       <p className="muted small team-hint">
-        👑 المالك عنده كل الصلاحيات ومش بيظهر هنا. أعضاء الفريق بيشوفوا ويعدّلوا اللي مسموح لهم بيه بس —
-        ✏️ = عرض وتعديل، 👁️ = عرض بس.
+        <Ico e="👑" /> المالك عنده كل الصلاحيات ومش بيظهر هنا. أعضاء الفريق بيشوفوا ويعدّلوا اللي مسموح لهم بيه بس —
+        <Ico e="✏" /> = عرض وتعديل، <Ico e="👁" /> = عرض بس.
       </p>
 
       {error ? <div className="alert">تعذّر التحميل: {(error as Error).message}</div> : null}
       {isLoading ? <div className="card muted">جاري التحميل…</div> : null}
       {data && !data.length ? (
         <div className="card team-empty">
-          <div className="big">👥</div>
+          <div className="big"><Ico e="👥" /></div>
           <b>لسه مفيش أعضاء</b>
           <span className="muted small">ضيف أول عضو في فريق الإدارة</span>
         </div>

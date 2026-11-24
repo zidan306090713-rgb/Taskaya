@@ -1,3 +1,4 @@
+import { Ico } from './Ico';
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth, type Admin, type Section } from '../lib/auth';
@@ -53,7 +54,7 @@ export default function Layout() {
         <nav className="nav">
           {links.map((l) => (
             <NavLink key={l.to} to={l.to} end={l.end}>
-              <span>{l.icon}</span>
+              <span><Ico e={l.icon} /></span>
               {l.label}
             </NavLink>
           ))}
@@ -75,7 +76,7 @@ export default function Layout() {
       <nav className="tabbar">
         {links.map((l) => (
           <NavLink key={l.to} to={l.to} end={l.end}>
-            <span>{l.icon}</span>
+            <span><Ico e={l.icon} /></span>
             {l.short}
           </NavLink>
         ))}
@@ -108,7 +109,7 @@ function AccountMenu({ admin, initials: ini, onClose }: { admin: Admin | null; i
     if (error) return setPwMsg('تعذّر التغيير: ' + error.message);
     setPw('');
     setPwOpen(false);
-    setPwMsg('✅ كلمة السر اتغيرت');
+    setPwMsg('كلمة السر اتغيرت');
   };
 
   return (
@@ -121,18 +122,18 @@ function AccountMenu({ admin, initials: ini, onClose }: { admin: Admin | null; i
           <div>
             <b>{admin?.full_name || 'أدمن'}</b>
             <div className="muted small" dir="ltr">{admin?.email}</div>
-            <div className="role-tag">{admin?.role === 'admin' ? '👑 المالك' : '👤 عضو فريق'}</div>
+            <div className="role-tag">{admin?.role === 'admin' ? 'المالك' : 'عضو فريق'}</div>
           </div>
         </div>
 
         <label className="sheet-row">
-          <span>🌙 الوضع الغامق</span>
+          <span><Ico e="🌙" /> الوضع الغامق</span>
           <input type="checkbox" className="switch" checked={mode === 'dark'} onChange={toggle} />
         </label>
 
         <div className="sheet-row col">
           <span>
-            🎨 لون التطبيق <span className="muted small">— {current?.ar}</span>
+            <Ico e="🎨" /> لون التطبيق <span className="muted small">— {current?.ar}</span>
           </span>
           <div className="swatches">
             {ACCENTS.map((a) => (
@@ -150,7 +151,7 @@ function AccountMenu({ admin, initials: ini, onClose }: { admin: Admin | null; i
 
         {pwOpen ? (
           <div className="sheet-row col">
-            <span>🔑 كلمة السر الجديدة</span>
+            <span><Ico e="🔑" /> كلمة السر الجديدة</span>
             <input className="inp" type="password" dir="ltr" autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} />
             <div className="actions">
               <button className="btn btn-neutral" onClick={() => { setPwOpen(false); setPwMsg(''); }}>رجوع</button>
@@ -158,12 +159,12 @@ function AccountMenu({ admin, initials: ini, onClose }: { admin: Admin | null; i
             </div>
           </div>
         ) : (
-          <button className="btn btn-neutral btn-block" onClick={() => { setPwOpen(true); setPwMsg(''); }}>🔑 تغيير كلمة السر</button>
+          <button className="btn btn-neutral btn-block" onClick={() => { setPwOpen(true); setPwMsg(''); }}><Ico e="🔑" /> تغيير كلمة السر</button>
         )}
         {pwMsg ? <div className="muted small">{pwMsg}</div> : null}
 
         <button className="btn btn-danger btn-block" onClick={() => void supabase.auth.signOut()}>
-          🚪 تسجيل الخروج
+          <Ico e="🚪" /> تسجيل الخروج
         </button>
       </div>
     </div>

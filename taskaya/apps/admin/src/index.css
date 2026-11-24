@@ -497,3 +497,6 @@ fieldset.drawer-body:disabled .switch { opacity: 0.6; cursor: default; }
 .creds { display: flex; flex-direction: column; gap: 8px; margin: 10px 0 16px; padding: 12px 14px; border-radius: 14px; background: var(--surface); border: 1px solid var(--field-border); text-align: left; }
 .creds div { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; }
 .creds span { color: var(--muted); }
+
+/* أيقونات Lucide الخطية */
+.ico { display: inline-block; vertical-align: -0.2em; flex-shrink: 0; }

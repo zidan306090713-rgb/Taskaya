@@ -1,3 +1,4 @@
+import { Ico } from './Ico';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { NO_PERMS, type Level, type Perms } from '../lib/auth';
@@ -9,9 +10,9 @@ const LEVEL_SECTIONS = [
   { k: 'catalog', icon: '🧰', label: 'الأقسام والخدمات' },
 ] as const;
 const LEVELS: { v: Level; label: string }[] = [
-  { v: 'none', label: '🚫 مخفي' },
-  { v: 'view', label: '👁️ عرض' },
-  { v: 'edit', label: '✏️ تعديل' },
+  { v: 'none', label: 'مخفي' },
+  { v: 'view', label: 'عرض' },
+  { v: 'edit', label: 'تعديل' },
 ];
 
 export default function MemberModal({ member, onClose }: { member: Member | null; onClose: () => void }) {
@@ -109,13 +110,13 @@ export default function MemberModal({ member, onClose }: { member: Member | null
             <div className="drawer-title">{isNew ? 'عضو جديد' : 'تعديل عضو'}</div>
             {!isNew ? <div className="muted small" dir="ltr">{member.email}</div> : null}
           </div>
-          <button className="icon-btn" onClick={onClose} disabled={busy} aria-label="إغلاق">✕</button>
+          <button className="icon-btn" onClick={onClose} disabled={busy} aria-label="إغلاق"><Ico e="✕" /></button>
         </header>
 
         <div className="drawer-body single">
           {created ? (
             <section className="section success">
-              <div className="big">✅</div>
+              <div className="big"><Ico e="✅" /></div>
               <h3>الحساب اتعمل</h3>
               <p className="muted">ابعت البيانات دي للعضو عشان يدخل:</p>
               <div className="creds" dir="ltr">
@@ -123,7 +124,7 @@ export default function MemberModal({ member, onClose }: { member: Member | null
                 <div><span>Password</span><b>{created.password}</b></div>
               </div>
               <div className="actions">
-                <button className="btn btn-neutral" onClick={copyCreds}>{copied ? '✓ اتنسخت' : '📋 نسخ البيانات'}</button>
+                <button className="btn btn-neutral" onClick={copyCreds}>{copied ? '✓ اتنسخت' : 'نسخ البيانات'}</button>
                 <button className="btn btn-primary" onClick={onClose}>تمام</button>
               </div>
             </section>
@@ -144,7 +145,7 @@ export default function MemberModal({ member, onClose }: { member: Member | null
                       كلمة السر المبدئية
                       <div className="pw-row">
                         <input className="inp" dir="ltr" value={password} onChange={(e) => setPassword(e.target.value)} />
-                        <button type="button" className="btn btn-neutral" onClick={() => setPassword(genPassword())} title="كلمة سر عشوائية">🎲</button>
+                        <button type="button" className="btn btn-neutral" onClick={() => setPassword(genPassword())} title="كلمة سر عشوائية"><Ico e="🎲" /></button>
                       </div>
                     </label>
                   </>
@@ -154,16 +155,16 @@ export default function MemberModal({ member, onClose }: { member: Member | null
               <section className="section">
                 <h3>الصلاحيات</h3>
                 <label className="flag">
-                  <div><b>🏠 الرئيسية</b><div className="muted small">الأرقام والرسم وآخر الحجوزات</div></div>
+                  <div><b><Ico e="🏠" /> الرئيسية</b><div className="muted small">الأرقام والرسم وآخر الحجوزات</div></div>
                   <input type="checkbox" className="switch" checked={perms.home} onChange={(e) => setPerms({ ...perms, home: e.target.checked })} />
                 </label>
                 <label className="flag">
-                  <div><b>💰 الإيرادات والعمولة</b><div className="muted small">كروت الفلوس في الرئيسية</div></div>
+                  <div><b><Ico e="💰" /> الإيرادات والعمولة</b><div className="muted small">كروت الفلوس في الرئيسية</div></div>
                   <input type="checkbox" className="switch" checked={perms.money} onChange={(e) => setPerms({ ...perms, money: e.target.checked })} />
                 </label>
                 {LEVEL_SECTIONS.map((s) => (
                   <div key={s.k} className="perm-row">
-                    <b>{s.icon} {s.label}</b>
+                    <b><Ico e={s.icon} /> {s.label}</b>
                     <div className="seg small-seg">
                       {LEVELS.map((l) => (
                         <button key={l.v} type="button" className={perms[s.k] === l.v ? 'on' : ''} onClick={() => setPerms({ ...perms, [s.k]: l.v })}>
@@ -174,7 +175,7 @@ export default function MemberModal({ member, onClose }: { member: Member | null
                   </div>
                 ))}
                 <label className="flag">
-                  <div><b>👥 إدارة الفريق</b><div className="muted small">يضيف ويعدّل الأعضاء (ماعدا حسابك وحسابه)</div></div>
+                  <div><b><Ico e="👥" /> إدارة الفريق</b><div className="muted small">يضيف ويعدّل الأعضاء (ماعدا حسابك وحسابه)</div></div>
                   <input type="checkbox" className="switch" checked={perms.team} onChange={(e) => setPerms({ ...perms, team: e.target.checked })} />
                 </label>
               </section>
@@ -184,11 +185,11 @@ export default function MemberModal({ member, onClose }: { member: Member | null
                   <h3>الحساب</h3>
                   {newPw === null ? (
                     <div className="actions">
-                      <button className="btn btn-neutral" disabled={busy} onClick={() => { setErr(''); setPwDone(''); setNewPw(genPassword()); }}>🔑 كلمة سر جديدة</button>
+                      <button className="btn btn-neutral" disabled={busy} onClick={() => { setErr(''); setPwDone(''); setNewPw(genPassword()); }}><Ico e="🔑" /> كلمة سر جديدة</button>
                       <button className="btn btn-neutral" disabled={busy} onClick={() => { setErr(''); toggleActive.mutate(); }}>
-                        {member.is_active ? '⏸️ إيقاف الحساب' : '▶️ تفعيل الحساب'}
+                        {member.is_active ? '⏸ إيقاف الحساب' : '▶ تفعيل الحساب'}
                       </button>
-                      <button className="btn btn-danger" disabled={busy} onClick={() => { setErr(''); setConfirmDel(true); }}>🗑️ حذف</button>
+                      <button className="btn btn-danger" disabled={busy} onClick={() => { setErr(''); setConfirmDel(true); }}><Ico e="🗑" /> حذف</button>
                     </div>
                   ) : (
                     <div className="reason">
@@ -196,7 +197,7 @@ export default function MemberModal({ member, onClose }: { member: Member | null
                         كلمة السر الجديدة
                         <div className="pw-row">
                           <input className="inp" dir="ltr" value={newPw} onChange={(e) => setNewPw(e.target.value)} />
-                          <button type="button" className="btn btn-neutral" onClick={() => setNewPw(genPassword())}>🎲</button>
+                          <button type="button" className="btn btn-neutral" onClick={() => setNewPw(genPassword())}><Ico e="🎲" /></button>
                         </div>
                       </label>
                       <div className="actions">
@@ -205,7 +206,7 @@ export default function MemberModal({ member, onClose }: { member: Member | null
                       </div>
                     </div>
                   )}
-                  {pwDone ? <p className="note">✅ اتغيرت — ابعتها للعضو: <b dir="ltr">{pwDone}</b></p> : null}
+                  {pwDone ? <p className="note"><Ico e="✅" /> اتغيرت — ابعتها للعضو: <b dir="ltr">{pwDone}</b></p> : null}
                   {confirmDel ? (
                     <div className="del-confirm mt">
                       <b>متأكد إنك عايز تحذف العضو ده؟</b>

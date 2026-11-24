@@ -1,3 +1,4 @@
+import { Ico } from './Ico';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import { fetchCatalog } from '../lib/catalog';
@@ -181,7 +182,7 @@ export default function NewProviderModal({ onClose }: { onClose: () => void }) {
             <div className="drawer-title">مقدم خدمة جديد</div>
             <div className="muted small">{done ? 'تم الإنشاء' : `الخطوة ${step + 1} من 4 — ${STEPS[step]}`}</div>
           </div>
-          <button className="icon-btn" onClick={onClose} disabled={busy} aria-label="إغلاق">✕</button>
+          <button className="icon-btn" onClick={onClose} disabled={busy} aria-label="إغلاق"><Ico e="✕" /></button>
         </header>
 
         {!done ? (
@@ -206,7 +207,7 @@ export default function NewProviderModal({ onClose }: { onClose: () => void }) {
         <div className="drawer-body single">
           {done ? (
             <section className="section success">
-              <div className="big">✅</div>
+              <div className="big"><Ico e="✅" /></div>
               <h3>تم إنشاء «{done}»</h3>
               <p className="muted">
                 معتمد وظاهر في التطبيق. يقدر يدخل بالرقم <b dir="ltr">{toE164(phone)}</b> بكود SMS.
@@ -223,17 +224,17 @@ export default function NewProviderModal({ onClose }: { onClose: () => void }) {
                 رقم الموبايل
                 <input className="inp" dir="ltr" inputMode="tel" placeholder="01012345678" value={phone} onChange={(e) => setPhone(e.target.value)} />
               </label>
-              <p className="note">📱 مقدم الخدمة هيدخل بالرقم ده بكود SMS — مفيش كلمة سر.</p>
+              <p className="note"><Ico e="📱" /> مقدم الخدمة هيدخل بالرقم ده بكود SMS — مفيش كلمة سر.</p>
             </section>
           ) : step === 1 ? (
             <section className="section">
               <div className="img-row">
                 <label className="img-box logo">
-                  {logoUrl ? <img src={logoUrl} alt="" /> : <span>🖼️<small>اللوجو</small></span>}
+                  {logoUrl ? <img src={logoUrl} alt="" /> : <span><Ico e="🖼" /><small>اللوجو</small></span>}
                   <input type="file" accept="image/*" hidden onChange={onImg(setLogo)} />
                 </label>
                 <label className="img-box cover">
-                  {coverUrl ? <img src={coverUrl} alt="" /> : <span>🏞️<small>صورة الغلاف</small></span>}
+                  {coverUrl ? <img src={coverUrl} alt="" /> : <span><Ico e="🏞" /><small>صورة الغلاف</small></span>}
                   <input type="file" accept="image/*" hidden onChange={onImg(setCover)} />
                 </label>
               </div>
@@ -252,11 +253,11 @@ export default function NewProviderModal({ onClose }: { onClose: () => void }) {
               </label>
               <div className="flags">
                 <label className="flag">
-                  <div><b>موثّق ✔</b><div className="muted small">علامة توثيق جنب الاسم</div></div>
+                  <div><b>موثّق <Ico e="✔" /></b><div className="muted small">علامة توثيق جنب الاسم</div></div>
                   <input type="checkbox" className="switch" checked={verified} onChange={(e) => setVerified(e.target.checked)} />
                 </label>
                 <label className="flag">
-                  <div><b>مميز ⭐</b><div className="muted small">يظهر في الرئيسية</div></div>
+                  <div><b>مميز <Ico e="⭐" /></b><div className="muted small">يظهر في الرئيسية</div></div>
                   <input type="checkbox" className="switch" checked={featured} onChange={(e) => setFeatured(e.target.checked)} />
                 </label>
               </div>

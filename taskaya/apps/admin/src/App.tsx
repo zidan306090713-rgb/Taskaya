@@ -1,3 +1,4 @@
+import { Ico } from './components/Ico';
 import type { ReactNode } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import Layout from './components/Layout';
@@ -24,7 +25,7 @@ function Guard({ section, children }: { section: Section; children: ReactNode })
   if (to) return <Navigate to={to} replace />;
   return (
     <div className="card no-perms">
-      <div className="big">🔒</div>
+      <div className="big"><Ico e="🔒" /></div>
       <h3>حسابك مالوش صلاحيات لسه</h3>
       <p className="muted">كلّم المسؤول عشان يدّيك صلاحية على قسم.</p>
     </div>

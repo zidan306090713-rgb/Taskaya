@@ -1,3 +1,4 @@
+import { Ico } from '../components/Ico';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { useAuth } from '../lib/auth';
@@ -69,16 +70,16 @@ export default function Providers() {
             <div className="pcard-body">
               <ProviderLogo p={p} size={56} />
               <div className="pcard-name">
-                {p.business_name} {p.is_verified ? <span title="موثّق" className="verified">✔</span> : null}
+                {p.business_name} {p.is_verified ? <span title="موثّق" className="verified"><Ico e="✔" /></span> : null}
               </div>
               <div className="muted small">{p.owner?.full_name || '—'}</div>
               <div className="pcard-meta">
                 <span className={`badge t-${P_STATUS[p.status].tone}`}>{P_STATUS[p.status].label}</span>
-                {p.is_featured ? <span className="badge t-amber">⭐ مميز</span> : null}
+                {p.is_featured ? <span className="badge t-amber"><Ico e="⭐" /> مميز</span> : null}
                 {!p.is_available ? <span className="badge t-gray">مش متاح</span> : null}
               </div>
               <div className="pcard-foot">
-                <span>★ {Number(p.rating_avg).toFixed(1)} <span className="muted">({p.rating_count})</span></span>
+                <span><Ico e="★" /> {Number(p.rating_avg).toFixed(1)} <span className="muted">({p.rating_count})</span></span>
                 <span>{p.services.length} خدمة</span>
               </div>
             </div>

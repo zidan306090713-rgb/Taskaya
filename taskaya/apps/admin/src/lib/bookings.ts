@@ -85,7 +85,7 @@ export type Action = {
 
 const CANCEL: Action = { to: 'cancelled', label: 'إلغاء الحجز', kind: 'danger', needsReason: true };
 const REJECT: Action = { to: 'rejected', label: 'رفض', kind: 'danger', needsReason: true };
-const QUOTE: Action = { special: 'quote', label: '💬 إرسال عرض سعر', kind: 'neutral' };
+const QUOTE: Action = { special: 'quote', label: 'إرسال عرض سعر', kind: 'neutral' };
 
 export function actionsFor(b: Booking): Action[] {
   switch (b.status) {
@@ -101,7 +101,7 @@ export function actionsFor(b: Booking): Action[] {
       return [
         { special: 'approve', label: 'موافقة نيابةً عن العميل', kind: 'primary' },
         { special: 'decline', label: 'رفض نيابةً عن العميل', kind: 'neutral' },
-        { ...QUOTE, label: '💬 تعديل العرض' },
+        { ...QUOTE, label: 'تعديل العرض' },
         CANCEL,
       ];
     case 'confirmed':

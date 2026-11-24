@@ -1,3 +1,4 @@
+import { Ico } from '../components/Ico';
 import { useQuery } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -59,7 +60,7 @@ function Kpi(props: {
   return (
     <button className={`kpi${hot ? ' hot' : ''}${to ? '' : ' static'}`} onClick={to ? () => nav(to) : undefined} tabIndex={to ? 0 : -1}>
       <div className="kpi-top">
-        <span className="kpi-icon">{icon}</span>
+        <span className="kpi-icon"><Ico e={icon} /></span>
         {to ? <span className="kpi-go" aria-hidden="true">‹</span> : null}
       </div>
       <div className="kpi-label">{label}</div>
@@ -97,7 +98,7 @@ function BarChart({ data }: { data: DayPoint[] }) {
                 <b>{shortDay.format(new Date(d.day))}</b>
                 <span><i className="lg a" /> جديدة: {d.created}</span>
                 <span><i className="lg b" /> تمت: {d.completed}</span>
-                {d.revenue ? <span>💰 {money(d.revenue)}</span> : null}
+                {d.revenue ? <span><Ico e="💰" /> {money(d.revenue)}</span> : null}
               </div>
             ) : null}
             <div className="chart-pair">
@@ -181,11 +182,11 @@ export default function Home() {
       <header className="dash-head">
         <div>
           <h1 className="hello">
-            👋 {greeting()}{first ? ` يا ${first}` : ''}
+            {greeting()}{first ? ` يا ${first}` : ''}
           </h1>
           <p className="muted">
             {fullDate.format(new Date())}
-            {data ? (data.needs_total ? ` · عندك ${data.needs_total} حاجة مستنياك` : ' · مفيش حاجة مستنياك 🎉') : ''}
+            {data ? (data.needs_total ? ` · عندك ${data.needs_total} حاجة مستنياك` : ' · مفيش حاجة مستنياك') : ''}
           </p>
         </div>
         <div className="seg" role="tablist" aria-label="الفترة">
@@ -199,7 +200,7 @@ export default function Home() {
       <div className="kpis">
         <Kpi icon="⏳" label="مستني قبول" value={v(c?.pending)} hot={!!c?.pending} to="/bookings?tab=pending" />
         <Kpi icon="💬" label="مستني رد العميل" value={v(c?.awaiting)} to="/bookings?tab=awaiting_customer_approval" />
-        <Kpi icon="🛠️" label="شغّالة دلوقتي" value={v(c?.active)} to="/bookings?tab=confirmed" />
+        <Kpi icon="🛠" label="شغّالة دلوقتي" value={v(c?.active)} to="/bookings?tab=confirmed" />
         <Kpi
           icon="✅"
           label={`تمت (${days === 7 ? '7 أيام' : '30 يوم'})`}
@@ -233,7 +234,7 @@ export default function Home() {
       <div className="dash-grid">
         <section className="panel">
           <div className="panel-head">
-            <h3>📈 الحجوزات</h3>
+            <h3><Ico e="📈" /> الحجوزات</h3>
             <div className="legend">
               <span><i className="lg a" /> جديدة {c ? `(${nf.format(c.created)})` : ''}</span>
               <span><i className="lg b" /> تمت</span>
@@ -249,11 +250,11 @@ export default function Home() {
 
         <section className="panel needs">
           <div className="panel-head">
-            <h3>⚡ محتاج تحرّك {data?.needs_total ? <span className="count-pill">{data.needs_total}</span> : null}</h3>
+            <h3><Ico e="⚡" /> محتاج تحرّك {data?.needs_total ? <span className="count-pill">{data.needs_total}</span> : null}</h3>
           </div>
           {data && !data.needs.length ? (
             <div className="all-good">
-              <span>🎉</span>
+              <span><Ico e="🎉" /></span>
               <b>كله تمام</b>
               <span className="muted small">مفيش حجوزات مستنياك</span>
             </div>
@@ -277,16 +278,16 @@ export default function Home() {
 
       <div className="dash-row3">
         <section className="panel">
-          <div className="panel-head"><h3>🏆 أكتر مقدمي الخدمة</h3></div>
+          <div className="panel-head"><h3><Ico e="🏆" /> أكتر مقدمي الخدمة</h3></div>
           <Rank items={data?.top_providers ?? []} empty="مفيش حجوزات في الفترة دي" />
         </section>
         <section className="panel">
-          <div className="panel-head"><h3>🧰 أكتر الخدمات طلبًا</h3></div>
+          <div className="panel-head"><h3><Ico e="🧰" /> أكتر الخدمات طلبًا</h3></div>
           <Rank items={data?.top_services ?? []} empty="مفيش حجوزات في الفترة دي" />
         </section>
         <section className="panel">
           <div className="panel-head">
-            <h3>🕒 آخر الحجوزات</h3>
+            <h3><Ico e="🕒" /> آخر الحجوزات</h3>
             <button className="mini" onClick={() => nav('/bookings?tab=all')}>الكل</button>
           </div>
           <div className="mini-list">

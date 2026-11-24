@@ -1,3 +1,4 @@
+import { Ico } from './Ico';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../lib/auth';
@@ -14,8 +15,8 @@ export function ProviderLogo({ p, size }: { p: Provider; size: number }) {
 }
 
 const FLAGS = [
-  { key: 'is_verified', label: 'موثّق ✔', hint: 'علامة توثيق جنب الاسم' },
-  { key: 'is_featured', label: 'مميز ⭐', hint: 'يظهر في الأول في التطبيق' },
+  { key: 'is_verified', label: 'موثّق', hint: 'علامة توثيق جنب الاسم' },
+  { key: 'is_featured', label: 'مميز', hint: 'يظهر في الأول في التطبيق' },
   { key: 'is_available', label: 'متاح', hint: 'يقدر يستقبل طلبات جديدة' },
 ] as const;
 
@@ -69,10 +70,10 @@ export default function ProviderModal({ p, onClose }: { p: Provider; onClose: ()
           <ProviderLogo p={p} size={56} />
           <div>
             <div className="drawer-title">{p.business_name}</div>
-            <div className="muted small">انضم {fmtDate(p.created_at)} · ★ {Number(p.rating_avg).toFixed(1)} ({p.rating_count} تقييم)</div>
+            <div className="muted small">انضم {fmtDate(p.created_at)} · <Ico e="★" /> {Number(p.rating_avg).toFixed(1)} ({p.rating_count} تقييم)</div>
           </div>
           <span className={`badge t-${P_STATUS[p.status].tone}`}>{P_STATUS[p.status].label}</span>
-          <button className="icon-btn" onClick={onClose} aria-label="إغلاق">✕</button>
+          <button className="icon-btn" onClick={onClose} aria-label="إغلاق"><Ico e="✕" /></button>
         </header>
 
         <fieldset className="drawer-body" disabled={!canEdit}>

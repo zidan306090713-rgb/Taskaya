@@ -2,7 +2,7 @@ import type { LucideIcon } from 'lucide-react';
 import {
   Award, Ban, BadgeCheck, Banknote, Bell, Bug, Building2, CalendarDays, Car, CheckCheck, Circle, CircleCheck,
   ClipboardList, Clock, Construction, Crown, Dices, Droplets, Eye, FileText, Hammer, Hourglass, House,
-  Image as ImageIcon, ImagePlus, KeyRound, Layers, LayoutGrid, Leaf, Lock, LogOut, MapPin, MessageSquare, Moon,
+  Image as ImageIcon, ImagePlus, KeyRound, Layers, LayoutGrid, Leaf, Lock, LogOut, MapPin, Megaphone, MessageSquare, Moon,
   Package, Paintbrush, Palette, Pencil, Phone, Plus, Search, Shirt, Smartphone, Snowflake, Sparkles, Star, Trash2,
   TrendingUp, TriangleAlert, User, Users, Wallet, Wrench, X, Zap,
 } from 'lucide-react';
@@ -15,7 +15,7 @@ const MAP: Record<string, LucideIcon> = {
   '🗑': Trash2, '✕': X, '❌': X, '★': Star, '⭐': Star, '✔': BadgeCheck, '🔑': KeyRound, '🎲': Dices,
   '🌙': Moon, '🎨': Palette, '🚪': LogOut, '📍': MapPin, '📝': FileText, '📱': Smartphone,
   '🖼': ImageIcon, '🏞': ImagePlus, '⏳': Hourglass, '⌛': Hourglass, '📅': CalendarDays, '🗓': CalendarDays,
-  '🔔': Bell, '➕': Plus, '🔍': Search, '📞': Phone, '⚠': TriangleAlert, '🚧': Construction,
+  '🔔': Bell, '➕': Plus, '🔍': Search, '📞': Phone, '⚠': TriangleAlert, '🚧': Construction, '📣': Megaphone,
   // أيقونات الأقسام (lib/catalog.ts)
   '💧': Droplets, '✨': Sparkles, '❄': Snowflake, '🔨': Hammer, '🖌': Paintbrush, '🌿': Leaf, '🐞': Bug,
   '🚗': Car, '👕': Shirt, '📦': Package, '🔲': LayoutGrid,

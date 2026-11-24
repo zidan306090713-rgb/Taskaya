@@ -535,3 +535,29 @@ fieldset.drawer-body:disabled .switch { opacity: 0.6; cursor: default; }
 .cm-err { color: #E5484D; font-size: 12.5px; width: 100%; }
 .cm-empty { padding: 10px 0; }
 .cm-try { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+/* ===== صفحة الرسائل ===== */
+.ms-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(260px, 1fr); gap: 16px; align-items: start; margin-bottom: 18px; }
+@media (max-width: 900px) { .ms-grid { grid-template-columns: 1fr; } }
+.ms-form { display: grid; gap: 12px; }
+.ms-label { font-weight: 600; font-size: 13.5px; display: flex; justify-content: space-between; align-items: center; }
+.ms-form textarea.inp { min-height: 110px; resize: vertical; font-family: inherit; }
+.ms-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.ms-chip { display: inline-flex; align-items: center; gap: 6px; background: transparent; color: inherit; font: inherit; font-size: 13px;
+  border: 1px solid color-mix(in srgb, currentColor 18%, transparent); border-radius: 999px; padding: 4px 10px; cursor: pointer; }
+.ms-results { display: grid; gap: 2px; margin-top: 6px; max-height: 220px; overflow: auto; }
+.ms-result { display: flex; align-items: center; gap: 8px; text-align: start; background: transparent; color: inherit; font: inherit;
+  border: 0; border-radius: 10px; padding: 8px 10px; cursor: pointer; }
+.ms-result:hover { background: color-mix(in srgb, currentColor 6%, transparent); }
+.ms-count { font-size: 14px; }
+.ms-confirm { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.ms-phone { background: #111318; color: #fff; border-radius: 22px; padding: 18px 14px; }
+.ms-notif { background: #2A2D34; border-radius: 16px; padding: 12px 14px; display: grid; gap: 4px; }
+.ms-notif-top { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #B8BCC6; }
+.ms-notif-icon { width: 22px; height: 22px; border-radius: 6px; background: #0B1B3F; display: grid; place-items: center; }
+.ms-notif b { font-size: 14px; overflow-wrap: anywhere; }
+.ms-notif p { margin: 0; font-size: 13px; color: #D5D8DE; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ms-hist { display: grid; }
+.ms-hist-item { display: grid; gap: 4px; padding: 12px 0; border-bottom: 1px solid color-mix(in srgb, currentColor 8%, transparent); }
+.ms-hist-item:last-child { border-bottom: 0; }
+.ms-meta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }

@@ -135,7 +135,7 @@ Deno.serve(async (req) => {
         sound: 'default',
         channelId: 'default',
         priority: 'high',
-        data: { url: '/orders', booking_id: bookingId },
+        data: { url: n.data?.url ?? '/orders', booking_id: bookingId },
       };
     });
 

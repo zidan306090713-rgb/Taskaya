@@ -7,29 +7,63 @@ const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SE
 });
 
 type Lang = 'ar' | 'en';
+const TZ = 'Africa/Cairo';
+const SEP = ' · ';
+
+// تاريخ اليوم بتوقيت مصر (YYYY-MM-DD) عشان نعرف "اليوم / غدًا"
+function dayKey(d: Date) {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+}
+
+// الميعاد بشكل لطيف: "غدًا، ٥:٠٠ م" / "الخميس، ٥:٠٠ م" / "٢٧ نوفمبر، ٥:٠٠ م"
+function when(lang: Lang, iso: string | null): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
+  const ar = lang === 'ar';
+  const loc = ar ? 'ar-EG' : 'en-US';
+  const time = new Intl.DateTimeFormat(loc, { timeZone: TZ, hour: 'numeric', minute: '2-digit' }).format(d);
+  const diff = Math.round((Date.parse(dayKey(d)) - Date.parse(dayKey(new Date()))) / 86400000);
+  let day: string;
+  if (diff === 0) day = ar ? 'اليوم' : 'Today';
+  else if (diff === 1) day = ar ? 'غدًا' : 'Tomorrow';
+  else if (diff > 1 && diff < 7) day = new Intl.DateTimeFormat(loc, { timeZone: TZ, weekday: 'long' }).format(d);
+  else day = new Intl.DateTimeFormat(loc, { timeZone: TZ, day: 'numeric', month: 'long' }).format(d);
+  return `${day}${ar ? '، ' : ', '}${time}`;
+}
+
+type Ctx = { svc: string; when: string | null; who: string | null; price: string | null; reason: string | null };
+
+const join = (...parts: Array<string | null | undefined | false>) => parts.filter(Boolean).join(SEP);
 
 // نص الإشعار للعميل حسب الحالة الجديدة ولغته
-function text(lang: Lang, status: string, n: number, svc: string, price: string | null): [string, string] | null {
+function text(lang: Lang, status: string, c: Ctx): [string, string] | null {
   const ar = lang === 'ar';
-  const tag = ar ? `حجز #${n} — ${svc}` : `Booking #${n} — ${svc}`;
+  const withWho = c.who ? (ar ? `مع ${c.who}` : `with ${c.who}`) : null;
   switch (status) {
     case 'accepted':
-      return [ar ? 'تم قبول طلبك 👍' : 'Your request was accepted 👍', tag];
+      return [ar ? 'تم قبول طلبك 👍' : 'Request accepted 👍', join(c.svc, c.when, withWho)];
     case 'confirmed':
-      return [ar ? 'تم تأكيد حجزك ✅' : 'Your booking is confirmed ✅', tag];
+      return [ar ? 'حجزك مؤكد ✅' : 'Booking confirmed ✅', join(c.svc, c.when, withWho)];
     case 'awaiting_customer_approval':
       return [
         ar ? 'عرض سعر جديد 💬' : 'New price quote 💬',
-        ar ? `${tag}: ${price} ج.م — اضغط للرد` : `${tag}: ${price} EGP — tap to reply`,
+        ar ? join(`${c.price} ج.م لخدمة ${c.svc}`, 'اضغط للرد') : join(`${c.price} EGP for ${c.svc}`, 'Tap to reply'),
       ];
     case 'in_progress':
-      return [ar ? 'بدأ تنفيذ طلبك 🛠️' : 'Work has started 🛠️', tag];
+      return [ar ? 'بدأ العمل على طلبك 🛠️' : 'Work has started 🛠️', join(c.svc, withWho)];
     case 'completed':
-      return [ar ? 'تم تنفيذ طلبك 🎉' : 'Your service is done 🎉', tag];
+      return [
+        ar ? 'تم تنفيذ خدمتك 🎉' : 'Service completed 🎉',
+        join(c.svc, ar ? 'شكرًا لاختيارك TASKAYA' : 'Thanks for choosing TASKAYA'),
+      ];
     case 'cancelled':
-      return [ar ? 'تم إلغاء الحجز' : 'Booking cancelled', tag];
+      return [ar ? 'تم إلغاء الحجز' : 'Booking cancelled', join(c.svc, c.reason ?? c.when)];
     case 'rejected':
-      return [ar ? 'اعتذر مقدم الخدمة عن طلبك' : 'The provider declined your request', tag];
+      return [
+        ar ? 'اعتذر مقدم الخدمة عن طلبك' : 'Provider declined your request',
+        join(c.svc, ar ? 'يمكنك اختيار مقدم خدمة آخر' : 'You can choose another provider'),
+      ];
     default:
       return null;
   }
@@ -57,13 +91,22 @@ Deno.serve(async (req) => {
     const bookingId: string | null = n.data?.booking_id ?? null;
     // deno-lint-ignore no-explicit-any
     let booking: any = null;
+    let who: string | null = null;
     if (bookingId) {
       const { data } = await db
         .from('bookings')
-        .select('booking_number, status, quoted_price, customer_id, services(name_ar, name_en)')
+        .select('status, quoted_price, customer_id, provider_id, scheduled_at, cancel_reason, services(name_ar, name_en)')
         .eq('id', bookingId)
         .maybeSingle();
       booking = data;
+      if (booking?.provider_id) {
+        const { data: p } = await db
+          .from('provider_profiles')
+          .select('business_name')
+          .eq('id', booking.provider_id)
+          .maybeSingle();
+        who = p?.business_name?.trim() || null;
+      }
     }
     const forCustomer = booking && booking.customer_id === n.user_id;
 
@@ -72,8 +115,17 @@ Deno.serve(async (req) => {
       let pair: [string, string] | null = null;
       if (forCustomer) {
         const svc = (lang === 'ar' ? booking.services?.name_ar : booking.services?.name_en) ?? '';
-        const price = booking.quoted_price != null ? String(booking.quoted_price) : null;
-        pair = text(lang, n.data?.status ?? booking.status, booking.booking_number, svc, price);
+        const price =
+          booking.quoted_price != null
+            ? new Intl.NumberFormat(lang === 'ar' ? 'ar-EG' : 'en-US').format(Number(booking.quoted_price))
+            : null;
+        pair = text(lang, n.data?.status ?? booking.status, {
+          svc,
+          when: when(lang, booking.scheduled_at),
+          who,
+          price,
+          reason: booking.cancel_reason?.trim() || null,
+        });
       }
       const [title, body] = pair ?? [n.title, n.body ?? ''];
       return {

@@ -60,7 +60,7 @@ export default function ProHome() {
   const goRequests = () => router.push('/pro/requests' as never);
 
   return (
-    <Screen title={me?.business_name ?? tr('أهلًا بيك', 'Welcome')} subtitle={tr('لوحة مقدم الخدمة', 'Provider dashboard')}>
+    <Screen hero title={me?.business_name ?? tr('أهلًا بيك', 'Welcome')} subtitle={tr('لوحة مقدم الخدمة', 'Provider dashboard')}>
       <View style={s.panel}>
         <View style={s.panelRow}>
           <Ionicons name={me?.is_available ? 'radio-button-on' : 'radio-button-off'} size={22} color={me?.is_available ? '#16A34A' : c.iconMuted} />

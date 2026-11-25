@@ -271,7 +271,7 @@ export default function ProRequests() {
   const open = list?.find((b) => b.id === openId) ?? null;
 
   return (
-    <Screen title={tr('الطلبات', 'Requests')}>
+    <Screen hero title={tr('الطلبات', 'Requests')}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filters}>
         {FILTERS.map((f) => {
           const on = f.k === filter;

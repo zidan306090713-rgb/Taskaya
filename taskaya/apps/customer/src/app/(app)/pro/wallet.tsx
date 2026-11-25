@@ -38,7 +38,7 @@ export default function ProWallet() {
   const credit = balance < -0.004;
 
   return (
-    <Screen title={tr('المحفظة', 'Wallet')}>
+    <Screen hero title={tr('المحفظة', 'Wallet')}>
       <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.hero}>
         <Text style={s.heroLabel}>{owes ? tr('عليك لتاسكاية', 'You owe TASKAYA') : credit ? tr('ليك عند تاسكاية', 'TASKAYA owes you') : tr('رصيدك', 'Your balance')}</Text>
         <Text style={s.heroNum}>{rows ? money(Math.abs(balance)) : '…'}</Text>

@@ -561,3 +561,27 @@ fieldset.drawer-body:disabled .switch { opacity: 0.6; cursor: default; }
 .ms-hist-item { display: grid; gap: 4px; padding: 12px 0; border-bottom: 1px solid color-mix(in srgb, currentColor 8%, transparent); }
 .ms-hist-item:last-child { border-bottom: 0; }
 .ms-meta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+/* ===== القايمة الجانبية المصغّرة (كمبيوتر بس) ===== */
+.side-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 6px; }
+.side-head .brand { flex: 1; min-width: 0; }
+.side-toggle { width: 32px; height: 32px; border-radius: 11px; flex-shrink: 0; margin-top: 11px; cursor: pointer;
+  display: grid; place-items: center; color: #fff; background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.28); transition: background 0.15s; }
+.side-toggle:hover { background: rgba(255, 255, 255, 0.24); }
+.side-toggle svg { transition: transform 0.25s ease; }
+@media (max-width: 800px) { .side-toggle { display: none; } }
+@media (min-width: 801px) {
+  .sidebar { transition: width 0.25s ease, padding 0.25s ease; }
+  .sidebar.side-mini { width: 84px !important; padding-left: 12px !important; padding-right: 12px !important; }
+  .sidebar.side-mini .side-head { flex-direction: column; align-items: center; }
+  .sidebar.side-mini .brand { padding: 0 0 8px; justify-content: center; }
+  .sidebar.side-mini .brand > div { display: none; }
+  .sidebar.side-mini .logo-chip { width: 46px; height: 46px; border-radius: 15px; }
+  .sidebar.side-mini .side-toggle { margin: 0 0 14px; }
+  .sidebar.side-mini .side-toggle svg { transform: rotate(180deg); }
+  .sidebar.side-mini .nav a { justify-content: center; padding: 12px 0; }
+  .sidebar.side-mini .nav-label { display: none; }
+  .sidebar.side-mini .acct-row { justify-content: center; padding-left: 0; padding-right: 0; }
+  .sidebar.side-mini .acct-row > div, .sidebar.side-mini .acct-row > span[aria-hidden] { display: none; }
+}

@@ -1,3 +1,4 @@
+import { Skeleton } from '../components/Skeleton';
 import { Ico } from '../components/Ico';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -44,7 +45,7 @@ export default function Team() {
       </p>
 
       {error ? <div className="alert">تعذّر التحميل: {(error as Error).message}</div> : null}
-      {isLoading ? <div className="card muted">جاري التحميل…</div> : null}
+      {isLoading ? <Skeleton kind="list" /> : null}
       {data && !data.length ? (
         <div className="card team-empty">
           <div className="big"><Ico e="👥" /></div>

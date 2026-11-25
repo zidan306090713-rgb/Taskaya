@@ -1,3 +1,4 @@
+import { Skeleton } from '../components/Skeleton';
 import { Ico } from '../components/Ico';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
@@ -83,7 +84,7 @@ export default function Catalog() {
         <button className="btn btn-primary" onClick={newCat}>+ قسم رئيسي</button>
       </div>
       {error ? <div className="alert">تعذّر التحميل: {(error as Error).message}</div> : null}
-      {isLoading ? <div className="card muted">جاري التحميل…</div> : null}
+      {isLoading ? <Skeleton kind="list" /> : null}
 
       <div className="cat-row">
         {data?.map((c) => (

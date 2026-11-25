@@ -1,6 +1,7 @@
 import { Ico } from './Ico';
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
+import { ChevronRight } from 'lucide-react';
 import { useAuth, type Admin, type Section } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 import { ACCENTS, useTheme } from '../lib/theme';
@@ -39,6 +40,8 @@ function Brand({ size }: { size: number }) {
 export default function Layout() {
   const { admin, can } = useAuth();
   const [menu, setMenu] = useState(false);
+  const [mini, setMini] = useState(() => localStorage.getItem('taskaya-admin-mini') === '1');
+  useEffect(() => { localStorage.setItem('taskaya-admin-mini', mini ? '1' : '0'); }, [mini]);
   const ini = initials(admin);
   const links = LINKS.filter((l) => can(l.section));
 
@@ -51,13 +54,18 @@ export default function Layout() {
         </button>
       </header>
 
-      <aside className="sidebar">
-        <Brand size={42} />
+      <aside className={mini ? 'sidebar side-mini' : 'sidebar'}>
+        <div className="side-head">
+          <Brand size={42} />
+          <button className="side-toggle" onClick={() => setMini((v) => (v ? false : true))} aria-label={mini ? 'فتح القايمة' : 'تصغير القايمة'} title={mini ? 'فتح القايمة' : 'تصغير القايمة'}>
+            <ChevronRight size={18} strokeWidth={2.2} />
+          </button>
+        </div>
         <nav className="nav">
           {links.map((l) => (
-            <NavLink key={l.to} to={l.to} end={l.end}>
+            <NavLink key={l.to} to={l.to} end={l.end} title={l.label}>
               <span><Ico e={l.icon} /></span>
-              {l.label}
+              <span className="nav-label">{l.label}</span>
             </NavLink>
           ))}
         </nav>
@@ -77,7 +85,7 @@ export default function Layout() {
 
       <nav className="tabbar">
         {links.map((l) => (
-          <NavLink key={l.to} to={l.to} end={l.end}>
+          <NavLink key={l.to} to={l.to} end={l.end} title={l.label}>
             <span><Ico e={l.icon} /></span>
             {l.short}
           </NavLink>

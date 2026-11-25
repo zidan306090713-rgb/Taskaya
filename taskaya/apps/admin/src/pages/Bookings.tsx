@@ -7,7 +7,7 @@ import { fetchBookings, fmtDate, money, STATUS, STATUS_ORDER, type Status } from
 type Tab = 'all' | Status;
 
 export default function Bookings() {
-  const { data, isLoading, error } = useQuery({ queryKey: ['bookings'], queryFn: fetchBookings, refetchInterval: 20_000 });
+  const { data, isLoading, error } = useQuery({ queryKey: ['bookings'], queryFn: fetchBookings, refetchInterval: 60_000 });
   const [params] = useSearchParams();
   const [tab, setTab] = useState<Tab>(() => (params.get('tab') as Tab) || 'pending');
   const [q, setQ] = useState('');

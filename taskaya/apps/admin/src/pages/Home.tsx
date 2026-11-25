@@ -4,7 +4,7 @@ import { useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import BookingDrawer from '../components/BookingDrawer';
 import { useAuth } from '../lib/auth';
-import { fetchBookings, money, STATUS } from '../lib/bookings';
+import { fetchBooking, money, STATUS } from '../lib/bookings';
 import { fetchDashboard, type DayPoint, type MiniBooking } from '../lib/dashboard';
 
 const nf = new Intl.NumberFormat('en-US');
@@ -162,7 +162,7 @@ export default function Home() {
   const [openId, setOpenId] = useState<string | null>(null);
   // المفتاح بيبدأ بـ 'stats' عشان أي تعديل في حجز يحدّث الرئيسية لوحده
   const { data, isLoading, error } = useQuery({ queryKey: ['stats', days], queryFn: () => fetchDashboard(days) });
-  const bookings = useQuery({ queryKey: ['bookings'], queryFn: fetchBookings });
+  // الحجز بيتجاب لوحده لما تدوس عليه (بدل تحميل 500 حجز)
 
   const first = (admin?.full_name ?? '').trim().split(/\s+/)[0] || '';
   const s = data?.series ?? [];
@@ -170,11 +170,11 @@ export default function Home() {
   const m = data?.money;
   const v = (x: number | undefined, f: (n: number) => string = (n) => nf.format(n)) => (isLoading || x == null ? '…' : f(x));
 
-  const open = bookings.data?.find((b) => b.id === openId) ?? null;
+  const one = useQuery({ queryKey: ['bookings', 'one', openId], queryFn: () => fetchBooking(openId as string), enabled: Boolean(openId) });
+  const open = one.data ?? null;
   const openBooking = (id: string) => {
     if (!can('bookings')) return;
-    if (bookings.data?.some((b) => b.id === id)) setOpenId(id);
-    else nav('/bookings');
+    setOpenId(id);
   };
 
   return (

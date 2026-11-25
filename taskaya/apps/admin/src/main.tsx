@@ -8,7 +8,7 @@ import { AuthProvider } from './lib/auth';
 import { ThemeProvider } from './lib/theme';
 import './index.css';
 
-const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 15_000, retry: 1 } } });
+const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 120_000, retry: 1 } } });
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

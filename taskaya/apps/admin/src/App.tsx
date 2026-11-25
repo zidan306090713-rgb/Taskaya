@@ -1,16 +1,19 @@
+import { Skeleton } from './components/Skeleton';
 import { Ico } from './components/Ico';
-import type { ReactNode } from 'react';
+import { lazy, Suspense, type ReactNode } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import Layout from './components/Layout';
 import { useAuth, type Section } from './lib/auth';
-import Bookings from './pages/Bookings';
-import Catalog from './pages/Catalog';
-import Commission from './pages/Commission';
-import Messages from './pages/Messages';
-import Home from './pages/Home';
 import Login from './pages/Login';
-import Providers from './pages/Providers';
-import Team from './pages/Team';
+
+// كل صفحة بتتحمّل لما تفتحها بس — أول فتحة للوحة أسرع
+const Home = lazy(() => import('./pages/Home'));
+const Bookings = lazy(() => import('./pages/Bookings'));
+const Providers = lazy(() => import('./pages/Providers'));
+const Commission = lazy(() => import('./pages/Commission'));
+const Messages = lazy(() => import('./pages/Messages'));
+const Catalog = lazy(() => import('./pages/Catalog'));
+const Team = lazy(() => import('./pages/Team'));
 
 function RequireAdmin({ children }: { children: ReactNode }) {
   const { loading, admin } = useAuth();
@@ -22,7 +25,7 @@ function RequireAdmin({ children }: { children: ReactNode }) {
 // القسم بيفتح بس لو العضو معاه صلاحيته — غير كده بيروح لأول قسم مسموح له
 function Guard({ section, children }: { section: Section; children: ReactNode }) {
   const { can, firstPath } = useAuth();
-  if (can(section)) return children;
+  if (can(section)) return <Suspense fallback={<Skeleton kind="page" />}>{children}</Suspense>;
   const to = firstPath();
   if (to) return <Navigate to={to} replace />;
   return (

@@ -1,3 +1,4 @@
+import { Skeleton } from '../components/Skeleton';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { Ico } from '../components/Ico';
@@ -103,7 +104,7 @@ export default function Messages() {
 
       <h3 className="cm-title"><Ico e="🕒" /> الرسائل اللي اتبعتت</h3>
       {history.error ? <div className="alert">تعذّر التحميل: {msgError(history.error)}</div> : null}
-      {history.isLoading ? <div className="card muted">جاري التحميل…</div> : null}
+      {history.isLoading ? <Skeleton kind="list" /> : null}
       {history.data && history.data.length === 0 ? <div className="card muted">لسه مفيش رسائل اتبعتت</div> : null}
       {history.data?.length ? (
         <div className="card ms-hist">

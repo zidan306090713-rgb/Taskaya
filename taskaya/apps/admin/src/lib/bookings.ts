@@ -194,3 +194,11 @@ export function friendlyError(e: unknown) {
   if (m.includes('Price is required')) return 'لازم يكون فيه سعر الأول';
   return m;
 }
+
+// حجز واحد بالتفاصيل (للرئيسية: بدل تحميل كل الحجوزات عشان نفتح واحد)
+type OneBooking = Awaited<ReturnType<typeof fetchBookings>>[number];
+export async function fetchBooking(id: string): Promise<OneBooking | null> {
+  const { data, error } = await supabase.from('bookings').select(SELECT).eq('id', id).maybeSingle();
+  if (error) throw error;
+  return (data ?? null) as unknown as OneBooking | null;
+}

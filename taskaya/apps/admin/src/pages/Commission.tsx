@@ -1,3 +1,4 @@
+import { Skeleton } from '../components/Skeleton';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { Ico } from '../components/Ico';
@@ -75,7 +76,7 @@ export default function Commission() {
           <div className="toolbar">
             <input className="inp search" placeholder="ابحث باسم مقدم الخدمة" value={q} onChange={(e) => setQ(e.target.value)} />
           </div>
-          {isLoading ? <div className="card muted">جاري التحميل…</div> : null}
+          {isLoading ? <Skeleton kind="table" /> : null}
           {!isLoading && shown.length === 0 ? <div className="card muted">مفيش مقدمي خدمة هنا</div> : null}
           {shown.length ? (
             <div className="card cm-scroll">
@@ -197,7 +198,7 @@ function Statement({ p, onBack }: { p: BalanceRow; onBack: () => void }) {
 
       <h3 className="cm-title"><Ico e="📋" /> كشف الحساب</h3>
       {error ? <div className="alert">تعذّر التحميل: {rpcError(error)}</div> : null}
-      {isLoading ? <div className="card muted">جاري التحميل…</div> : null}
+      {isLoading ? <Skeleton kind="table" /> : null}
       {data && data.length === 0 ? <div className="card muted">مفيش حركات لسه</div> : null}
       {data?.length ? (
         <div className="card cm-scroll">
@@ -252,7 +253,7 @@ function Rules() {
         لو نوعه مالوش شرايح بتتطبق القاعدة العامة. أي تغيير بيأثر على الحجوزات اللي هتخلص بعد كده بس.
       </p>
       {error ? <div className="alert">تعذّر التحميل: {rpcError(error)}</div> : null}
-      {isLoading ? <div className="card muted">جاري التحميل…</div> : null}
+      {isLoading ? <Skeleton kind="table" /> : null}
       {data ? (
         <div className="cm-rules">
           {GROUPS.map((g) => {

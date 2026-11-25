@@ -1,3 +1,4 @@
+import { Skeleton } from '../components/Skeleton';
 import { Ico } from '../components/Ico';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
@@ -60,7 +61,7 @@ export default function Providers() {
       </div>
 
       {error ? <div className="alert">تعذّر التحميل: {(error as Error).message}</div> : null}
-      {isLoading ? <div className="card muted">جاري التحميل…</div> : null}
+      {isLoading ? <Skeleton kind="cards" /> : null}
       {!isLoading && shown.length === 0 ? <div className="card muted">مفيش مقدمي خدمة هنا</div> : null}
 
       <div className="pgrid">

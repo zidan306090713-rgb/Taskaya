@@ -219,7 +219,7 @@ export function getProviderService(id: string): Promise<ServiceOption | null> {
   return cached(psStore, id, PROVIDER_TTL, async () => {
     const { data } = await supabase
       .from('provider_services')
-      .select('id, provider_id, pricing_model, base_price, estimated_duration_minutes, provider_profiles(business_name), services(name_ar, name_en)')
+      .select('id, provider_id, pricing_model, base_price, estimated_duration_minutes, provider_profiles(business_name, logo_url, cover_url), services(name_ar, name_en)')
       .eq('id', id)
       .single();
     return data as unknown as ServiceOption | null;
@@ -295,7 +295,7 @@ export type Booking = {
   quote_prev_price: number | null;
   quote_note: string | null;
   cancel_reason: string | null;
-  provider_profiles: { business_name: string } | null;
+  provider_profiles: { business_name: string; logo_url?: string | null; cover_url?: string | null } | null;
   services: { name_ar: string; name_en: string } | null;
 };
 

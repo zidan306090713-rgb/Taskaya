@@ -21,11 +21,11 @@ export function verifyOtp(phone: string, token: string) {
 }
 
 // تسجيل حساب جديد بكلمة مرور: يرسل كود SMS للتأكد من الرقم، والحساب يتفعّل بعد verifyOtp
-export function signUpWithPhone({ phone, password, fullName }: { phone: string; password: string; fullName: string }) {
+export function signUpWithPhone({ phone, password, fullName, role = 'customer' }: { phone: string; password: string; fullName: string; role?: 'customer' | 'provider' }) {
   return supabase.auth.signUp({
     phone,
     password,
-    options: { channel: 'sms', data: { full_name: fullName.trim(), role: 'customer' } },
+    options: { channel: 'sms', data: { full_name: fullName.trim(), role, ...(role === 'provider' ? { self_signup: true } : {}) } },
   });
 }
 

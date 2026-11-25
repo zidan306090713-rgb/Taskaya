@@ -1,24 +1,32 @@
-import { invalidateBookings } from '@/lib/api';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Button } from '@/components/ui/Button';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Chips } from '@/components/ui/Chips';
+import { GradientHeader } from '@/components/ui/GradientHeader';
 import { PremiumInput } from '@/components/ui/PremiumInput';
-import { Screen } from '@/components/ui/Screen';
 import { PageSkeleton } from '@/components/ui/Skeleton';
+import { StickyBar } from '@/components/ui/StickyBar';
 import { isRTL, lang, tr } from '@/i18n';
-import { Address, Area, getAreas, getMyAddresses, getProviderService, invalidateAddresses, peekAddresses, peekAreas, peekProviderService, ServiceOption } from '@/lib/api';
+import {
+  Address, Area, getAreas, getMyAddresses, getProviderService, invalidateAddresses, invalidateBookings,
+  peekAddresses, peekAreas, peekProviderService, ServiceOption,
+} from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/AuthProvider';
 import { useTheme } from '@/providers/ThemeProvider';
-import { fonts, Palette, radius, spacing } from '@/theme';
+import { fonts, Palette } from '@/theme';
 
 const SLOTS = [9, 11, 13, 15, 17, 19];
 const locale = () => (lang === 'ar' ? 'ar-EG' : 'en-US');
 
+/** صفحة الحجز: ملخص ثابت + الأيام في سطر + الأوقات + العنوان + التفاصيل + شريط "تأكيد الحجز" */
 export default function Booking() {
   const { c } = useTheme();
   const styles = useMemo(() => makeStyles(c), [c]);
+  const insets = useSafeAreaInsets();
   const { psid } = useLocalSearchParams<{ psid: string }>();
   const router = useRouter();
   const { session } = useAuth();
@@ -27,8 +35,11 @@ export default function Booking() {
   const [svc, setSvc] = useState<ServiceOption | null>(() => peekProviderService(psid));
   const [addresses, setAddresses] = useState<Address[]>(() => peekAddresses(uid) ?? []);
   const [areas, setAreas] = useState<Area[]>(() => peekAreas() ?? []);
-  const [addrId, setAddrId] = useState<string | undefined>(() => { const a = peekAddresses(uid); return a ? (a[0]?.id ?? 'new') : undefined; });
-  const [areaId, setAreaId] = useState<string | undefined>();
+  const [addrId, setAddrId] = useState<string | undefined>(() => {
+    const a = peekAddresses(uid);
+    return a ? a[0]?.id ?? 'new' : undefined;
+  });
+  const [areaId, setAreaId] = useState<string | null>(null);
   const [street, setStreet] = useState('');
   const [building, setBuilding] = useState('');
   const [details, setDetails] = useState('');
@@ -43,7 +54,7 @@ export default function Booking() {
     getAreas().then(setAreas);
     getMyAddresses(uid).then((a) => {
       setAddresses(a);
-      setAddrId(a[0]?.id ?? 'new');
+      setAddrId((cur) => cur ?? a[0]?.id ?? 'new');
     });
   }, [psid, uid]);
 
@@ -55,13 +66,25 @@ export default function Booking() {
         d.setHours(0, 0, 0, 0);
         return d;
       }),
-    []
+    [],
   );
   const isPast = (h: number) => dayIdx === 0 && h <= new Date().getHours();
-  const dayLabel = (d: Date) => d.toLocaleDateString(locale(), { weekday: 'short', day: 'numeric', month: 'short' });
+  const weekday = (d: Date, i: number) =>
+    i === 0 ? tr('النهارده', 'Today') : i === 1 ? tr('بكرة', 'Tomorrow') : d.toLocaleDateString(locale(), { weekday: 'short' });
+  const dayNum = (d: Date) => d.toLocaleDateString(locale(), { day: 'numeric' });
   const hourLabel = (h: number) => new Date(2000, 0, 1, h).toLocaleTimeString(locale(), { hour: 'numeric', minute: '2-digit' });
 
-  if (!svc) return <Screen><Text style={styles.muted}>...</Text></Screen>;
+  if (!svc) {
+    return (
+      <View style={{ flex: 1 }}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <GradientHeader title={tr('احجز خدمتك', 'Book a service')} />
+        <View style={{ padding: 16 }}>
+          <PageSkeleton />
+        </View>
+      </View>
+    );
+  }
 
   const svcName = lang === 'ar' ? svc.services.name_ar : svc.services.name_en;
   const priceText =
@@ -70,10 +93,12 @@ export default function Booking() {
       : `${svc.pricing_model === 'starting_from' ? tr('يبدأ من', 'From') + ' ' : ''}${svc.base_price} ${tr('ج.م', 'EGP')}`;
   const note =
     svc.pricing_model === 'fixed'
-      ? tr('السعر ثابت', 'Fixed price')
+      ? tr('سعر ثابت', 'Fixed price')
       : svc.pricing_model === 'starting_from'
-      ? tr('السعر النهائي يتحدد بعد المعاينة', 'Final price is confirmed after inspection')
-      : tr('سيرسل لك مقدم الخدمة عرض سعر للموافقة عليه', 'The provider will send you a quote to approve');
+      ? tr('السعر النهائي بعد المعاينة', 'Final after inspection')
+      : tr('هيوصلك عرض سعر توافق عليه', "You'll approve a quote");
+  const addrDone = addrId !== undefined && (addrId !== 'new' || (!!areaId && !!street.trim()));
+  const step = 1 + (hour !== undefined ? 1 : 0) + (hour !== undefined && addrDone ? 1 : 0);
 
   const submit = async () => {
     setError('');
@@ -111,48 +136,102 @@ export default function Booking() {
     });
     setLoading(false);
     if (bookErr && bookErr.code !== '23505') return setError(bookErr.message);
-    (invalidateBookings(), router.dismissTo('/orders'));
+    invalidateBookings();
+    router.dismissTo('/orders');
   };
 
+  const Sec = ({ children }: { children: string }) => (
+    <View style={styles.secRow}>
+      <LinearGradient colors={c.gradient} style={styles.secBar} />
+      <Text style={styles.sec}>{children}</Text>
+    </View>
+  );
+
   return (
-    <>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          title: tr('حجز خدمة', 'Book a service'),
-          headerTitleStyle: { fontFamily: fonts.bold, color: c.text },
-          headerStyle: { backgroundColor: c.headerBg },
-          headerShadowVisible: false,
-          headerTintColor: c.accentText,
-        }}
-      />
-      <Screen>
+    <View style={{ flex: 1 }}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <GradientHeader title={tr('احجز خدمتك', 'Book a service')} padBottom={54}>
+        <View style={styles.steps}>
+          {[1, 2, 3].map((i) => (
+            <View key={i} style={[styles.step, i <= step && styles.stepOn]} />
+          ))}
+        </View>
+      </GradientHeader>
+
+      <View style={styles.inner}>
+        {/* ===== الملخص (ثابت) ===== */}
         <View style={styles.summary}>
-          <Text style={styles.svcName}>{svcName}</Text>
-          <Text style={styles.summaryMuted}>{svc.provider_profiles.business_name}</Text>
-          <Text style={styles.price}>{priceText}</Text>
-          <Text style={styles.summaryMuted}>{note}</Text>
+          <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.sumIcon}>
+            <Ionicons name="construct" size={22} color="#FFFFFF" />
+          </LinearGradient>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.sumName} numberOfLines={1}>{svcName}</Text>
+            <Text style={styles.sumSub} numberOfLines={1}>{svc.provider_profiles.business_name}</Text>
+          </View>
+          <View style={{ alignItems: isRTL ? 'flex-start' : 'flex-end' }}>
+            <Text style={styles.sumPrice}>{priceText}</Text>
+            <Text style={styles.sumNote}>{note}</Text>
+          </View>
+        </View>
+      </View>
+
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={[styles.inner, { paddingBottom: insets.bottom + 130 }]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        {/* ===== اليوم ===== */}
+        <Sec>{tr('اليوم', 'Day')}</Sec>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.days}>
+          {days.map((d, i) => {
+            const on = dayIdx === i;
+            return (
+              <Pressable key={i} onPress={() => { setDayIdx(i); setHour(undefined); }} style={[styles.day, on && styles.dayOn]}>
+                <Text style={[styles.dayName, on && styles.onText]} numberOfLines={1}>{weekday(d, i)}</Text>
+                <Text style={[styles.dayNum, on && styles.onText]}>{dayNum(d)}</Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+
+        {/* ===== الوقت ===== */}
+        <Sec>{tr('الوقت', 'Time')}</Sec>
+        <View style={styles.times}>
+          {SLOTS.map((h) => {
+            const past = isPast(h);
+            const on = hour === h;
+            return (
+              <Pressable key={h} disabled={past} onPress={() => setHour(h)} style={[styles.time, on && styles.timeOn, past && { opacity: 0.4 }]}>
+                <Text style={[styles.timeText, on && { color: c.accentText, fontFamily: fonts.bold }, past && { textDecorationLine: 'line-through' }]}>{hourLabel(h)}</Text>
+              </Pressable>
+            );
+          })}
         </View>
 
-        <Text style={styles.section}>{tr('العنوان', 'Address')}</Text>
-        {addresses.map((a) => (
-          <Chip key={a.id} label={[a.street, a.building].filter(Boolean).join(' - ') || a.label || '-'} on={addrId === a.id} onPress={() => setAddrId(a.id)} block />
-        ))}
-        <Chip label={tr('+ عنوان جديد', '+ New address')} on={addrId === 'new'} onPress={() => setAddrId('new')} block />
+        {/* ===== العنوان ===== */}
+        <Sec>{tr('العنوان', 'Address')}</Sec>
+        {addresses.map((a) => {
+          const on = addrId === a.id;
+          return (
+            <Pressable key={a.id} onPress={() => setAddrId(a.id)} style={[styles.addr, on && styles.addrOn]}>
+              <Ionicons name="home-outline" size={18} color={c.accentText} />
+              <Text style={styles.addrText} numberOfLines={1}>{[a.street, a.building].filter(Boolean).join(' · ') || a.label || '-'}</Text>
+              <View style={[styles.radio, on && styles.radioOn]} />
+            </Pressable>
+          );
+        })}
+        <Pressable onPress={() => setAddrId('new')} style={[styles.newAddr, addrId === 'new' && styles.newAddrOn]}>
+          <Ionicons name="add" size={18} color={c.accentText} />
+          <Text style={styles.newText}>{tr('عنوان جديد', 'New address')}</Text>
+        </Pressable>
         {addrId === 'new' ? (
-          <View style={{ marginTop: spacing.md }}>
+          <View style={styles.newForm}>
             <Text style={styles.label}>{tr('المنطقة', 'Area')}</Text>
-            <View style={styles.chips}>
-              {areas.map((a) => (
-                <Chip key={a.id} label={lang === 'ar' ? a.name_ar : a.name_en} on={areaId === a.id} onPress={() => setAreaId(a.id)} />
-              ))}
-            </View>
+            <Chips items={areas.map((a) => ({ key: a.id, label: lang === 'ar' ? a.name_ar : a.name_en }))} value={areaId} onChange={setAreaId} />
+            <View style={{ height: 10 }} />
             <PremiumInput icon="trail-sign-outline" label={tr('الشارع', 'Street')} value={street} onChangeText={setStreet} />
             <PremiumInput icon="business-outline" label={tr('العمارة / الشقة', 'Building / Apartment')} value={building} onChangeText={setBuilding} />
           </View>
         ) : null}
 
-        <Text style={styles.section}>{tr('تفاصيل الطلب', 'Request details')}</Text>
+        {/* ===== التفاصيل ===== */}
+        <Sec>{tr('تفاصيل الطلب', 'Request details')}</Sec>
         <TextInput
           value={details}
           onChangeText={setDetails}
@@ -160,71 +239,109 @@ export default function Booking() {
           placeholder={tr('اكتب أي تفاصيل تساعد مقدم الخدمة...', 'Add any details for the provider...')}
           placeholderTextColor={c.placeholder}
           selectionColor={c.accent}
-          style={[styles.textarea, Platform.OS === 'web' ? ({ textAlign: isRTL ? 'right' : 'left', direction: isRTL ? 'rtl' : 'ltr' } as any) : null]}
+          style={[styles.textarea, { textAlign: isRTL ? 'right' : 'left' }, Platform.OS === 'web' ? ({ direction: isRTL ? 'rtl' : 'ltr' } as any) : null]}
         />
 
-        <Text style={styles.section}>{tr('اليوم', 'Day')}</Text>
-        <View style={styles.chips}>
-          {days.map((d, i) => (
-            <Chip key={i} label={dayLabel(d)} on={dayIdx === i} onPress={() => { setDayIdx(i); setHour(undefined); }} />
-          ))}
-        </View>
+        {error ? (
+          <View style={styles.error}>
+            <Ionicons name="alert-circle" size={18} color={c.dangerText} />
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        ) : null}
+      </ScrollView>
 
-        <Text style={styles.section}>{tr('الوقت', 'Time')}</Text>
-        <View style={styles.chips}>
-          {SLOTS.map((h) => (
-            <Chip key={h} label={hourLabel(h)} on={hour === h} disabled={isPast(h)} onPress={() => setHour(h)} />
-          ))}
-        </View>
-
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-        <View style={{ height: spacing.md }} />
-        <Button title={tr('إرسال الطلب', 'Submit request')} onPress={submit} loading={loading} />
-      </Screen>
-    </>
-  );
-}
-
-function Chip({ label, on, onPress, disabled, block }: { label: string; on: boolean; onPress: () => void; disabled?: boolean; block?: boolean }) {
-  const { c } = useTheme();
-  const styles = useMemo(() => makeStyles(c), [c]);
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={disabled}
-      style={[styles.chip, block && styles.block, on && styles.chipOn, disabled && { opacity: 0.35 }]}
-    >
-      <Text style={[styles.chipText, on && { color: '#fff' }]}>{label}</Text>
-    </Pressable>
+      <StickyBar
+        label={hour !== undefined ? `${weekday(days[dayIdx], dayIdx)} ${dayNum(days[dayIdx])} · ${hourLabel(hour)}` : tr('اختار اليوم والوقت', 'Pick a day and time')}
+        value={priceText}
+        title={tr('تأكيد الحجز', 'Confirm booking')}
+        onPress={() => void submit()}
+        busy={loading}
+      />
+    </View>
   );
 }
 
 const makeStyles = (c: Palette) =>
   StyleSheet.create({
+    inner: { width: '100%', maxWidth: 720, alignSelf: 'center', paddingHorizontal: 16 },
+    steps: { flexDirection: 'row', gap: 6, marginTop: 14 },
+    step: { flex: 1, height: 4, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.28)' },
+    stepOn: { backgroundColor: '#FFFFFF' },
     summary: {
-      backgroundColor: c.summaryBg,
-      borderWidth: 1.5,
-      borderColor: 'rgba(0,0,0,0.25)',
-      borderTopColor: 'rgba(255,255,255,0.25)',
-      borderRadius: 22,
-      padding: spacing.lg,
-      gap: 4,
+      marginTop: -36,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      padding: 12,
+      borderRadius: 20,
+      backgroundColor: c.card,
+      borderWidth: 1,
+      borderColor: c.accentBorder,
       shadowColor: c.accent,
-      shadowOpacity: 0.3,
-      shadowRadius: 14,
-      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.18,
+      shadowRadius: 18,
+      shadowOffset: { width: 0, height: 10 },
     },
-    summaryMuted: { fontFamily: fonts.regular, color: 'rgba(255,255,255,0.75)' },
-    svcName: { fontFamily: fonts.bold, fontSize: 20, color: '#FFFFFF' },
-    price: { fontFamily: fonts.bold, fontSize: 16, color: c.isDark ? c.accentLight : '#FFFFFF', marginTop: 4 },
-    muted: { fontFamily: fonts.regular, color: c.textSecondary },
-    section: { fontFamily: fonts.bold, fontSize: 18, color: c.text, marginTop: spacing.lg, marginBottom: spacing.md },
-    label: { fontFamily: fonts.semibold, color: c.text, marginBottom: spacing.xs },
-    chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
-    chip: { paddingHorizontal: spacing.md, paddingVertical: 10, borderRadius: radius.pill, backgroundColor: c.chipBg, borderWidth: 1.5, borderColor: c.chipBorder },
-    block: { borderRadius: radius.md, marginBottom: spacing.sm },
-    chipOn: { backgroundColor: c.accent, borderColor: c.accent, shadowColor: c.accent, shadowOpacity: 0.35, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } },
-    chipText: { fontFamily: fonts.semibold, color: c.ink, fontSize: 13 },
-    textarea: { minHeight: 110, borderRadius: 16, borderWidth: 1.5, borderColor: c.fieldBorder, backgroundColor: c.fieldBg, padding: spacing.md, fontFamily: fonts.regular, fontSize: 16, color: c.ink, textAlignVertical: 'top' },
-    error: { fontFamily: fonts.regular, color: c.dangerText, marginTop: spacing.md },
+    sumIcon: { width: 52, height: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+    sumName: { fontFamily: fonts.bold, fontSize: 16, color: c.text },
+    sumSub: { fontFamily: fonts.regular, fontSize: 12.5, color: c.textSecondary },
+    sumPrice: { fontFamily: fonts.bold, fontSize: 15, color: c.accentText },
+    sumNote: { fontFamily: fonts.regular, fontSize: 11, color: c.textSecondary },
+    secRow: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 20, marginBottom: 10 },
+    secBar: { width: 5, height: 20, borderRadius: 3 },
+    sec: { fontFamily: fonts.bold, fontSize: 16, color: c.text },
+    days: { gap: 8, paddingVertical: 2 },
+    day: { width: 70, paddingVertical: 10, borderRadius: 16, alignItems: 'center', backgroundColor: c.card, borderWidth: 1, borderColor: c.accentBorder },
+    dayOn: { backgroundColor: c.accent, borderColor: c.accent },
+    dayName: { fontFamily: fonts.regular, fontSize: 12, color: c.textSecondary },
+    dayNum: { fontFamily: fonts.bold, fontSize: 20, color: c.text, marginTop: 2 },
+    onText: { color: '#FFFFFF' },
+    times: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    time: { width: '31.5%', paddingVertical: 11, borderRadius: 14, alignItems: 'center', backgroundColor: c.card, borderWidth: 1, borderColor: c.accentBorder },
+    timeOn: { borderWidth: 1.5, borderColor: c.accent, backgroundColor: c.accentSoft },
+    timeText: { fontFamily: fonts.semibold, fontSize: 13.5, color: c.text },
+    addr: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      padding: 13,
+      marginBottom: 8,
+      borderRadius: 16,
+      backgroundColor: c.card,
+      borderWidth: 1,
+      borderColor: c.accentBorder,
+    },
+    addrOn: { borderWidth: 1.5, borderColor: c.accent, backgroundColor: c.isDark ? 'rgba(255,255,255,0.05)' : '#F5F8FF' },
+    addrText: { flex: 1, fontFamily: fonts.semibold, fontSize: 14, color: c.text },
+    radio: { width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: c.iconMuted },
+    radioOn: { borderWidth: 5, borderColor: c.accent },
+    newAddr: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      padding: 12,
+      borderRadius: 16,
+      borderWidth: 1.5,
+      borderStyle: 'dashed',
+      borderColor: c.accentBorder,
+    },
+    newAddrOn: { borderColor: c.accent, backgroundColor: c.accentSoft },
+    newText: { fontFamily: fonts.semibold, fontSize: 14, color: c.accentText },
+    newForm: { marginTop: 10 },
+    label: { fontFamily: fonts.semibold, fontSize: 13.5, color: c.text },
+    textarea: {
+      minHeight: 100,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: c.accentBorder,
+      backgroundColor: c.card,
+      padding: 14,
+      fontFamily: fonts.regular,
+      fontSize: 15,
+      color: c.ink,
+      textAlignVertical: 'top',
+    },
+    error: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14, padding: 12, borderRadius: 14, backgroundColor: c.dangerBg, borderWidth: 1, borderColor: c.dangerBorder },
+    errorText: { flex: 1, fontFamily: fonts.semibold, fontSize: 13, color: c.dangerText },
   });

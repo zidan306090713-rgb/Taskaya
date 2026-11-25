@@ -1,46 +1,49 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { ProviderCard } from '@/components/ui/ProviderCard';
-import { Screen } from '@/components/ui/Screen';
+import { ComponentProps, useEffect, useMemo, useState } from 'react';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Chips } from '@/components/ui/Chips';
+import { GradientHeader } from '@/components/ui/GradientHeader';
+import { ProviderRow } from '@/components/ui/ProviderRow';
 import { SearchField } from '@/components/ui/SearchField';
-import { ListSkeleton, Skeleton } from '@/components/ui/Skeleton';
+import { ListSkeleton } from '@/components/ui/Skeleton';
 import { lang, tr } from '@/i18n';
 import { Category, getCategoryPage, ProviderCard as P, Subcategory } from '@/lib/api';
 import { useTheme } from '@/providers/ThemeProvider';
-import { fonts, Palette, spacing } from '@/theme';
+import { fonts, Palette } from '@/theme';
+
+type IconName = ComponentProps<typeof Ionicons>['name'];
 
 // توحيد الحروف العربية للبحث: أ/إ/آ → ا، ة → ه، ى → ي، وشيل التشكيل
 const norm = (s: string) =>
-  s
-    .toLowerCase()
-    .replace(/[\u064B-\u0652\u0640]/g, '')
-    .replace(/[أإآ]/g, 'ا')
-    .replace(/ة/g, 'ه')
-    .replace(/ى/g, 'ي')
-    .trim();
+  s.toLowerCase().replace(/[\u064B-\u0652\u0640]/g, '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').trim();
+const searchText = (p: P) => norm(`${p.business_name ?? ''} ${p.description ?? ''}`);
+const catIcon = (c: Category | null): IconName => `${((c?.icon || 'grid-outline') as string).replace(/-outline$/, '')}-outline` as IconName;
 
-// النص اللي بندوّر فيه لكل مقدّم خدمة: الاسم + الوصف
-const searchText = (p: P) => {
-  const pp = (p as any).provider_profiles ?? p;
-  return norm(`${pp.business_name ?? ''} ${pp.description ?? ''}`);
-};
+const WEB_FADE =
+  Platform.OS === 'web'
+    ? ({
+        maskImage: 'linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 18px), transparent 100%)',
+        WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 18px), transparent 100%)',
+      } as any)
+    : null;
 
+/** صفحة القسم: هيدر ملوّن + بحث عايم + كبسولات الأقسام الفرعية + مقدمي الخدمة (القايمة بس بتتسحب) */
 export default function CategoryScreen() {
   const { c } = useTheme();
   const styles = useMemo(() => makeStyles(c), [c]);
   const { id } = useLocalSearchParams<{ id: string }>();
   const [cat, setCat] = useState<Category | null>(null);
   const [subs, setSubs] = useState<Subcategory[]>([]);
-  const [active, setActive] = useState<string | undefined>();
+  const [active, setActive] = useState<string | null>(null);
   const [list, setList] = useState<P[] | null>(null);
   const [query, setQuery] = useState('');
+  const [listW, setListW] = useState(0);
 
   useEffect(() => {
     let alive = true;
     setList(null);
-    getCategoryPage(id, active).then((r) => {
+    getCategoryPage(id, active ?? undefined).then((r) => {
       if (!alive) return;
       setCat(r.category);
       setSubs(r.subcategories);
@@ -51,34 +54,26 @@ export default function CategoryScreen() {
     };
   }, [id, active]);
 
-  // فلترة فورية على الجهاز (مقدّمي الخدمة بتوع القسم محمّلين أصلًا)
+  // فلترة فورية على الجهاز
   const q = norm(query);
   const shown = useMemo(() => {
     if (!list) return null;
     if (!q) return list;
     const words = q.split(/\s+/).filter(Boolean);
-    return list.filter((p) => {
-      const t = searchText(p);
-      return words.every((w) => t.includes(w));
-    });
+    return list.filter((p) => words.every((w) => searchText(p).includes(w)));
   }, [list, q]);
 
   const name = (x: { name_ar: string; name_en: string }) => (lang === 'ar' ? x.name_ar : x.name_en);
+  const desc = cat ? (lang === 'ar' ? cat.description_ar : cat.description_en) : null;
+  const rowH = listW ? Math.max(140, Math.min(165, Math.round(((listW - 24) / 3) * 1.4))) : 145;
+  const n = shown?.length ?? 0;
 
   return (
-    <>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          title: cat ? name(cat) : '',
-          headerTitleStyle: { fontFamily: fonts.bold, color: c.text },
-          headerStyle: { backgroundColor: c.headerBg },
-          headerShadowVisible: false,
-          headerTintColor: c.accentText,
-        }}
-      />
-      <Screen padTop={0}>
-        {/* ===== بحث داخل القسم ===== */}
+    <View style={{ flex: 1 }}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <GradientHeader title={cat ? name(cat) : ' '} subtitle={desc} icon={catIcon(cat)} />
+
+      <View style={styles.body}>
         <View style={styles.search}>
           <SearchField
             value={query}
@@ -87,74 +82,62 @@ export default function CategoryScreen() {
           />
         </View>
 
-        {cat ? <Text style={styles.desc}>{lang === "ar" ? cat.description_ar : cat.description_en}</Text> : null}
-        {cat ? <Text style={styles.desc}>{lang === "ar" ? cat.description_ar : cat.description_en}</Text> : null}
-        <View style={styles.chips}>
-          <Chip label={tr('الكل', 'All')} on={!active} onPress={() => setActive(undefined)} />
-          {!cat ? [0, 1, 2].map((i) => <Skeleton key={i} width={84} height={38} radius={999} />) : null}
-          {subs.map((s) => (
-            <Chip key={s.id} label={name(s)} on={active === s.id} onPress={() => setActive(s.id)} />
-          ))}
+        <View>
+          <Chips
+            items={[{ key: null, label: tr('الكل', 'All') }, ...subs.map((s) => ({ key: s.id, label: name(s) }))]}
+            value={active}
+            onChange={setActive}
+            loading={!cat}
+          />
         </View>
 
-        {shown === null ? (
-          <ListSkeleton rows={4} height={96} />
-        ) : shown.length === 0 ? (
-          <View style={styles.emptyWrap}>
-            <View style={styles.emptyIcon}>
-              <Ionicons name="search-outline" size={28} color={c.accentText} />
-            </View>
-            <Text style={styles.empty}>
-              {q
-                ? tr(`مفيش نتايج لـ "${query.trim()}"`, `No results for "${query.trim()}"`)
-                : tr('لا يوجد مقدمو خدمة بعد', 'No providers yet')}
-            </Text>
-            {q ? (
-              <Pressable onPress={() => setQuery('')} accessibilityRole="button" style={({ pressed }) => [styles.clearBtn, pressed && { opacity: 0.8 }]}>
-                <Text style={styles.clearText}>{tr('مسح البحث', 'Clear search')}</Text>
-              </Pressable>
-            ) : null}
-          </View>
-        ) : null}
-        {(shown ?? []).map((p) => <ProviderCard key={p.id} p={p} />)}
-      </Screen>
-    </>
-  );
-}
+        <Text style={styles.count}>
+          {shown === null ? ' ' : n === 1 ? tr('مقدم خدمة واحد', '1 provider') : tr(`${n} مقدمي خدمة`, `${n} providers`)}
+        </Text>
 
-function Chip({ label, on, onPress }: { label: string; on: boolean; onPress: () => void }) {
-  const { c } = useTheme();
-  const styles = useMemo(() => makeStyles(c), [c]);
-  return (
-    <Pressable onPress={onPress} style={[styles.chip, on && styles.chipOn]}>
-      <Text style={[styles.chipText, on && { color: '#fff' }]}>{label}</Text>
-    </Pressable>
+        <View style={styles.listArea} onLayout={(e) => setListW(e.nativeEvent.layout.width)}>
+          <ScrollView style={[{ flex: 1 }, WEB_FADE]} contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
+            {shown === null ? <ListSkeleton rows={3} height={rowH} /> : null}
+            {shown !== null && shown.length === 0 ? (
+              <View style={styles.emptyWrap}>
+                <View style={styles.emptyIcon}>
+                  <Ionicons name="search-outline" size={28} color={c.accentText} />
+                </View>
+                <Text style={styles.empty}>
+                  {q ? tr(`مفيش نتايج لـ "${query.trim()}"`, `No results for "${query.trim()}"`) : tr('لا يوجد مقدمو خدمة بعد', 'No providers yet')}
+                </Text>
+                {q ? (
+                  <Pressable onPress={() => setQuery('')} accessibilityRole="button" style={({ pressed }) => [styles.clearBtn, pressed && { opacity: 0.8 }]}>
+                    <Text style={styles.clearText}>{tr('مسح البحث', 'Clear search')}</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            ) : null}
+            {(shown ?? []).map((p) => (
+              <ProviderRow key={p.id} p={p} height={rowH} />
+            ))}
+          </ScrollView>
+        </View>
+      </View>
+    </View>
   );
 }
 
 const makeStyles = (c: Palette) =>
   StyleSheet.create({
-    search: { marginBottom: spacing.md },
-    desc: { fontFamily: fonts.regular, color: c.textSecondary, marginBottom: spacing.md, paddingHorizontal: 4 },
-    desc: { fontFamily: fonts.regular, color: c.textSecondary, marginBottom: spacing.md, paddingHorizontal: 4 },
-    chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.lg },
-    chip: {
-      paddingHorizontal: 16,
-      paddingVertical: 9,
-      borderRadius: 999,
-      backgroundColor: c.chipBg,
-      borderWidth: 1.5,
-      borderColor: c.chipBorder,
-    },
-    chipOn: {
-      backgroundColor: c.accent,
-      borderColor: c.accent,
+    body: { flex: 1, width: '100%', maxWidth: 720, alignSelf: 'center', paddingHorizontal: 16 },
+    search: {
+      marginTop: -26,
+      borderRadius: 18,
       shadowColor: c.accent,
-      shadowOpacity: 0.35,
-      shadowRadius: 10,
-      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.22,
+      shadowRadius: 18,
+      shadowOffset: { width: 0, height: 10 },
+      elevation: 0,
     },
-    chipText: { fontFamily: fonts.semibold, color: c.ink, fontSize: 13 },
+    count: { fontFamily: fonts.semibold, fontSize: 13, color: c.textSecondary, marginTop: 14 },
+    listArea: { flex: 1, marginHorizontal: -16 },
+    listContent: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 24, gap: 12 },
     emptyWrap: { alignItems: 'center', marginTop: 40, gap: 12 },
     emptyIcon: {
       width: 64,

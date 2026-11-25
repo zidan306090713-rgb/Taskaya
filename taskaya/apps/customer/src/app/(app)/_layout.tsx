@@ -1,6 +1,7 @@
 import { Redirect, Stack } from 'expo-router';
 import { ReactNode, useEffect, useState } from 'react';
 import { View } from 'react-native';
+import { setOnboarded, useOnboarded } from '@/lib/onboarding';
 import { useAuth } from '@/providers/AuthProvider';
 import { useTheme } from '@/providers/ThemeProvider';
 import { fonts } from '@/theme';
@@ -26,8 +27,13 @@ function HideWhenBlurred({ navigation, children }: { navigation: any; children: 
 export default function AppLayout() {
   const { session, loading } = useAuth();
   const { c } = useTheme();
-  if (loading) return null;
-  if (!session) return <Redirect href="/login" />;
+  const onboarded = useOnboarded();
+  // اللي داخل بحساب أصلًا مش محتاج يشوف الانترو تاني
+  useEffect(() => {
+    if (session && onboarded === false) void setOnboarded();
+  }, [session, onboarded]);
+  if (loading || (!session && onboarded === null)) return null;
+  if (!session) return <Redirect href={(onboarded ? '/login' : '/intro') as never} />;
 
   // الهيدر بيبقى موجود من أول لحظة (مش بعد ما الشاشة تترسم) عشان المحتوى ميتنططش
   const withHeader = { headerShown: true, title: '' };
@@ -44,9 +50,9 @@ export default function AppLayout() {
         headerShadowVisible: false,
       }}
     >
-      <Stack.Screen name="category/[id]" options={withHeader} />
-      <Stack.Screen name="provider/[id]" options={withHeader} />
-      <Stack.Screen name="booking/[psid]" options={withHeader} />
+      <Stack.Screen name="category/[id]" options={{ headerShown: false }} />
+      <Stack.Screen name="provider/[id]" options={{ headerShown: false }} />
+      <Stack.Screen name="booking/[psid]" options={{ headerShown: false }} />
     </Stack>
   );
 }

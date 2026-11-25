@@ -3,33 +3,44 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Button } from '@/components/ui/Button';
-import { Screen } from '@/components/ui/Screen';
+import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ListSkeleton, PageSkeleton } from '@/components/ui/Skeleton';
+import { StickyBar } from '@/components/ui/StickyBar';
 import { useEntrance, useFocusHide } from '@/hooks/use-screen-entrance';
-import { lang, tr } from '@/i18n';
+import { isRTL, lang, tr } from '@/i18n';
 import { getProvider, peekProvider, ProviderSvc, seedProviderService } from '@/lib/api';
 import { useAuth } from '@/providers/AuthProvider';
 import { useTheme } from '@/providers/ThemeProvider';
-import { fonts, Palette, spacing } from '@/theme';
+import { fonts, Palette } from '@/theme';
 
+const PRICING: Record<string, { ar: string; en: string }> = {
+  fixed: { ar: 'سعر ثابت', en: 'Fixed price' },
+  starting_from: { ar: 'يبدأ من', en: 'Starting from' },
+  custom_quote: { ar: 'بعرض سعر', en: 'By quote' },
+};
+const duration = (m: number | null | undefined) => {
+  if (!m) return null;
+  if (m < 60) return tr(`حوالي ${m} دقيقة`, `~${m} min`);
+  const h = Math.round((m / 60) * 10) / 10;
+  return tr(`حوالي ${h} ساعة`, `~${h} h`);
+};
+
+/** صفحة مقدم الخدمة: غلاف بعرض الشاشة + كارت بيانات + الخدمات + شريط "احجز الآن" ثابت */
 export default function ProviderScreen() {
   const { c } = useTheme();
   const styles = useMemo(() => makeStyles(c), [c]);
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session } = useAuth();
   const uid = session?.user.id;
   const router = useRouter();
 
-  // لو الكارت اتلمس قبل كده: الاسم والتقييم (أو الصفحة كلها) جاهزين فورًا
+  // لو الكارت اتلمس قبل كده: الصفحة جاهزة فورًا
   const [data, setData] = useState(() => peekProvider(id));
   const [sel, setSel] = useState<string | undefined>(() => peekProvider(id)?.services?.[0]?.id);
   const [failed, setFailed] = useState(false);
-
-  const heroAnim = useEntrance(0);
-  const bodyAnim = useEntrance(80);
-  // الشاشة شفافة: نخفيها أول ما صفحة الحجز تفتح فوقها عشان متبانش وراها
+  const bodyAnim = useEntrance(60);
   const hide = useFocusHide();
 
   useEffect(() => {
@@ -48,217 +59,224 @@ export default function ProviderScreen() {
     };
   }, [id, uid]);
 
+  const back = () => (router.canGoBack() ? router.back() : router.replace('/'));
+  const backBtn = (
+    <Pressable onPress={back} style={[styles.float, { top: insets.top + 10 }, isRTL ? { right: 14 } : { left: 14 }]} accessibilityLabel={tr('رجوع', 'Back')}>
+      <Ionicons name={isRTL ? 'arrow-forward' : 'arrow-back'} size={20} color="#0B1F3A" />
+    </Pressable>
+  );
+
   const p = data?.profile;
   if (!p) {
     return (
-      <Screen padTop={0}>
-        <View style={styles.loading}>
-          {failed ? (
-            <Text style={styles.muted}>{tr('تعذّر التحميل، حاول تاني', 'Could not load, please try again')}</Text>
-          ) : (
-            <PageSkeleton />
-          )}
-        </View>
-      </Screen>
+      <View style={[{ flex: 1, paddingTop: insets.top + 70, paddingHorizontal: 16 }, hide]}>
+        <Stack.Screen options={{ headerShown: false }} />
+        {backBtn}
+        {failed ? <Text style={styles.muted}>{tr('تعذّر التحميل، حاول تاني', 'Could not load, please try again')}</Text> : <PageSkeleton />}
+      </View>
     );
   }
-  const services = data?.services ?? null;
-  // نفس الصورة اللي بتظهر في كارت الرئيسية
-  const coverUri = p.cover_url ?? p.logo_url ?? null;
 
-  const priceLabel = (s: ProviderSvc) =>
-    s.pricing_model === 'custom_quote'
-      ? tr('حسب العرض', 'Custom quote')
-      : `${s.pricing_model === 'starting_from' ? tr('يبدأ من', 'From') + ' ' : ''}${s.base_price} ${tr('ج.م', 'EGP')}`;
+  const services = data?.services ?? null;
+  const coverUri = p.cover_url ?? null;
+  const logoUri = p.logo_url ?? null;
+  const svcName = (s: ProviderSvc) => (lang === 'ar' ? s.services.name_ar : s.services.name_en);
+  const priceOf = (s: ProviderSvc) => (s.pricing_model === 'custom_quote' ? tr('حسب العرض', 'Custom quote') : `${s.base_price} ${tr('ج.م', 'EGP')}`);
+  const chosen = services?.find((x) => x.id === sel) ?? null;
 
   const book = () => {
-    const s = services?.find((x) => x.id === sel);
-    if (!s) return;
-    // صفحة الحجز تفتح فورًا ببيانات الخدمة اللي معانا
+    if (!chosen) return;
     seedProviderService({
-      id: s.id,
+      id: chosen.id,
       provider_id: p.id,
-      pricing_model: s.pricing_model,
-      base_price: s.base_price,
-      estimated_duration_minutes: s.estimated_duration_minutes,
+      pricing_model: chosen.pricing_model,
+      base_price: chosen.base_price,
+      estimated_duration_minutes: chosen.estimated_duration_minutes,
       provider_profiles: { business_name: p.business_name },
-      services: s.services,
+      services: chosen.services,
     });
-    router.push(`/booking/${s.id}`);
+    router.push(`/booking/${chosen.id}`);
   };
 
-  const webGlass =
-    Platform.OS === 'web'
-      ? ({ backdropFilter: 'blur(8px) saturate(160%)', WebkitBackdropFilter: 'blur(8px) saturate(160%)' } as any)
-      : null;
-
   return (
-    <>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          title: p.business_name,
-          headerTitleStyle: { fontFamily: fonts.bold, color: c.text },
-          headerTransparent: false,
-          headerStyle: { backgroundColor: c.headerBg },
-          headerShadowVisible: false,
-          headerTintColor: c.accentText,
-        }}
-      />
-      <View style={[styles.fill, hide]}>
-        <Screen padTop={0}>
-          {/* ===== Hero ===== */}
-          <Animated.View style={heroAnim}>
-            <View style={[styles.hero, webGlass]}>
-              <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.accent} />
-              {coverUri ? (
-                <View style={styles.cover}><Image source={{ uri: coverUri }} style={StyleSheet.absoluteFill} contentFit="cover" blurRadius={24} /><Image source={{ uri: coverUri }} style={StyleSheet.absoluteFill} contentFit="contain" transition={200} /></View>
+    <View style={[{ flex: 1 }, hide]}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 120 }} showsVerticalScrollIndicator={false}>
+        {/* ===== الغلاف (كامل من غير قص + نسخة مغبّشة وراه) ===== */}
+        <View style={[styles.cover, { height: 230 + insets.top }]}>
+          {coverUri ? (
+            <>
+              <Image source={{ uri: coverUri }} style={StyleSheet.absoluteFill} contentFit="cover" blurRadius={24} />
+              <Image source={{ uri: coverUri }} style={[StyleSheet.absoluteFill, { top: insets.top }]} contentFit="contain" transition={200} />
+            </>
+          ) : (
+            <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+          )}
+          <LinearGradient colors={['rgba(5,12,32,0.35)', 'rgba(5,12,32,0)', 'rgba(5,12,32,0.45)']} locations={[0, 0.4, 1]} style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]} />
+        </View>
+
+        <Animated.View style={[styles.inner, bodyAnim]}>
+          {/* ===== كارت البيانات + اللوجو الراكب ===== */}
+          <View style={styles.who}>
+            <View style={styles.logo}>
+              {logoUri ? (
+                <Image source={{ uri: logoUri }} style={StyleSheet.absoluteFill} contentFit="cover" />
+              ) : (
+                <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[StyleSheet.absoluteFill, styles.center]}>
+                  <Text style={styles.logoText}>{p.business_name.charAt(0)}</Text>
+                </LinearGradient>
+              )}
+            </View>
+            <View style={styles.nameRow}>
+              <Text style={styles.name}>{p.business_name}</Text>
+              {p.is_verified ? <Ionicons name="checkmark-circle" size={20} color={c.accentText} /> : null}
+            </View>
+            <View style={styles.pills}>
+              <View style={[styles.pill, styles.pillStar]}>
+                <Ionicons name="star" size={13} color="#F59E0B" />
+                <Text style={[styles.pillText, { color: '#B45309' }]}>
+                  {Number(p.rating_avg).toFixed(1)} · {p.rating_count} {tr('تقييم', 'reviews')}
+                </Text>
+              </View>
+              {p.is_verified ? (
+                <View style={styles.pill}>
+                  <Ionicons name="shield-checkmark" size={13} color={c.accentText} />
+                  <Text style={styles.pillText}>{tr('موثّق', 'Verified')}</Text>
+                </View>
               ) : null}
-              <View style={[styles.heroBody, coverUri ? styles.heroBodyWithCover : null]}>
-                {coverUri ? null : (
-                  <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.avatar}>
-                    <Text style={styles.avatarText}>{p.business_name.charAt(0)}</Text>
-                  </LinearGradient>
-                )}
-                <View style={styles.row}>
-                  <Text style={styles.name}>{p.business_name}</Text>
-                  {p.is_verified ? <Ionicons name="checkmark-circle" size={22} color={c.accentText} /> : null}
-                </View>
-                <View style={styles.ratingPill}>
-                  <Ionicons name="star" size={15} color="#F59E0B" />
-                  <Text style={styles.ratingText}>
-                    {Number(p.rating_avg).toFixed(1)} ({p.rating_count} {tr('تقييم', 'reviews')})
-                  </Text>
-                </View>
-              </View>
             </View>
-          </Animated.View>
+          </View>
 
-          <Animated.View style={bodyAnim}>
-            {/* ===== Description ===== */}
-            {p.description ? (
-              <View style={styles.descCard}>
-                <Ionicons name="chatbox-ellipses-outline" size={20} color={c.accentText} />
-                <Text style={styles.desc}>{p.description}</Text>
-              </View>
-            ) : null}
+          {/* ===== الوصف ===== */}
+          {p.description ? <Text style={styles.desc}>{p.description}</Text> : null}
 
-            {/* ===== Services ===== */}
-            <View style={styles.sectionRow}>
-              <LinearGradient colors={c.gradient} style={styles.sectionBar} />
-              <Text style={styles.section}>{tr('الخدمات', 'Services')}</Text>
-            </View>
-            {services ? (
-              services.map((s) => {
-                const on = sel === s.id;
-                return (
-                  <Pressable key={s.id} onPress={() => setSel(s.id)} accessibilityRole="radio" accessibilityState={{ selected: on }}>
-                    <View style={[styles.svc, on && styles.svcOn]}>
-                      <Ionicons name={on ? 'radio-button-on' : 'radio-button-off'} size={22} color={on ? c.accentText : c.iconMuted} />
-                      <Text style={styles.svcName} numberOfLines={2}>{lang === 'ar' ? s.services.name_ar : s.services.name_en}</Text>
-                      <Text style={styles.svcPrice}>{priceLabel(s)}</Text>
+          {/* ===== الخدمات ===== */}
+          <View style={styles.secRow}>
+            <LinearGradient colors={c.gradient} style={styles.secBar} />
+            <Text style={styles.sec}>{tr('الخدمات', 'Services')}</Text>
+          </View>
+          {services ? (
+            services.map((s) => {
+              const on = sel === s.id;
+              const meta = [PRICING[s.pricing_model] ? (lang === 'ar' ? PRICING[s.pricing_model].ar : PRICING[s.pricing_model].en) : null, duration(s.estimated_duration_minutes)]
+                .filter(Boolean)
+                .join(' · ');
+              return (
+                <Pressable key={s.id} onPress={() => setSel(s.id)} accessibilityRole="radio" accessibilityState={{ selected: on }}>
+                  <View style={[styles.svc, on && styles.svcOn]}>
+                    <View style={[styles.radio, on && styles.radioOn]} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.svcName} numberOfLines={2}>{svcName(s)}</Text>
+                      {meta ? <Text style={styles.svcMeta}>{meta}</Text> : null}
                     </View>
-                  </Pressable>
-                );
-              })
-            ) : (
-              <ListSkeleton rows={3} />
-            )}
+                    <Text style={styles.svcPrice}>{priceOf(s)}</Text>
+                  </View>
+                </Pressable>
+              );
+            })
+          ) : (
+            <ListSkeleton rows={2} height={64} />
+          )}
+        </Animated.View>
+      </ScrollView>
 
-            <View style={{ height: spacing.lg }} />
-            <Button title={tr('احجز الآن', 'Book now')} onPress={book} />
-          </Animated.View>
-        </Screen>
-      </View>
-    </>
+      {backBtn}
+      <Pressable style={[styles.float, { top: insets.top + 10 }, isRTL ? { left: 14 } : { right: 14 }]} accessibilityLabel={tr('المفضلة', 'Favorite')}>
+        <Ionicons name="heart-outline" size={20} color="#0B1F3A" />
+      </Pressable>
+
+      <StickyBar
+        label={chosen ? svcName(chosen) : tr('اختار خدمة', 'Pick a service')}
+        value={chosen ? priceOf(chosen) : null}
+        title={tr('احجز الآن', 'Book now')}
+        onPress={book}
+        disabled={!chosen}
+      />
+    </View>
   );
 }
 
 const makeStyles = (c: Palette) =>
   StyleSheet.create({
-    fill: { flex: 1 },
-    loading: { paddingVertical: 8, alignItems: 'center' },
-    hero: {
-      borderRadius: 28,
-      overflow: 'hidden',
-      backgroundColor: c.panelBg,
-      borderWidth: 1,
-      borderColor: c.panelBorder,
-      shadowColor: c.shadow,
-      shadowOpacity: c.isDark ? 0.28 : 0.2,
-      shadowRadius: 36,
-      shadowOffset: { width: 0, height: 18 },
-      elevation: 0,
-    },
-    accent: { height: 4 },
-    cover: { width: '100%', aspectRatio: 16 / 10, overflow: 'hidden', backgroundColor: c.accentSoft },
-    heroBody: { alignItems: 'center', gap: 12, paddingVertical: 28, paddingHorizontal: spacing.lg },
-    heroBodyWithCover: { paddingVertical: 18 },
-    avatar: {
-      width: 92,
-      height: 92,
-      borderRadius: 28,
+    muted: { fontFamily: fonts.regular, color: c.textSecondary, textAlign: 'center' },
+    center: { alignItems: 'center', justifyContent: 'center' },
+    cover: { width: '100%', overflow: 'hidden', backgroundColor: c.accentSoft },
+    float: {
+      position: 'absolute',
+      width: 42,
+      height: 42,
+      borderRadius: 14,
       alignItems: 'center',
       justifyContent: 'center',
-      borderWidth: 1.5,
-      borderColor: 'rgba(255,255,255,0.6)',
-      shadowColor: c.accent,
-      shadowOpacity: 0.5,
-      shadowRadius: 18,
+      backgroundColor: 'rgba(255,255,255,0.88)',
+      zIndex: 5,
+    },
+    inner: { width: '100%', maxWidth: 720, alignSelf: 'center', paddingHorizontal: 14 },
+    who: {
+      marginTop: -36,
+      paddingTop: 46,
+      paddingBottom: 16,
+      paddingHorizontal: 16,
+      borderRadius: 24,
+      alignItems: 'center',
+      backgroundColor: c.card,
+      borderWidth: 1,
+      borderColor: c.accentBorder,
+      shadowColor: c.shadow,
+      shadowOpacity: c.isDark ? 0.22 : 0.1,
+      shadowRadius: 16,
       shadowOffset: { width: 0, height: 8 },
     },
-    avatarText: { fontFamily: fonts.bold, fontSize: 40, lineHeight: 56, color: '#FFFFFF' },
-    row: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    name: { fontFamily: fonts.bold, fontSize: 22, color: c.text, textAlign: 'center' },
-    ratingPill: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      paddingHorizontal: 14,
-      paddingVertical: 6,
-      borderRadius: 999,
-      backgroundColor: 'rgba(245,158,11,0.1)',
-      borderWidth: 1,
-      borderColor: 'rgba(245,158,11,0.35)',
+    logo: {
+      position: 'absolute',
+      top: -34,
+      width: 68,
+      height: 68,
+      borderRadius: 20,
+      overflow: 'hidden',
+      backgroundColor: c.card,
+      borderWidth: 3,
+      borderColor: c.card,
+      alignSelf: 'center',
     },
-    ratingText: { fontFamily: fonts.semibold, color: c.ink, fontSize: 13 },
-    muted: { fontFamily: fonts.regular, color: c.textSecondary },
-
-    descCard: {
-      flexDirection: 'row',
-      gap: 12,
-      marginTop: spacing.md,
-      padding: spacing.md,
+    logoText: { fontFamily: fonts.bold, fontSize: 28, color: '#FFFFFF' },
+    nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    name: { fontFamily: fonts.bold, fontSize: 20, color: c.text, textAlign: 'center' },
+    pills: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginTop: 10 },
+    pill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 11, paddingVertical: 5, borderRadius: 999, backgroundColor: c.accentSoft },
+    pillStar: { backgroundColor: 'rgba(245,158,11,0.12)' },
+    pillText: { fontFamily: fonts.semibold, fontSize: 12.5, color: c.accentText },
+    desc: {
+      marginTop: 12,
+      padding: 14,
       borderRadius: 18,
-      backgroundColor: c.chipBg,
-      borderWidth: 1.5,
+      fontFamily: fonts.regular,
+      fontSize: 14,
+      lineHeight: 22,
+      color: c.textSecondary,
+      backgroundColor: c.card,
+      borderWidth: 1,
       borderColor: c.accentBorder,
+      overflow: 'hidden',
     },
-    desc: { flex: 1, fontFamily: fonts.regular, color: c.ink, lineHeight: 24 },
-
-    sectionRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: spacing.lg, marginBottom: spacing.md },
-    sectionBar: { width: 5, height: 22, borderRadius: 3 },
-    section: { fontFamily: fonts.bold, fontSize: 18, color: c.text },
-
+    secRow: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 20, marginBottom: 10 },
+    secBar: { width: 5, height: 20, borderRadius: 3 },
+    sec: { fontFamily: fonts.bold, fontSize: 17, color: c.text },
     svc: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 12,
-      backgroundColor: c.chipBg,
-      borderWidth: 1.5,
+      padding: 14,
+      marginBottom: 10,
+      borderRadius: 18,
+      backgroundColor: c.card,
+      borderWidth: 1,
       borderColor: c.accentBorder,
-      borderRadius: 16,
-      padding: spacing.md,
-      marginBottom: spacing.sm,
     },
-    svcOn: {
-      backgroundColor: c.fieldBgFocus,
-      borderColor: c.accent,
-      shadowColor: c.accent,
-      shadowOpacity: 0.25,
-      shadowRadius: 12,
-      shadowOffset: { width: 0, height: 4 },
-    },
-    svcName: { flex: 1, fontFamily: fonts.semibold, color: c.ink },
-    svcPrice: { fontFamily: fonts.bold, color: c.accentText },
+    svcOn: { borderWidth: 1.5, borderColor: c.accent, backgroundColor: c.isDark ? 'rgba(255,255,255,0.05)' : '#F5F8FF' },
+    radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: c.iconMuted },
+    radioOn: { borderWidth: 6, borderColor: c.accent },
+    svcName: { fontFamily: fonts.semibold, fontSize: 15, color: c.text },
+    svcMeta: { fontFamily: fonts.regular, fontSize: 12, color: c.textSecondary, marginTop: 2 },
+    svcPrice: { fontFamily: fonts.bold, fontSize: 15, color: c.accentText },
   });

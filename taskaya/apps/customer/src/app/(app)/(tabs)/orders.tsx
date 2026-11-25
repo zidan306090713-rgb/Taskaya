@@ -1,16 +1,19 @@
-import { useOnPush } from '@/lib/push';
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from 'expo-router';
-import { ComponentProps, ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Animated, Easing, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Screen } from '@/components/ui/Screen';
+import { ComponentProps, ReactNode, useCallback, useMemo, useState } from 'react';
+import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Chips } from '@/components/ui/Chips';
+import { GradientHeader } from '@/components/ui/GradientHeader';
 import { ListSkeleton } from '@/components/ui/Skeleton';
 import { isRTL, lang, tr } from '@/i18n';
 import { answerQuote, Booking, getMyBookings } from '@/lib/api';
+import { useOnPush } from '@/lib/push';
 import { useAuth } from '@/providers/AuthProvider';
 import { useTheme } from '@/providers/ThemeProvider';
-import { fonts, Palette, rgba, spacing } from '@/theme';
+import { fonts, Palette, rgba } from '@/theme';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -18,9 +21,9 @@ const STATUS: Record<string, { ar: string; en: string; color: string; icon: Icon
   pending: { ar: 'قيد الانتظار', en: 'Pending', color: '#D97706', icon: 'time-outline' },
   accepted: { ar: 'تم القبول', en: 'Accepted', color: '#2563EB', icon: 'checkmark-circle-outline' },
   quotation_submitted: { ar: 'بانتظار عرض السعر', en: 'Preparing quote', color: '#7C3AED', icon: 'document-text-outline' },
-  awaiting_customer_approval: { ar: 'بانتظار موافقتك', en: 'Awaiting your approval', color: '#7C3AED', icon: 'hourglass-outline' },
-  confirmed: { ar: 'مؤكد', en: 'Confirmed', color: '#16A34A', icon: 'shield-checkmark-outline' },
-  in_progress: { ar: 'جاري التنفيذ', en: 'In progress', color: '#2563EB', icon: 'construct-outline' },
+  awaiting_customer_approval: { ar: 'مستني موافقتك', en: 'Awaiting you', color: '#7C3AED', icon: 'hourglass-outline' },
+  confirmed: { ar: 'مؤكد', en: 'Confirmed', color: '#2563EB', icon: 'shield-checkmark-outline' },
+  in_progress: { ar: 'جاري التنفيذ', en: 'In progress', color: '#0EA5E9', icon: 'construct-outline' },
   completed: { ar: 'مكتمل', en: 'Completed', color: '#16A34A', icon: 'checkmark-done-outline' },
   cancelled: { ar: 'ملغي', en: 'Cancelled', color: '#64748B', icon: 'close-circle-outline' },
   rejected: { ar: 'مرفوض', en: 'Rejected', color: '#DC2626', icon: 'ban-outline' },
@@ -30,12 +33,21 @@ const PRICING: Record<string, { ar: string; en: string }> = {
   starting_from: { ar: 'يبدأ من', en: 'Starting from' },
   custom_quote: { ar: 'بعرض سعر', en: 'By quote' },
 };
-
 const AWAITING = 'awaiting_customer_approval';
+const CURRENT = ['pending', 'accepted', 'quotation_submitted', AWAITING, 'confirmed', 'in_progress'];
+// خطوات شريط التقدّم: اتطلب ← مؤكد ← جاري ← تم
+const STEP: Record<string, number> = { pending: 0, accepted: 0, quotation_submitted: 0, confirmed: 1, in_progress: 2 };
+const STEPS = [
+  { ar: 'اتطلب', en: 'Requested' },
+  { ar: 'مؤكد', en: 'Confirmed' },
+  { ar: 'جاري', en: 'Ongoing' },
+  { ar: 'تم', en: 'Done' },
+];
+
 const locale = () => (lang === 'ar' ? 'ar-EG' : 'en-US');
 const EGP = () => tr('ج.م', 'EGP');
 const L = (x: { ar: string; en: string }) => (lang === 'ar' ? x.ar : x.en);
-const statusOf = (s: string, fallback: string) => STATUS[s] ?? { ar: s, en: s, color: fallback, icon: 'ellipse-outline' as IconName };
+const statusOf = (s: string) => STATUS[s] ?? { ar: s, en: s, color: '#64748B', icon: 'ellipse-outline' as IconName };
 const whenOf = (b: Booking) =>
   b.scheduled_at
     ? new Date(b.scheduled_at).toLocaleString(locale(), { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })
@@ -43,89 +55,117 @@ const whenOf = (b: Booking) =>
 const titleOf = (b: Booking) => (b.services ? (lang === 'ar' ? b.services.name_ar : b.services.name_en) : '-');
 const providerOf = (b: Booking) => b.provider_profiles?.business_name ?? tr('بانتظار ترشيح مقدم خدمة', 'Awaiting provider match');
 
-function useEntrance(delay: number) {
-  const [v] = useState(() => new Animated.Value(0));
-  useEffect(() => {
-    Animated.timing(v, { toValue: 1, duration: 600, delay, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
-  }, [v, delay]);
-  return {
-    opacity: Platform.OS === 'android' ? 1 : v,
-    transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }],
-  };
+const WEB_FADE =
+  Platform.OS === 'web'
+    ? ({
+        maskImage: 'linear-gradient(to bottom, transparent 0, #000 12px, #000 calc(100% - 18px), transparent 100%)',
+        WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, #000 12px, #000 calc(100% - 18px), transparent 100%)',
+      } as any)
+    : null;
+
+function useStyles() {
+  const { c } = useTheme();
+  return { c, styles: useMemo(() => makeStyles(c), [c]) };
 }
 
 function Badge({ status }: { status: string }) {
-  const { c } = useTheme();
-  const styles = useMemo(() => makeStyles(c), [c]);
-  const st = statusOf(status, c.textSecondary);
+  const { styles } = useStyles();
+  const st = statusOf(status);
   return (
-    <View style={[styles.badge, { backgroundColor: st.color + '1A', borderColor: st.color + '55' }]}>
-      <Ionicons name={st.icon} size={13} color={st.color} />
+    <View style={[styles.badge, { backgroundColor: st.color + '1A' }]}>
+      <Ionicons name={st.icon} size={12} color={st.color} />
       <Text style={[styles.badgeText, { color: st.color }]} numberOfLines={1}>{L(st)}</Text>
     </View>
   );
 }
 
-// ===== الكارت في القايمة (بيفتح النافذة) =====
-function OrderCard({ b, index, onOpen }: { b: Booking; index: number; onOpen: () => void }) {
-  const { c } = useTheme();
-  const styles = useMemo(() => makeStyles(c), [c]);
-  const anim = useEntrance(Math.min(index, 6) * 80);
+function Thumb({ b, size = 46 }: { b: Booking; size?: number }) {
+  const { c, styles } = useStyles();
+  const uri = b.provider_profiles?.logo_url ?? b.provider_profiles?.cover_url ?? null;
+  return (
+    <View style={[styles.thumb, { width: size, height: size, borderRadius: size * 0.3 }]}>
+      {uri ? (
+        <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" />
+      ) : (
+        <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[StyleSheet.absoluteFill, styles.center]}>
+          <Ionicons name="construct" size={size * 0.45} color="#FFFFFF" />
+        </LinearGradient>
+      )}
+    </View>
+  );
+}
+
+// شريط التقدّم: 4 نقط
+function Tracker({ step }: { step: number }) {
+  const { styles } = useStyles();
+  return (
+    <View style={{ marginTop: 12 }}>
+      <View style={styles.trk}>
+        {STEPS.map((_, i) => (
+          <View key={i} style={[styles.trkItem, i === STEPS.length - 1 && { flex: 0 }]}>
+            <View style={[styles.dot, i <= step && styles.dotOn]} />
+            {i < STEPS.length - 1 ? <View style={[styles.line, i < step && styles.lineOn]} /> : null}
+          </View>
+        ))}
+      </View>
+      <View style={styles.trkLabels}>
+        {STEPS.map((s, i) => (
+          <Text key={i} style={[styles.trkLabel, i <= step && styles.trkLabelOn]}>{L(s)}</Text>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+// ===== كارت الطلب =====
+function OrderCard({ b, onOpen }: { b: Booking; onOpen: () => void }) {
+  const { c, styles } = useStyles();
   const awaiting = b.status === AWAITING;
   const price = b.final_price ?? b.quoted_price;
   const when = whenOf(b);
+  const step = STEP[b.status];
 
   return (
-    <Animated.View style={[styles.card, awaiting && styles.cardHot, anim]}>
-      <Pressable onPress={onOpen} accessibilityRole="button" style={({ pressed }) => pressed && { opacity: 0.85 }}>
-        <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.accent} />
-        <View style={styles.body}>
-          <View style={styles.topRow}>
-            <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.iconBox}>
-              <Ionicons name="construct" size={20} color="#FFFFFF" />
-            </LinearGradient>
-            <Text style={styles.title} numberOfLines={2}>{titleOf(b)}</Text>
-            <Badge status={b.status} />
-          </View>
-
-          <View style={styles.infoRow}>
-            <Ionicons name="business-outline" size={16} color={c.iconMuted} />
-            <Text style={styles.infoText} numberOfLines={1}>{providerOf(b)}</Text>
-          </View>
-          {when ? (
-            <View style={styles.infoRow}>
-              <Ionicons name="calendar-outline" size={16} color={c.iconMuted} />
-              <Text style={styles.infoText}>{when}</Text>
-            </View>
-          ) : null}
-
-          {awaiting ? (
-            <View style={styles.hint}>
-              <Ionicons name="chatbubble-ellipses-outline" size={16} color={c.accentText} />
-              <Text style={styles.hintText}>{tr('عرض سعر جديد مستني ردك', 'A new price quote needs your reply')}</Text>
-              <Ionicons name={isRTL ? 'chevron-back' : 'chevron-forward'} size={16} color={c.accentText} />
-            </View>
-          ) : null}
-
-          <View style={styles.divider} />
-
-          <View style={styles.bottomRow}>
-            <View style={styles.numPill}>
-              <Text style={styles.numText}>#{b.booking_number}</Text>
-            </View>
-            <Text style={[styles.price, price == null && styles.priceMuted]}>
-              {price != null ? `${price} ${EGP()}` : tr('السعر لم يحدد بعد', 'Price not set yet')}
-            </Text>
-          </View>
+    <Pressable onPress={onOpen} accessibilityRole="button" style={({ pressed }) => [styles.card, awaiting && styles.cardHot, pressed && { opacity: 0.9 }]}>
+      <View style={styles.topRow}>
+        <Thumb b={b} />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.title} numberOfLines={1}>{titleOf(b)}</Text>
+          <Text style={styles.sub} numberOfLines={1}>{providerOf(b)}</Text>
         </View>
-      </Pressable>
-    </Animated.View>
+        <Badge status={b.status} />
+      </View>
+
+      {awaiting ? (
+        <View style={styles.quote}>
+          <Text style={styles.quoteText}>{tr('عرض سعر جديد', 'New price quote')}</Text>
+          <Text style={styles.quoteVal}>
+            {b.quoted_price} {EGP()} {isRTL ? '←' : '→'}
+          </Text>
+        </View>
+      ) : null}
+
+      {when && !awaiting ? (
+        <View style={styles.when}>
+          <Ionicons name="calendar-outline" size={14} color={c.iconMuted} />
+          <Text style={styles.whenText}>{when}</Text>
+        </View>
+      ) : null}
+
+      {step !== undefined ? <Tracker step={step} /> : null}
+
+      <View style={styles.foot}>
+        <View style={styles.numPill}>
+          <Text style={styles.numText}>#{b.booking_number}</Text>
+        </View>
+        <Text style={[styles.price, price == null && styles.priceMuted]}>{price != null ? `${price} ${EGP()}` : tr('السعر لم يحدد بعد', 'Price not set yet')}</Text>
+      </View>
+    </Pressable>
   );
 }
 
 function Row({ icon, label, children }: { icon: IconName; label: string; children: ReactNode }) {
-  const { c } = useTheme();
-  const styles = useMemo(() => makeStyles(c), [c]);
+  const { c, styles } = useStyles();
   return (
     <View style={styles.dRow}>
       <View style={styles.dIcon}>
@@ -139,8 +179,7 @@ function Row({ icon, label, children }: { icon: IconName; label: string; childre
 
 // ===== نافذة التفاصيل + الموافقة / الرفض =====
 function OrderSheet({ b, onClose, onChanged }: { b: Booking; onClose: () => void; onChanged: () => void }) {
-  const { c } = useTheme();
-  const styles = useMemo(() => makeStyles(c), [c]);
+  const { c, styles } = useStyles();
   const [confirmNo, setConfirmNo] = useState(false);
   const [busy, setBusy] = useState<'yes' | 'no' | null>(null);
   const [err, setErr] = useState('');
@@ -171,9 +210,7 @@ function OrderSheet({ b, onClose, onChanged }: { b: Booking; onClose: () => void
             <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.accent} />
             <ScrollView contentContainerStyle={styles.sheetBody} bounces={false}>
               <View style={styles.topRow}>
-                <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.iconBox}>
-                  <Ionicons name="construct" size={20} color="#FFFFFF" />
-                </LinearGradient>
+                <Thumb b={b} size={44} />
                 <Text style={styles.sheetTitle} numberOfLines={2}>{titleOf(b)}</Text>
                 <Pressable onPress={onClose} hitSlop={10} style={styles.close} accessibilityLabel={tr('إغلاق', 'Close')}>
                   <Ionicons name="close" size={20} color={c.accentText} />
@@ -186,6 +223,8 @@ function OrderSheet({ b, onClose, onChanged }: { b: Booking; onClose: () => void
                   <Text style={styles.numText}>#{b.booking_number}</Text>
                 </View>
               </View>
+
+              {STEP[b.status] !== undefined ? <Tracker step={STEP[b.status]} /> : null}
 
               <View style={styles.details}>
                 <Row icon="business-outline" label={tr('مقدم الخدمة', 'Provider')}>{providerOf(b)}</Row>
@@ -210,7 +249,7 @@ function OrderSheet({ b, onClose, onChanged }: { b: Booking; onClose: () => void
               {awaiting ? (
                 <View style={styles.quoteBox}>
                   <View style={styles.quoteHead}>
-                    <Ionicons name="chatbubble-ellipses-outline" size={18} color={c.accentText} />
+                    <Ionicons name="chatbubble-ellipses-outline" size={18} color="#7C3AED" />
                     <Text style={styles.quoteTitle}>{tr('عرض سعر جديد', 'New price quote')}</Text>
                   </View>
                   <View style={styles.quotePrices}>
@@ -267,120 +306,146 @@ function OrderSheet({ b, onClose, onChanged }: { b: Booking; onClose: () => void
   );
 }
 
+type Filter = 'all' | 'current' | 'done';
+
 export default function Orders() {
-  const { c } = useTheme();
-  const styles = useMemo(() => makeStyles(c), [c]);
+  const { c, styles } = useStyles();
+  const insets = useSafeAreaInsets();
   const { session } = useAuth();
   const uid = session?.user.id ?? '';
   const [list, setList] = useState<Booking[] | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<Filter>('all');
 
   // الحجوزات اللي مستنية ردك تظهر الأول
-  const load = useCallback((force = false) => {
-    if (!uid) return;
-    getMyBookings(uid, force).then((l) =>
-      setList([...l].sort((a, b) => Number(b.status === AWAITING) - Number(a.status === AWAITING))),
-    );
-  }, [uid]);
-
+  const load = useCallback(
+    (force = false) => {
+      if (!uid) return;
+      getMyBookings(uid, force).then((l) =>
+        setList([...l].sort((a, b) => Number(b.status === AWAITING) - Number(a.status === AWAITING))),
+      );
+    },
+    [uid],
+  );
   useFocusEffect(
     useCallback(() => {
       load();
     }, [load]),
   );
-
-  const open = list?.find((b) => b.id === openId) ?? null;
-  // إشعار عن حجز وصل والتطبيق مفتوح → "طلباتي" تتحدث على طول
   useOnPush(useCallback(() => load(true), [load]));
 
+  const all = list ?? [];
+  const current = all.filter((b) => CURRENT.includes(b.status));
+  const done = all.filter((b) => !CURRENT.includes(b.status));
+  const shown = filter === 'current' ? current : filter === 'done' ? done : all;
+  const open = list?.find((b) => b.id === openId) ?? null;
+
   return (
-    <Screen title={tr('طلباتي', 'My Orders')}>
-      {list === null ? <ListSkeleton rows={3} height={160} /> : list.length === 0 ? (
-        <View style={styles.emptyWrap}>
-          <View style={styles.emptyIcon}>
-            <Ionicons name="receipt-outline" size={30} color={c.accentText} />
-          </View>
-          <Text style={styles.emptyTitle}>{tr('لا توجد طلبات بعد', 'No orders yet')}</Text>
-          <Text style={styles.emptySub}>{tr('ابدأ بحجز خدمتك الأولى من الرئيسية', 'Book your first service from Home')}</Text>
+    <View style={[styles.page, { paddingBottom: Math.max(insets.bottom, 12) + 86 }]}>
+      <GradientHeader
+        noBack
+        title={tr('طلباتي', 'My Orders')}
+        subtitle={tr('تابع حجوزاتك خطوة بخطوة', 'Track your bookings step by step')}
+        padBottom={22}
+        right={
+          list ? (
+            <View style={styles.countPill}>
+              <Text style={styles.countText}>{all.length}</Text>
+            </View>
+          ) : null
+        }
+      />
+
+      <View style={styles.body}>
+        <View>
+          <Chips
+            items={[
+              { key: 'all', label: `${tr('الكل', 'All')} · ${all.length}` },
+              { key: 'current', label: `${tr('الحالية', 'Active')} · ${current.length}` },
+              { key: 'done', label: `${tr('المنتهية', 'Past')} · ${done.length}` },
+            ]}
+            value={filter}
+            onChange={(k) => setFilter((k as Filter) ?? 'all')}
+          />
         </View>
-      ) : null}
-      {(list ?? []).map((b, i) => (
-        <OrderCard key={b.id} b={b} index={i} onOpen={() => setOpenId(b.id)} />
-      ))}
-      {open ? <OrderSheet b={open} onClose={() => setOpenId(null)} onChanged={load} /> : null}
-    </Screen>
+
+        <ScrollView style={[{ flex: 1, marginHorizontal: -16 }, WEB_FADE]} contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
+          {list === null ? <ListSkeleton rows={3} height={150} /> : null}
+          {list !== null && shown.length === 0 ? (
+            <View style={styles.emptyWrap}>
+              <View style={styles.emptyIcon}>
+                <Ionicons name="receipt-outline" size={30} color={c.accentText} />
+              </View>
+              <Text style={styles.emptyTitle}>{all.length ? tr('مفيش طلبات هنا', 'Nothing here') : tr('لا توجد طلبات بعد', 'No orders yet')}</Text>
+              {!all.length ? <Text style={styles.emptySub}>{tr('ابدأ بحجز خدمتك الأولى من الرئيسية', 'Book your first service from Home')}</Text> : null}
+            </View>
+          ) : null}
+          {shown.map((b) => (
+            <OrderCard key={b.id} b={b} onOpen={() => setOpenId(b.id)} />
+          ))}
+        </ScrollView>
+      </View>
+      {open ? <OrderSheet b={open} onClose={() => setOpenId(null)} onChanged={() => load(true)} /> : null}
+    </View>
   );
 }
 
 const makeStyles = (c: Palette) =>
   StyleSheet.create({
-    card: {
-      borderRadius: 22,
-      overflow: 'hidden',
-      marginBottom: spacing.md,
-      backgroundColor: c.card,
-      borderWidth: 1.5,
-      borderColor: c.accentBorder,
-      shadowColor: c.shadow,
-      shadowOpacity: c.isDark ? 0.24 : 0.16,
-      shadowRadius: 16,
-      shadowOffset: { width: 0, height: 8 },
-      elevation: 0,
-    },
-    cardHot: { borderWidth: 2, borderColor: c.accent },
-    accent: { height: 4 },
-    body: { padding: 16, gap: 10 },
-    topRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-    iconBox: {
-      width: 42,
-      height: 42,
-      borderRadius: 14,
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.55)',
-    },
-    title: { flex: 1, fontFamily: fonts.bold, fontSize: 16, color: c.text },
-    badge: {
+    page: { flex: 1 },
+    body: { flex: 1, width: '100%', maxWidth: 720, alignSelf: 'center', paddingHorizontal: 16 },
+    countPill: { paddingHorizontal: 11, paddingVertical: 3, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.18)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
+    countText: { fontFamily: fonts.bold, fontSize: 13, color: '#FFFFFF' },
+    listContent: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 18, gap: 12 },
+    center: { alignItems: 'center', justifyContent: 'center' },
+
+    card: { padding: 13, borderRadius: 20, backgroundColor: c.card, borderWidth: 1, borderColor: c.accentBorder },
+    cardHot: { borderWidth: 1.5, borderColor: '#7C3AED' },
+    topRow: { flexDirection: 'row', alignItems: 'center', gap: 11 },
+    thumb: { overflow: 'hidden', backgroundColor: c.fieldBg },
+    title: { fontFamily: fonts.bold, fontSize: 15.5, color: c.text },
+    sub: { fontFamily: fonts.regular, fontSize: 12.5, color: c.textSecondary, marginTop: 1 },
+    badge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999, maxWidth: 150 },
+    badgeText: { fontFamily: fonts.semibold, fontSize: 11 },
+    quote: {
+      marginTop: 11,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 5,
-      paddingHorizontal: 10,
-      paddingVertical: 5,
-      borderRadius: 999,
-      borderWidth: 1,
-      maxWidth: 170,
-    },
-    badgeText: { fontFamily: fonts.semibold, fontSize: 11.5 },
-    infoRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    infoText: { flex: 1, fontFamily: fonts.regular, fontSize: 13.5, color: c.textSecondary },
-    hint: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
+      justifyContent: 'space-between',
       paddingHorizontal: 12,
       paddingVertical: 9,
-      borderRadius: 12,
-      backgroundColor: c.accentSoft,
-      borderWidth: 1,
-      borderColor: c.accentBorder,
+      borderRadius: 13,
+      backgroundColor: 'rgba(124,58,237,0.1)',
     },
-    hintText: { flex: 1, fontFamily: fonts.semibold, fontSize: 13, color: c.accentText },
-    divider: { height: 1, backgroundColor: c.accentLine, marginVertical: 2 },
-    bottomRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    numPill: {
-      paddingHorizontal: 12,
-      paddingVertical: 4,
-      borderRadius: 999,
-      backgroundColor: c.accentSoft,
-      borderWidth: 1,
-      borderColor: c.accentBorder,
+    quoteText: { fontFamily: fonts.semibold, fontSize: 13, color: '#7C3AED' },
+    quoteVal: { fontFamily: fonts.bold, fontSize: 14, color: '#7C3AED' },
+    when: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 },
+    whenText: { fontFamily: fonts.regular, fontSize: 12.5, color: c.textSecondary },
+    trk: { flexDirection: 'row', alignItems: 'center', direction: 'ltr' },
+    trkItem: { flex: 1, flexDirection: 'row', alignItems: 'center' },
+    dot: { width: 11, height: 11, borderRadius: 6, backgroundColor: c.isDark ? 'rgba(255,255,255,0.15)' : '#D5DEEE' },
+    dotOn: { backgroundColor: c.accent },
+    line: { flex: 1, height: 2.5, borderRadius: 2, backgroundColor: c.isDark ? 'rgba(255,255,255,0.12)' : '#D5DEEE' },
+    lineOn: { backgroundColor: c.accent },
+    trkLabels: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 5, direction: 'ltr' },
+    trkLabel: { fontFamily: fonts.regular, fontSize: 10.5, color: c.textSecondary },
+    trkLabelOn: { fontFamily: fonts.semibold, color: c.accentText },
+    foot: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginTop: 12,
+      paddingTop: 10,
+      borderTopWidth: 1,
+      borderStyle: 'dashed',
+      borderTopColor: c.accentBorder,
     },
-    numText: { fontFamily: fonts.bold, fontSize: 12.5, color: c.accentText, letterSpacing: 0.5 },
+    numPill: { paddingHorizontal: 10, paddingVertical: 2, borderRadius: 999, backgroundColor: c.accentSoft },
+    numText: { fontFamily: fonts.bold, fontSize: 12, color: c.accentText, letterSpacing: 0.5 },
     price: { fontFamily: fonts.bold, fontSize: 15, color: c.accentText },
     priceMuted: { fontFamily: fonts.regular, fontSize: 13, color: c.textSecondary },
 
-    // ===== النافذة =====
+    // النافذة
     backdrop: { backgroundColor: 'rgba(5,15,35,0.5)' },
     wrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20, pointerEvents: 'box-none' },
     sheet: {
@@ -395,6 +460,7 @@ const makeStyles = (c: Palette) =>
       shadowOffset: { width: 0, height: 10 },
       elevation: 12,
     },
+    accent: { height: 4 },
     sheetBody: { padding: 18, gap: 14 },
     sheetTitle: { flex: 1, fontFamily: fonts.bold, fontSize: 18, color: c.text },
     close: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: c.accentSoft },
@@ -404,21 +470,11 @@ const makeStyles = (c: Palette) =>
     dIcon: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: c.accentSoft },
     dLabel: { fontFamily: fonts.regular, fontSize: 13, color: c.textSecondary, minWidth: 80 },
     dValue: { flex: 1, fontFamily: fonts.semibold, fontSize: 14, color: c.ink, textAlign: isRTL ? 'left' : 'right' },
-    reason: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      padding: 12,
-      borderRadius: 14,
-      backgroundColor: c.dangerBg,
-      borderWidth: 1,
-      borderColor: c.dangerBorder,
-    },
+    reason: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderRadius: 14, backgroundColor: c.dangerBg, borderWidth: 1, borderColor: c.dangerBorder },
     reasonText: { flex: 1, fontFamily: fonts.semibold, fontSize: 13.5, color: c.dangerText },
-
-    quoteBox: { padding: 14, borderRadius: 16, backgroundColor: c.accentSoft, borderWidth: 1, borderColor: c.accentBorder, gap: 10 },
+    quoteBox: { padding: 14, borderRadius: 16, backgroundColor: 'rgba(124,58,237,0.08)', borderWidth: 1, borderColor: 'rgba(124,58,237,0.3)', gap: 10 },
     quoteHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    quoteTitle: { fontFamily: fonts.bold, fontSize: 14.5, color: c.accentText },
+    quoteTitle: { fontFamily: fonts.bold, fontSize: 14.5, color: '#7C3AED' },
     quotePrices: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     oldPrice: { fontFamily: fonts.semibold, fontSize: 14, color: c.textSecondary, textDecorationLine: 'line-through' },
     newPrice: { fontFamily: fonts.bold, fontSize: 22, color: c.ink },
@@ -431,17 +487,8 @@ const makeStyles = (c: Palette) =>
     qGhostText: { fontFamily: fonts.bold, fontSize: 14, color: c.ink },
     qText: { fontFamily: fonts.bold, fontSize: 14, color: '#FFFFFF' },
 
-    emptyWrap: { alignItems: 'center', marginTop: 56, gap: 10 },
-    emptyIcon: {
-      width: 72,
-      height: 72,
-      borderRadius: 36,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: c.accentSoft,
-      borderWidth: 1.5,
-      borderColor: c.accentBorder,
-    },
+    emptyWrap: { alignItems: 'center', marginTop: 48, gap: 10 },
+    emptyIcon: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', backgroundColor: c.accentSoft, borderWidth: 1.5, borderColor: c.accentBorder },
     emptyTitle: { fontFamily: fonts.bold, fontSize: 17, color: c.text },
     emptySub: { fontFamily: fonts.regular, fontSize: 13.5, color: c.textSecondary, textAlign: 'center' },
   });

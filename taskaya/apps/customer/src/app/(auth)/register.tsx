@@ -1,22 +1,20 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, useRouter } from 'expo-router';
-import { ComponentProps, ReactNode, useEffect, useState } from 'react';
-import {
-  ActivityIndicator, Animated, Easing, Keyboard, Platform, Pressable, ScrollView, StyleSheet, Text, View,
-} from 'react-native';
+import { ComponentProps, ReactNode, useState } from 'react';
+import { ActivityIndicator, Animated, Keyboard, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { RoleChooser, type Role } from '@/components/RoleChooser';
+import { AuthHero } from '@/components/ui/AuthHero';
 import { KeyboardInputBar } from '@/components/ui/KeyboardInputBar';
 import { PremiumInput } from '@/components/ui/PremiumInput';
-import { t, tr } from '@/i18n';
 import { useEntrance, useFocusHide } from '@/hooks/use-screen-entrance';
-import { OrbitLogo } from '@/components/ui/OrbitLogo';
+import { t, tr } from '@/i18n';
 import { signUpWithPhone } from '@/lib/auth';
 import { normalizeEgyptPhone } from '@/lib/phone';
-import { colors, fonts, spacing } from '@/theme';
 import { useTheme } from '@/providers/ThemeProvider';
+import { fonts } from '@/theme';
 
 const MIN_PASSWORD = 8;
-const BLUE = '#2F80ED';
 // على الموبايل: الكتابة في شريط فوق الكيبورد والشاشة ثابتة. على الويب: خانات عادية.
 const USE_BAR = Platform.OS !== 'web';
 
@@ -24,7 +22,6 @@ type Field = 'name' | 'phone' | 'password' | 'confirm';
 type BarCfg = Omit<ComponentProps<typeof KeyboardInputBar>, 'onClose' | 'onAction' | 'actionIcon' | 'onSubmitEditing' | 'returnKeyType'> & {
   next: Field | null;
 };
-
 
 // على الموبايل: الخانة في الكارت بتبقى "زرار" يفتح الشريط
 function TapField({ onPress, label, children }: { onPress: () => void; label: string; children: ReactNode }) {
@@ -47,9 +44,10 @@ export default function Register() {
   const [error, setError] = useState('');
   const [nameError, setNameError] = useState('');
   const [active, setActive] = useState<Field | null>(null);
+  const [role, setRole] = useState<Role | null>(null);
+  const [choosing, setChoosing] = useState(true);
 
   const hide = useFocusHide();
-  const brandAnim = useEntrance(0);
   const cardAnim = useEntrance(60);
   const footAnim = useEntrance(120);
 
@@ -66,10 +64,9 @@ export default function Register() {
 
     setLoading(true);
     setError('');
-    const { error } = await signUpWithPhone({ phone: e164, password, fullName: fullName.trim().replace(/\s+/g, ' ') });
+    const { error } = await signUpWithPhone({ phone: e164, password, fullName: fullName.trim().replace(/\s+/g, ' '), role: role ?? 'customer' });
     setLoading(false);
     if (error) return setError(`${t('sendFailed')} (${error.message})`);
-
     router.push({ pathname: '/verify', params: { phone: e164 } });
   };
 
@@ -86,95 +83,46 @@ export default function Register() {
 
   // إعدادات كل خانة — نفس الإعدادات بتتستخدم في الكارت وفي الشريط
   const fields: Record<Field, BarCfg> = {
-    name: {
-      label: t('fullName'),
-      icon: 'person-outline',
-      value: fullName,
-      onChangeText: onName,
-      placeholder: tr('الاسم الثلاثي', 'First Middle Last'),
-      autoComplete: 'name',
-      textContentType: 'name',
-      autoCapitalize: 'words',
-      next: 'phone',
-    },
-    phone: {
-      label: t('phone'),
-      icon: 'call-outline',
-      value: phone,
-      onChangeText: setPhone,
-      placeholder: '01XXXXXXXXX',
-      keyboardType: 'phone-pad',
-      autoComplete: 'tel',
-      textContentType: 'telephoneNumber',
-      next: 'password',
-    },
-    password: {
-      label: t('password'),
-      icon: 'lock-closed-outline',
-      value: password,
-      onChangeText: setPassword,
-      placeholder: '••••••••',
-      secureTextEntry: true,
-      autoComplete: 'new-password',
-      textContentType: 'newPassword',
-      next: 'confirm',
-    },
-    confirm: {
-      label: t('confirmPassword'),
-      icon: 'shield-checkmark-outline',
-      value: confirm,
-      onChangeText: setConfirm,
-      placeholder: '••••••••',
-      secureTextEntry: true,
-      autoComplete: 'new-password',
-      textContentType: 'newPassword',
-      next: null,
-    },
+    name: { label: t('fullName'), icon: 'person-outline', value: fullName, onChangeText: onName, placeholder: tr('الاسم الثلاثي', 'First Middle Last'), autoComplete: 'name', textContentType: 'name', autoCapitalize: 'words', next: 'phone' },
+    phone: { label: t('phone'), icon: 'call-outline', value: phone, onChangeText: setPhone, placeholder: '01XXXXXXXXX', keyboardType: 'phone-pad', autoComplete: 'tel', textContentType: 'telephoneNumber', next: 'password' },
+    password: { label: t('password'), icon: 'lock-closed-outline', value: password, onChangeText: setPassword, placeholder: '••••••••', secureTextEntry: true, autoComplete: 'new-password', textContentType: 'newPassword', next: 'confirm' },
+    confirm: { label: t('confirmPassword'), icon: 'shield-checkmark-outline', value: confirm, onChangeText: setConfirm, placeholder: '••••••••', secureTextEntry: true, autoComplete: 'new-password', textContentType: 'newPassword', next: null },
   };
-
   const order: Field[] = ['name', 'phone', 'password', 'confirm'];
-
-  const webGlass =
-    Platform.OS === 'web'
-      ? ({ backdropFilter: 'blur(8px) saturate(160%)', WebkitBackdropFilter: 'blur(8px) saturate(160%)' } as any)
-      : null;
-
   const bar = active ? fields[active] : null;
   const goNext = bar?.next ? () => setActive(bar.next) : submitFromBar;
 
   return (
     <View style={[{ flex: 1, backgroundColor: 'transparent' }, hide]}>
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-        {/* ===== Brand ===== */}
-        <Animated.View style={[styles.brandWrap, brandAnim]}>
-          <OrbitLogo size={104} />
-          <Text style={[styles.brand, { color: c.accent }]}>TASKAYA</Text>
-        </Animated.View>
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <AuthHero compact />
 
-        {/* ===== Card ===== */}
-        <Animated.View style={cardAnim}>
-          <View
-            style={[
-              styles.card,
-              {
-                backgroundColor:
-                  Platform.OS === 'android' ? (c.isDark ? 'rgba(28,31,38,0.94)' : 'rgba(255,255,255,0.88)') : c.glassBg,
-                borderColor: c.panelBorder,
-                shadowColor: c.accent,
-              },
-              webGlass,
-            ]}
-          >
-            <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.accent} />
-            <View style={styles.cardBody}>
+        <View style={styles.inner}>
+          <Animated.View style={cardAnim}>
+            <View style={[styles.card, { backgroundColor: c.card, borderColor: c.accentBorder, shadowColor: c.accent }]}>
               <Text style={[styles.welcome, { color: c.text }]}>{t('register')}</Text>
               <Text style={[styles.welcomeSub, { color: c.textSecondary }]}>{tr('أنشئ حسابك في دقيقة واحدة', 'Create your account in a minute')}</Text>
+
+              {/* نوع الحساب (مكانه محجوز دايمًا عشان الصفحة متتحركش) */}
+              <Pressable
+                onPress={() => setChoosing(true)}
+                disabled={!role}
+                style={[styles.roleChip, { backgroundColor: c.accentSoft, opacity: role ? 1 : 0 }]}
+                accessibilityRole="button"
+              >
+                <Ionicons name={role === 'provider' ? 'construct' : 'home'} size={15} color={c.accentText} />
+                <Text style={[styles.roleText, { color: c.accentText }]}>
+                  {role === 'provider' ? tr('حساب مقدم خدمة', 'Provider account') : tr('حساب عميل', 'Customer account')}
+                </Text>
+                <Text style={[styles.roleChange, { color: c.textSecondary }]}>{tr('· تغيير', '· Change')}</Text>
+              </Pressable>
 
               {order.map((key) => {
                 const { next, ...cfg } = fields[key];
                 return (
                   <TapField key={key} onPress={() => setActive(key)} label={cfg.label}>
-                    <PremiumInput labelInside
+                    <PremiumInput
+                      labelInside
                       {...cfg}
                       error={key === 'name' ? nameError : undefined}
                       highlighted={active === key}
@@ -186,9 +134,9 @@ export default function Register() {
               })}
 
               {error ? (
-                <View style={styles.errorBox}>
-                  <Ionicons name="alert-circle" size={18} color="#DC2626" />
-                  <Text style={styles.errorText}>{error}</Text>
+                <View style={[styles.errorBox, { backgroundColor: c.dangerBg, borderColor: c.dangerBorder }]}>
+                  <Ionicons name="alert-circle" size={18} color={c.dangerText} />
+                  <Text style={[styles.errorText, { color: c.dangerText }]}>{error}</Text>
                 </View>
               ) : null}
 
@@ -211,20 +159,19 @@ export default function Register() {
                 </LinearGradient>
               </Pressable>
             </View>
-          </View>
-        </Animated.View>
+          </Animated.View>
 
-        {/* ===== Footer ===== */}
-        <Animated.View style={[styles.footerWrap, footAnim]}>
-          <View style={styles.footer}>
-            <Text style={[styles.muted, { color: c.textSecondary }]}>{t('haveAccount')} </Text>
-            <Link href="/login" dismissTo style={[styles.link, { color: c.accent }]}>{t('login')}</Link>
-          </View>
-          <View style={styles.secure}>
-            <Ionicons name="shield-checkmark-outline" size={14} color={c.textSecondary} />
-            <Text style={[styles.secureText, { color: c.textSecondary }]}>{tr('بياناتك محمية ومشفّرة', 'Your data is protected & encrypted')}</Text>
-          </View>
-        </Animated.View>
+          <Animated.View style={[styles.footerWrap, footAnim]}>
+            <View style={styles.footer}>
+              <Text style={[styles.muted, { color: c.textSecondary }]}>{t('haveAccount')} </Text>
+              <Link href="/login" dismissTo style={[styles.link, { color: c.accentText }]}>{t('login')}</Link>
+            </View>
+            <View style={styles.secure}>
+              <Ionicons name="shield-checkmark-outline" size={14} color={c.textSecondary} />
+              <Text style={[styles.secureText, { color: c.textSecondary }]}>{tr('بياناتك محمية ومشفّرة', 'Your data is protected & encrypted')}</Text>
+            </View>
+          </Animated.View>
+        </View>
       </ScrollView>
 
       {/* ===== شريط الكتابة فوق الكيبورد ===== */}
@@ -240,85 +187,45 @@ export default function Register() {
           onClose={() => setActive(null)}
         />
       ) : null}
+      <RoleChooser
+        visible={choosing}
+        onPick={(r) => {
+          setRole(r);
+          setChoosing(false);
+        }}
+        onLogin={() => router.replace('/login')}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, justifyContent: 'center', padding: spacing.lg, width: '100%', maxWidth: 440, alignSelf: 'center' },
-
-  brandWrap: { alignItems: 'center', marginBottom: 22 },
-  logo: {
-    width: 60,
-    height: 60,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.6)',
-    shadowColor: BLUE,
-    shadowOpacity: 0.5,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 8 },
-    marginBottom: 10,
-  },
-  logoLetter: { fontFamily: fonts.bold, fontSize: 36, lineHeight: 48, color: '#FFFFFF', textShadowColor: 'rgba(8,36,100,0.35)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 6 },
-  brand: { fontFamily: fonts.bold, fontSize: 24, color: BLUE, textAlign: 'center', letterSpacing: 6 },
-
+  scroll: { flexGrow: 1, paddingBottom: 30 },
+  inner: { width: '100%', maxWidth: 440, alignSelf: 'center', paddingHorizontal: 18 },
   card: {
-    borderRadius: 28,
-    overflow: 'hidden',
-    backgroundColor: 'rgba(255,255,255,0.28)',
+    marginTop: -60,
+    borderRadius: 26,
     borderWidth: 1,
-    borderColor: 'rgba(47,128,237,0.18)',
-    shadowColor: BLUE,
-    shadowOpacity: 0.2,
-    shadowRadius: 40,
-    shadowOffset: { width: 0, height: 22 },
+    padding: 22,
+    shadowOpacity: 0.18,
+    shadowRadius: 30,
+    shadowOffset: { width: 0, height: 14 },
     elevation: 0,
   },
-  accent: { height: 4 },
-  cardBody: { padding: 26 },
-  welcome: { fontFamily: fonts.bold, fontSize: 24, color: colors.text },
-  welcomeSub: { fontFamily: fonts.regular, fontSize: 14, color: colors.textSecondary, marginTop: 4, marginBottom: 22 },
-
-  errorBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    padding: 12,
-    marginBottom: 16,
-    borderRadius: 14,
-    backgroundColor: 'rgba(220,38,38,0.07)',
-    borderWidth: 1,
-    borderColor: 'rgba(220,38,38,0.25)',
-  },
-  errorText: { flex: 1, fontFamily: fonts.regular, fontSize: 13, color: '#B91C1C' },
-
-  ctaShadow: {
-    marginTop: 6,
-    borderRadius: 16,
-    shadowColor: BLUE,
-    shadowOpacity: 0.4,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 10 },
-  },
-  cta: {
-    height: 56,
-    borderRadius: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.35)',
-  },
-  ctaText: { fontFamily: fonts.bold, fontSize: 16.5, color: '#FFFFFF', letterSpacing: 0.4 },
-
-  footerWrap: { alignItems: 'center', marginTop: 24 },
+  welcome: { fontFamily: fonts.bold, fontSize: 23 },
+  welcomeSub: { fontFamily: fonts.regular, fontSize: 14, marginTop: 4, marginBottom: 14 },
+  roleChip: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, marginBottom: 16 },
+  roleText: { fontFamily: fonts.bold, fontSize: 13 },
+  roleChange: { fontFamily: fonts.regular, fontSize: 12.5 },
+  errorBox: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, marginBottom: 14, borderRadius: 14, borderWidth: 1 },
+  errorText: { flex: 1, fontFamily: fonts.regular, fontSize: 13 },
+  ctaShadow: { marginTop: 6, borderRadius: 16, shadowOpacity: 0.35, shadowRadius: 16, shadowOffset: { width: 0, height: 8 } },
+  cta: { height: 54, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
+  ctaText: { fontFamily: fonts.bold, fontSize: 16, color: '#FFFFFF', letterSpacing: 0.3 },
+  footerWrap: { alignItems: 'center', marginTop: 22 },
   footer: { flexDirection: 'row', justifyContent: 'center' },
-  muted: { fontFamily: fonts.regular, color: colors.textSecondary },
-  link: { fontFamily: fonts.bold, color: BLUE },
-  secure: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 14, opacity: 0.85 },
-  secureText: { fontFamily: fonts.regular, fontSize: 12, color: colors.textSecondary },
+  muted: { fontFamily: fonts.regular },
+  link: { fontFamily: fonts.bold },
+  secure: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12, opacity: 0.85 },
+  secureText: { fontFamily: fonts.regular, fontSize: 12 },
 });

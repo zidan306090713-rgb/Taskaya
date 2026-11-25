@@ -117,7 +117,7 @@ export function OtpInput({ value, onChange, length = 6, status = 'idle', autoFoc
 const makeStyles = (c: Palette) =>
   StyleSheet.create({
     wrap: { width: '100%', marginBottom: 6 },
-    row: { flexDirection: 'row', gap: 8, justifyContent: 'center', direction: 'ltr' as const },
+    row: { flexDirection: 'row', gap: 8, justifyContent: 'center', ...(Platform.OS === 'web' ? ({ writingDirection: 'ltr' } as object) : { direction: 'ltr' as const }) },
     box: {
       flex: 1,
       height: 60,

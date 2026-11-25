@@ -38,7 +38,7 @@ function buildPath(w: number, h: number, cx: number) {
   ].join(' ');
 }
 
-export default function FloatingTabBar({ state, descriptors, navigation }: any) {
+export default function FloatingTabBar({ state, descriptors, navigation, base }: any) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { c } = useTheme();
@@ -97,6 +97,11 @@ export default function FloatingTabBar({ state, descriptors, navigation }: any) 
               const event = navigation?.emit?.({ type: 'tabPress', target: route.key, canPreventDefault: true });
               if (event?.defaultPrevented) return;
             } catch {}
+            // تابات جوه مسار (زي /pro): نروح للعنوان كامل
+            if (base) {
+              router.navigate((route.name === 'index' ? base : base + '/' + route.name) as any);
+              return;
+            }
             if (navigation?.navigate) navigation.navigate(route.name, route.params);
             else router.navigate(('/' + (route.name === 'index' ? '' : route.name.replace(/\/index$/, ''))) as any);
           };

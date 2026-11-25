@@ -49,24 +49,6 @@ export async function getCategories(): Promise<Category[]> {
   return data ?? [];
 }
 
-export async function getCategory(id: string): Promise<Category | null> {
-  const { data } = await supabase
-    .from('service_categories')
-    .select('id, name_ar, name_en, description_ar, description_en')
-    .eq('id', id)
-    .single();
-  return data;
-}
-
-export async function getSubcategories(categoryId: string): Promise<Subcategory[]> {
-  const { data } = await supabase
-    .from('service_subcategories')
-    .select('id, category_id, name_ar, name_en')
-    .eq('category_id', categoryId)
-    .order('sort_order');
-  return data ?? [];
-}
-
 type Row = {
   provider_id: string;
   base_price: number | null;
@@ -85,6 +67,25 @@ function aggregateProviders(rows: Row[]): ProviderCard[] {
     else if (price != null && (existing.min_price == null || price < existing.min_price)) existing.min_price = price;
   });
   return [...map.values()].sort((a, b) => b.rating_avg - a.rating_avg);
+}
+
+// ---------- احتياطي لصفحة القسم (بيشتغل بس لو app_category فشل) ----------
+export async function getCategory(id: string): Promise<Category | null> {
+  const { data } = await supabase
+    .from('service_categories')
+    .select('id, name_ar, name_en, description_ar, description_en')
+    .eq('id', id)
+    .single();
+  return data;
+}
+
+export async function getSubcategories(categoryId: string): Promise<Subcategory[]> {
+  const { data } = await supabase
+    .from('service_subcategories')
+    .select('id, category_id, name_ar, name_en')
+    .eq('category_id', categoryId)
+    .order('sort_order');
+  return data ?? [];
 }
 
 export async function getProviders(opts: { categoryId?: string; subcategoryId?: string; search?: string }): Promise<ProviderCard[]> {
@@ -298,13 +299,23 @@ export type Booking = {
   services: { name_ar: string; name_en: string } | null;
 };
 
-export async function getMyBookings(uid: string): Promise<Booking[]> {
+const bookingsStore = new Map<string, { at: number; data: Booking[] }>();
+// "طلباتي" بتتحفظ 30 ثانية — وأي حجز جديد أو رد على عرض أو إشعار بيمسحها فتتجاب على طول
+export function invalidateBookings() {
+  bookingsStore.clear();
+}
+
+export async function getMyBookings(uid: string, force = false): Promise<Booking[]> {
+  const hit = bookingsStore.get(uid);
+  if (!force && hit && Date.now() - hit.at < 30_000) return hit.data;
   const { data } = await supabase
     .from('bookings')
     .select('id, booking_number, status, scheduled_at, quoted_price, final_price, pricing_model, quote_prev_status, quote_prev_price, quote_note, cancel_reason, provider_profiles(business_name), services(name_ar, name_en)')
     .eq('customer_id', uid)
     .order('created_at', { ascending: false });
-  return (data ?? []) as unknown as Booking[];
+  const list = (data ?? []) as unknown as Booking[];
+  bookingsStore.set(uid, { at: Date.now(), data: list });
+  return list;
 }
 
 // ---------- إدارة العناوين ----------
@@ -341,6 +352,7 @@ export function clearCatalogCaches() {
 
 // ---------- رد العميل على عرض السعر ----------
 export async function answerQuote(bookingId: string, accept: boolean) {
+  invalidateBookings();
   const { data, error } = await supabase.rpc('answer_quote', { p_booking: bookingId, p_accept: accept });
   return { status: (data as string | null) ?? null, error };
 }

@@ -1,3 +1,4 @@
+import { genPassword } from '../lib/newProvider';
 import { Ico } from './Ico';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
@@ -39,6 +40,8 @@ export default function NewProviderModal({ onClose }: { onClose: () => void }) {
 
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState(() => genPassword());
+  const [copied, setCopied] = useState(false);
   const [bizName, setBizName] = useState('');
   const [desc, setDesc] = useState('');
   const [addr, setAddr] = useState('');
@@ -95,6 +98,7 @@ export default function NewProviderModal({ onClose }: { onClose: () => void }) {
     if (i === 0) {
       if (fullName.trim().split(/\s+/).filter(Boolean).length < 3) return 'اكتب اسم صاحب النشاط ثلاثي';
       if (!toE164(phone)) return 'رقم الموبايل مش صح — مثال: 01012345678';
+      if (password.length < 8) return 'كلمة السر لازم 8 حروف على الأقل';
     }
     if (i === 1 && !bizName.trim()) return 'اكتب اسم النشاط';
     if (i === 2) {
@@ -127,6 +131,7 @@ export default function NewProviderModal({ onClose }: { onClose: () => void }) {
       return createProvider({
         full_name: fullName.trim().replace(/\s+/g, ' '),
         phone: toE164(phone) as string,
+        password,
         business_name: bizName.trim(),
         description: desc.trim() || null,
         business_address: addr.trim() || null,
@@ -210,7 +215,10 @@ export default function NewProviderModal({ onClose }: { onClose: () => void }) {
               <div className="big"><Ico e="✅" /></div>
               <h3>تم إنشاء «{done}»</h3>
               <p className="muted">
-                معتمد وظاهر في التطبيق. يقدر يدخل بالرقم <b dir="ltr">{toE164(phone)}</b> بكود SMS.
+                معتمد وظاهر في التطبيق. يقدر يدخل التطبيق بالرقم <b dir="ltr">{toE164(phone)}</b> وكلمة السر <b dir="ltr">{password}</b>.{' '}
+                <button type="button" className="btn btn-neutral" onClick={() => { void navigator.clipboard.writeText('الرقم: ' + toE164(phone) + '\n' + 'كلمة السر: ' + password); setCopied(true); }}>
+                  {copied ? 'اتنسخت ✓' : 'نسخ بيانات الدخول'}
+                </button>
               </p>
               <button className="btn btn-primary" onClick={onClose}>تمام</button>
             </section>
@@ -223,6 +231,11 @@ export default function NewProviderModal({ onClose }: { onClose: () => void }) {
               <label className="field">
                 رقم الموبايل
                 <input className="inp" dir="ltr" inputMode="tel" placeholder="01012345678" value={phone} onChange={(e) => setPhone(e.target.value)} />
+                <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                  <input className="inp" dir="ltr" placeholder="كلمة السر (8 حروف على الأقل)" value={password} onChange={(e) => setPassword(e.target.value)} />
+                  <button type="button" className="btn btn-neutral" title="كلمة سر عشوائية" onClick={() => setPassword(genPassword())}><Ico e="🎲" /></button>
+                </div>
+                <div className="muted small">كلمة السر اللي مقدم الخدمة هيدخل بيها التطبيق مع رقمه</div>
               </label>
               <p className="note"><Ico e="📱" /> مقدم الخدمة هيدخل بالرقم ده بكود SMS — مفيش كلمة سر.</p>
             </section>

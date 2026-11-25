@@ -1,4 +1,6 @@
-// create-provider: بيتنادى من الداش بورد بس — بيعمل حساب دخول (موبايل) + ملف مقدم الخدمة + خدماته + مناطقه
+// create-provider: بيتنادى من الداش بورد بس (أدمن)
+//  - إنشاء مقدم خدمة: حساب دخول (موبايل + كلمة سر) + ملف + خدمات + مناطق
+//  - { action: 'set_password' }: كلمة سر جديدة لمقدم خدمة موجود
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const CORS = {
@@ -14,6 +16,7 @@ type Svc = { service_id: string; pricing_model: Pricing; base_price: number | nu
 type Body = {
   full_name: string;
   phone: string; // +2010xxxxxxxx
+  password: string;
   business_name: string;
   description?: string | null;
   business_address?: string | null;
@@ -24,14 +27,17 @@ type Body = {
   services: Svc[];
   areas: string[];
 };
+type SetPw = { action: 'set_password'; provider_id: string; password: string };
 
 const UUID = /^[0-9a-f-]{36}$/i;
+const okPassword = (p: unknown) => typeof p === 'string' && p.length >= 8 && p.length <= 72;
 
 function validate(b: Body): string | null {
   if (!b || typeof b !== 'object') return 'BAD_BODY';
   const name = (b.full_name ?? '').trim().replace(/\s+/g, ' ');
   if (name.split(' ').length < 3) return 'NAME_3_PARTS';
   if (!/^\+201[0125]\d{8}$/.test(b.phone ?? '')) return 'BAD_PHONE';
+  if (!okPassword(b.password)) return 'WEAK_PASSWORD';
   if (!(b.business_name ?? '').trim()) return 'BUSINESS_NAME';
   if (!Array.isArray(b.services) || !Array.isArray(b.areas)) return 'BAD_BODY';
   for (const s of b.services) {
@@ -64,21 +70,37 @@ Deno.serve(async (req) => {
   const { data: isAdmin, error: adminErr } = await asUser.rpc('is_admin');
   if (adminErr || isAdmin !== true) return json({ error: 'NOT_ADMIN' }, 403);
 
-  let b: Body;
+  // deno-lint-ignore no-explicit-any
+  let raw: any;
   try {
-    b = await req.json();
+    raw = await req.json();
   } catch {
     return json({ error: 'BAD_BODY' }, 400);
   }
+  const db = createClient(url, service, { auth: { persistSession: false, autoRefreshToken: false } });
+
+  // 2) كلمة سر جديدة لمقدم خدمة موجود
+  if (raw?.action === 'set_password') {
+    const s = raw as SetPw;
+    if (!UUID.test(s.provider_id ?? '')) return json({ error: 'BAD_BODY' }, 400);
+    if (!okPassword(s.password)) return json({ error: 'WEAK_PASSWORD' }, 400);
+    const { data: prof } = await db.from('profiles').select('role').eq('id', s.provider_id).maybeSingle();
+    if (prof?.role !== 'provider') return json({ error: 'NOT_PROVIDER' }, 400);
+    const { error } = await db.auth.admin.updateUserById(s.provider_id, { password: s.password });
+    if (error) return json({ error: error.message }, 400);
+    return json({ ok: true });
+  }
+
+  // 3) إنشاء مقدم خدمة جديد
+  const b = raw as Body;
   const bad = validate(b);
   if (bad) return json({ error: bad }, 400);
-
-  const db = createClient(url, service, { auth: { persistSession: false, autoRefreshToken: false } });
   const fullName = b.full_name.trim().replace(/\s+/g, ' ');
 
-  // 2) حساب الدخول بالموبايل (هيدخل بكود SMS زي العميل)
+  // حساب الدخول: الموبايل + كلمة السر (زي العميل بالظبط)
   const { data: created, error: createErr } = await db.auth.admin.createUser({
     phone: b.phone,
+    password: b.password,
     phone_confirm: true,
     user_metadata: { role: 'provider', full_name: fullName },
   });
@@ -88,7 +110,7 @@ Deno.serve(async (req) => {
   }
   const uid = created.user.id;
 
-  // 3) باقي البيانات — لو أي حاجة فشلت نمسح الحساب كله (الحذف بيمسح الباقي تلقائي)
+  // باقي البيانات — لو أي حاجة فشلت نمسح الحساب كله (الحذف بيمسح الباقي تلقائي)
   try {
     await must(db.from('profiles').update({ role: 'provider', full_name: fullName, phone: b.phone.replace('+', '') }).eq('id', uid));
     await must(

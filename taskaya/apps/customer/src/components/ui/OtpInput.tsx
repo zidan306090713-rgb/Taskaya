@@ -1,6 +1,7 @@
-import { ComponentRef, useEffect, useRef, useState } from 'react';
+import { ComponentRef, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { colors, fonts } from '@/theme';
+import { useTheme } from '@/providers/ThemeProvider';
+import { fonts, Palette, rgba } from '@/theme';
 
 export type OtpStatus = 'idle' | 'checking' | 'success' | 'error';
 
@@ -12,13 +13,14 @@ type Props = {
   autoFocus?: boolean;
 };
 
-const BLUE = '#2F80ED';
 const AR_DIGITS = '٠١٢٣٤٥٦٧٨٩';
 const clean = (v: string, max: number) =>
   v.replace(/[٠-٩]/g, (c) => String(AR_DIGITS.indexOf(c))).replace(/\D/g, '').slice(0, max);
 const native = Platform.OS !== 'web';
 
 export function OtpInput({ value, onChange, length = 6, status = 'idle', autoFocus = true }: Props) {
+  const { c } = useTheme();
+  const styles = useMemo(() => makeStyles(c), [c]);
   const ref = useRef<ComponentRef<typeof TextInput>>(null);
   const [focused, setFocused] = useState(false);
   const [blink, setBlink] = useState(true);
@@ -111,40 +113,42 @@ export function OtpInput({ value, onChange, length = 6, status = 'idle', autoFoc
   );
 }
 
-const styles = StyleSheet.create({
-  wrap: { width: '100%', marginBottom: 6 },
-  row: { flexDirection: 'row', gap: 8, justifyContent: 'center', ...(native ? { direction: 'ltr' as const } : {}) },
-  box: {
-    flex: 1,
-    height: 60,
-    maxWidth: 56,
-    borderRadius: 16,
-    backgroundColor: '#F4F8FF',
-    borderWidth: 1.5,
-    borderColor: '#DCE8FA',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  boxFilled: { backgroundColor: '#FFFFFF', borderColor: 'rgba(47,128,237,0.55)' },
-  boxActive: {
-    backgroundColor: '#FFFFFF',
-    borderColor: BLUE,
-    shadowColor: BLUE,
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-  },
-  boxChecking: { borderColor: BLUE },
-  boxSuccess: {
-    borderColor: '#16A34A',
-    backgroundColor: 'rgba(22,163,74,0.08)',
-    shadowColor: '#16A34A',
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-  },
-  boxError: { borderColor: '#DC2626', backgroundColor: 'rgba(220,38,38,0.06)' },
-  digit: { fontFamily: fonts.bold, fontSize: 24, color: colors.text },
-  caret: { width: 2, height: 24, borderRadius: 1, backgroundColor: BLUE },
-  hidden: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0, color: 'transparent' },
-});
+// الألوان من الثيم: في الغامق الخانات غامقة شفافة، وفي الفاتح زي الأول بالظبط
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+    wrap: { width: '100%', marginBottom: 6 },
+    row: { flexDirection: 'row', gap: 8, justifyContent: 'center', direction: 'ltr' as const },
+    box: {
+      flex: 1,
+      height: 60,
+      maxWidth: 56,
+      borderRadius: 16,
+      backgroundColor: c.isDark ? 'rgba(255,255,255,0.06)' : '#F4F8FF',
+      borderWidth: 1.5,
+      borderColor: c.isDark ? 'rgba(255,255,255,0.14)' : '#DCE8FA',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    boxFilled: { backgroundColor: c.isDark ? 'rgba(255,255,255,0.1)' : '#FFFFFF', borderColor: rgba(c.accent, 0.55) },
+    boxActive: {
+      backgroundColor: c.isDark ? 'rgba(255,255,255,0.1)' : '#FFFFFF',
+      borderColor: c.accent,
+      shadowColor: c.accent,
+      shadowOpacity: 0.3,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 4 },
+    },
+    boxChecking: { borderColor: c.accent },
+    boxSuccess: {
+      borderColor: '#16A34A',
+      backgroundColor: 'rgba(22,163,74,0.08)',
+      shadowColor: '#16A34A',
+      shadowOpacity: 0.35,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 4 },
+    },
+    boxError: { borderColor: '#DC2626', backgroundColor: 'rgba(220,38,38,0.06)' },
+    digit: { fontFamily: fonts.bold, fontSize: 24, color: c.text },
+    caret: { width: 2, height: 24, borderRadius: 1, backgroundColor: c.accent },
+    hidden: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0, color: 'transparent' },
+  });

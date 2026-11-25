@@ -1,3 +1,4 @@
+import { invalidateBookings } from '@/lib/api';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -110,7 +111,7 @@ export default function Booking() {
     });
     setLoading(false);
     if (bookErr && bookErr.code !== '23505') return setError(bookErr.message);
-    router.dismissTo('/orders');
+    (invalidateBookings(), router.dismissTo('/orders'));
   };
 
   return (

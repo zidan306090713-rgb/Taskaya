@@ -6,6 +6,7 @@ export type Area = { id: string; name_ar: string; city: { name_ar: string } | nu
 export type NewProviderBody = {
   full_name: string;
   phone: string;
+  password: string;
   business_name: string;
   description: string | null;
   business_address: string | null;
@@ -53,7 +54,38 @@ const ERRORS: Record<string, string> = {
   BAD_PHONE: 'رقم الموبايل مش صح',
   BUSINESS_NAME: 'اسم النشاط مطلوب',
   PRICE_REQUIRED: 'كل خدمة لازم يبقى ليها سعر (إلا اللي بعرض سعر)',
+  WEAK_PASSWORD: 'كلمة السر لازم 8 حروف على الأقل',
+  NOT_PROVIDER: 'الحساب ده مش مقدم خدمة',
 };
+
+// كلمة سر قوية عشوائية (من غير حروف بتتلخبط زي 0/O و 1/l)
+export function genPassword(len = 10): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+  const a = new Uint32Array(len);
+  crypto.getRandomValues(a);
+  return Array.from(a, (n) => chars[n % chars.length]).join('');
+}
+
+// بيطلّع رسالة الخطأ الحقيقية من رد الـ Edge Function
+async function fnError(error: { message: string }): Promise<Error> {
+  let code = error.message;
+  const ctx = (error as { context?: Response }).context;
+  if (ctx && typeof ctx.json === 'function') {
+    try {
+      const j = await ctx.json();
+      if (j?.error) code = j.error;
+    } catch {
+      /* نسيب الرسالة الأصلية */
+    }
+  }
+  return new Error(ERRORS[code] ?? code);
+}
+
+// كلمة سر جديدة لمقدم خدمة موجود
+export async function setProviderPassword(id: string, password: string): Promise<void> {
+  const { error } = await supabase.functions.invoke('create-provider', { body: { action: 'set_password', provider_id: id, password } });
+  if (error) throw await fnError(error);
+}
 
 // بينادي الـ Edge Function (create-provider) — توكن الأدمن بيتبعت لوحده
 export async function createProvider(body: NewProviderBody): Promise<string> {

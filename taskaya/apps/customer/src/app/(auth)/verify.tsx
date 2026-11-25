@@ -1,3 +1,5 @@
+import { useMemo as useStylesMemo } from 'react';
+import { useTheme } from '@/providers/ThemeProvider';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -9,19 +11,20 @@ import { useEntrance, useFocusHide } from '@/hooks/use-screen-entrance';
 import { OrbitLogo } from '@/components/ui/OrbitLogo';
 import { cancelHold, holdAuth, releaseAuth, resendSms, verifyOtp } from '@/lib/auth';
 import { toLocalDisplay } from '@/lib/phone';
-import { colors, fonts, spacing } from '@/theme';
+import { colors, fonts, Palette, rgba, spacing } from '@/theme';
 
 const RESEND_SECONDS = 60;
 const MIN_THINK_MS = 700; // أقل مدة يظهر فيها "جاري التحقق"
 const SUCCESS_MS = 900; // مدة ظهور اللون الأخضر قبل الدخول
 const ERROR_MS = 800; // مدة ظهور اللون الأحمر قبل المسح
-const BLUE = '#2F80ED';
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
 
 export default function Verify() {
+  const { c } = useTheme();
+  const styles = useStylesMemo(() => makeStyles(c), [c]);
   const router = useRouter();
   const { phone = '' } = useLocalSearchParams<{ phone: string }>();
   const [code, setCode] = useState('');
@@ -98,16 +101,16 @@ export default function Verify() {
         {/* ===== Card ===== */}
         <Animated.View style={cardAnim}>
           <View style={[styles.card, webGlass]}>
-            <LinearGradient colors={['#4AA3FF', '#1D6FE0']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.accent} />
+            <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.accent} />
             <View style={styles.cardBody}>
               <View style={styles.iconRing}>
-                <Ionicons name="chatbubble-ellipses-outline" size={26} color={BLUE} />
+                <Ionicons name="chatbubble-ellipses-outline" size={26} color={c.accentText} />
               </View>
 
               <Text style={styles.title}>{t('verifyTitle')}</Text>
               <Text style={styles.sub}>{t('codeSentTo')}</Text>
               <View style={styles.phonePill}>
-                <Ionicons name="call-outline" size={15} color={BLUE} />
+                <Ionicons name="call-outline" size={15} color={c.accentText} />
                 <Text style={styles.phone}>{toLocalDisplay(phone)}</Text>
               </View>
 
@@ -125,8 +128,8 @@ export default function Verify() {
               <View style={styles.statusRow}>
                 {status === 'checking' ? (
                   <View style={styles.statusInline}>
-                    <Ionicons name="sync-outline" size={16} color={BLUE} />
-                    <Text style={[styles.status, { color: BLUE }]}>{t('verifying')}</Text>
+                    <Ionicons name="sync-outline" size={16} color={c.accentText} />
+                    <Text style={[styles.status, { color: c.accentText }]}>{t('verifying')}</Text>
                   </View>
                 ) : status === 'success' ? (
                   <View style={styles.statusInline}>
@@ -147,7 +150,7 @@ export default function Verify() {
                 accessibilityRole="button"
                 style={({ pressed }) => [styles.resend, canResend && styles.resendActive, pressed && canResend && { opacity: 0.85 }]}
               >
-                <Ionicons name={canResend ? 'refresh' : 'time-outline'} size={16} color={canResend ? '#FFFFFF' : colors.textSecondary} />
+                <Ionicons name={canResend ? 'refresh' : 'time-outline'} size={16} color={canResend ? '#FFFFFF' : c.textSecondary} />
                 <Text style={[styles.resendText, canResend && { color: '#FFFFFF' }]}>
                   {left > 0 ? `${t('resendIn')} ${fmt(left)}` : t('resend')}
                 </Text>
@@ -159,11 +162,11 @@ export default function Verify() {
         {/* ===== Footer ===== */}
         <Animated.View style={[styles.footerWrap, footAnim]}>
           <Pressable onPress={() => router.back()} accessibilityRole="button" style={styles.changeRow}>
-            <Ionicons name="arrow-back" size={15} color={colors.textSecondary} />
+            <Ionicons name="arrow-back" size={15} color={c.textSecondary} />
             <Text style={styles.muted}>{t('changeNumber')}</Text>
           </Pressable>
           <View style={styles.secure}>
-            <Ionicons name="shield-checkmark-outline" size={14} color={colors.textSecondary} />
+            <Ionicons name="shield-checkmark-outline" size={14} color={c.textSecondary} />
             <Text style={styles.secureText}>{tr('لن نشارك رقمك مع أي طرف آخر', 'We never share your number')}</Text>
           </View>
         </Animated.View>
@@ -172,7 +175,8 @@ export default function Verify() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
   container: { flexGrow: 1, justifyContent: 'center', padding: spacing.lg, width: '100%', maxWidth: 440, alignSelf: 'center' },
 
   brandWrap: { alignItems: 'center', marginBottom: 22 },
@@ -184,22 +188,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.6)',
-    shadowColor: BLUE,
+    shadowColor: c.accent,
     shadowOpacity: 0.5,
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 8 },
     marginBottom: 10,
   },
   logoLetter: { fontFamily: fonts.bold, fontSize: 36, lineHeight: 48, color: '#FFFFFF', textShadowColor: 'rgba(8,36,100,0.35)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 6 },
-  brand: { fontFamily: fonts.bold, fontSize: 24, color: BLUE, textAlign: 'center', letterSpacing: 6 },
+  brand: { fontFamily: fonts.bold, fontSize: 24, color: c.accentText, textAlign: 'center', letterSpacing: 6 },
 
   card: {
     borderRadius: 28,
     overflow: 'hidden',
-    backgroundColor: Platform.OS === 'android' ? 'rgba(255,255,255,0.88)' : 'rgba(255,255,255,0.28)',
+    backgroundColor: c.isDark ? 'rgba(21,26,36,0.92)' : Platform.OS === 'android' ? 'rgba(255,255,255,0.88)' : 'rgba(255,255,255,0.28)',
     borderWidth: 1,
-    borderColor: 'rgba(47,128,237,0.18)',
-    shadowColor: BLUE,
+    borderColor: rgba(c.accent, 0.18),
+    shadowColor: c.accent,
     shadowOpacity: 0.2,
     shadowRadius: 40,
     shadowOffset: { width: 0, height: 22 },
@@ -214,13 +218,13 @@ const styles = StyleSheet.create({
     borderRadius: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(47,128,237,0.1)',
+    backgroundColor: rgba(c.accent, 0.1),
     borderWidth: 1.5,
-    borderColor: 'rgba(47,128,237,0.28)',
+    borderColor: rgba(c.accent, 0.28),
     marginBottom: 16,
   },
-  title: { fontFamily: fonts.bold, fontSize: 24, color: colors.text, textAlign: 'center' },
-  sub: { fontFamily: fonts.regular, fontSize: 14, color: colors.textSecondary, textAlign: 'center', marginTop: 6 },
+  title: { fontFamily: fonts.bold, fontSize: 24, color: c.text, textAlign: 'center' },
+  sub: { fontFamily: fonts.regular, fontSize: 14, color: c.textSecondary, textAlign: 'center', marginTop: 6 },
   phonePill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -229,11 +233,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 999,
-    backgroundColor: 'rgba(47,128,237,0.1)',
+    backgroundColor: rgba(c.accent, 0.1),
     borderWidth: 1,
-    borderColor: 'rgba(47,128,237,0.25)',
+    borderColor: rgba(c.accent, 0.25),
   },
-  phone: { fontFamily: fonts.bold, fontSize: 17, color: BLUE, letterSpacing: 1.5 },
+  phone: { fontFamily: fonts.bold, fontSize: 17, color: c.accentText, letterSpacing: 1.5 },
 
   statusRow: { minHeight: 30, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
   statusInline: { flexDirection: 'row', alignItems: 'center', gap: 6 },
@@ -247,16 +251,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     height: 44,
     borderRadius: 14,
-    backgroundColor: 'rgba(11,31,58,0.05)',
+    backgroundColor: c.isDark ? 'rgba(255,255,255,0.06)' : 'rgba(11,31,58,0.05)',
     borderWidth: 1,
-    borderColor: 'rgba(47,128,237,0.18)',
+    borderColor: rgba(c.accent, 0.18),
   },
-  resendActive: { backgroundColor: BLUE, borderColor: 'rgba(255,255,255,0.35)', shadowColor: BLUE, shadowOpacity: 0.4, shadowRadius: 14, shadowOffset: { width: 0, height: 6 } },
-  resendText: { fontFamily: fonts.semibold, fontSize: 14, color: colors.textSecondary },
+  resendActive: { backgroundColor: c.accent, borderColor: 'rgba(255,255,255,0.35)', shadowColor: c.accent, shadowOpacity: 0.4, shadowRadius: 14, shadowOffset: { width: 0, height: 6 } },
+  resendText: { fontFamily: fonts.semibold, fontSize: 14, color: c.textSecondary },
 
   footerWrap: { alignItems: 'center', marginTop: 24 },
   changeRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6 },
-  muted: { fontFamily: fonts.semibold, color: colors.textSecondary },
+  muted: { fontFamily: fonts.semibold, color: c.textSecondary },
   secure: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12, opacity: 0.85 },
-  secureText: { fontFamily: fonts.regular, fontSize: 12, color: colors.textSecondary },
+  secureText: { fontFamily: fonts.regular, fontSize: 12, color: c.textSecondary },
 });

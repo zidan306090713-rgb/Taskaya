@@ -1,3 +1,4 @@
+import { useOnPush } from '@/lib/push';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from 'expo-router';
@@ -275,9 +276,9 @@ export default function Orders() {
   const [openId, setOpenId] = useState<string | null>(null);
 
   // الحجوزات اللي مستنية ردك تظهر الأول
-  const load = useCallback(() => {
+  const load = useCallback((force = false) => {
     if (!uid) return;
-    getMyBookings(uid).then((l) =>
+    getMyBookings(uid, force).then((l) =>
       setList([...l].sort((a, b) => Number(b.status === AWAITING) - Number(a.status === AWAITING))),
     );
   }, [uid]);
@@ -289,6 +290,8 @@ export default function Orders() {
   );
 
   const open = list?.find((b) => b.id === openId) ?? null;
+  // إشعار عن حجز وصل والتطبيق مفتوح → "طلباتي" تتحدث على طول
+  useOnPush(useCallback(() => load(true), [load]));
 
   return (
     <Screen title={tr('طلباتي', 'My Orders')}>

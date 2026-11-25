@@ -1,3 +1,5 @@
+import { useAuth as useAuthPw } from '../lib/auth';
+import { genPassword, setProviderPassword } from '../lib/newProvider';
 import { Ico } from './Ico';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
@@ -76,6 +78,7 @@ export default function ProviderModal({ p, onClose }: { p: Provider; onClose: ()
           <button className="icon-btn" onClick={onClose} aria-label="إغلاق"><Ico e="✕" /></button>
         </header>
 
+        <div className="drawer-scroll">
         <fieldset className="drawer-body" disabled={!canEdit}>
           <section className="section">
             <div className="kv">
@@ -90,6 +93,8 @@ export default function ProviderModal({ p, onClose }: { p: Provider; onClose: ()
             </div>
             {p.rejection_reason && p.status === 'rejected' ? <p className="note danger">سبب الرفض: {p.rejection_reason}</p> : null}
           </section>
+
+          <PasswordSection id={p.id} phone={p.owner?.phone ?? null} />
 
           {err ? <div className="alert">{err}</div> : null}
 
@@ -177,7 +182,68 @@ export default function ProviderModal({ p, onClose }: { p: Provider; onClose: ()
             )}
           </section>
         </fieldset>
+        </div>
       </aside>
     </div>
+  );
+}
+
+// دخول التطبيق: المالك يحط كلمة سر جديدة لمقدم الخدمة (بيدخل برقمه + كلمة السر زي العميل)
+function PasswordSection({ id, phone }: { id: string; phone: string | null }) {
+  const isOwner = useAuthPw().admin?.role === 'admin';
+  const [pw, setPw] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState('');
+  const [err, setErr] = useState('');
+  const [copied, setCopied] = useState(false);
+  if (!isOwner) return null;
+
+  const save = async () => {
+    setErr('');
+    setDone('');
+    setCopied(false);
+    if (pw.length < 8) return setErr('كلمة السر لازم 8 حروف على الأقل');
+    setBusy(true);
+    try {
+      await setProviderPassword(id, pw);
+      setDone(pw);
+      setPw('');
+    } catch (e) {
+      setErr((e as Error).message);
+    }
+    setBusy(false);
+  };
+  const copy = () => {
+    void navigator.clipboard.writeText('الرقم: +' + (phone ?? '') + '\nكلمة السر: ' + done);
+    setCopied(true);
+  };
+
+  return (
+    <section className="section full pw-sec">
+      <div className="pw-info">
+        <span className="pw-ic"><Ico e="🔒" /></span>
+        <div>
+          <h3>دخول التطبيق</h3>
+          <div className="muted small">بيدخل برقمه{phone ? <> <b dir="ltr">+{phone}</b></> : null} وكلمة سر</div>
+        </div>
+      </div>
+      <div className="pw-form">
+        <input className="inp" dir="ltr" placeholder="كلمة سر جديدة (8 حروف على الأقل)" value={pw}
+          onChange={(e) => { setPw(e.target.value); setErr(''); }} />
+        <button type="button" className="btn btn-neutral pw-dice" title="كلمة سر عشوائية" onClick={() => { setPw(genPassword()); setErr(''); }}>
+          <Ico e="🎲" />
+        </button>
+        <button type="button" className="btn btn-primary" disabled={busy || !pw} onClick={() => void save()}>{busy ? '…' : 'تعيين'}</button>
+      </div>
+      {err ? <div className="alert pw-msg">{err}</div> : null}
+      {done ? (
+        <div className="pw-done">
+          <Ico e="✅" />
+          <span>اتغيرت — كلمة السر الجديدة:</span>
+          <b dir="ltr">{done}</b>
+          <button type="button" className="btn btn-neutral" onClick={copy}>{copied ? 'اتنسخت ✓' : 'نسخ بيانات الدخول'}</button>
+        </div>
+      ) : null}
+    </section>
   );
 }

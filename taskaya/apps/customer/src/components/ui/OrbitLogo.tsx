@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Animated, Easing, Platform, View } from 'react-native';
-import Svg, { Circle, Ellipse } from 'react-native-svg';
+import { useEffect, useId, useState } from 'react';
+import { View } from 'react-native';
+import Svg, { Circle, Defs, G, Mask, Path, Rect } from 'react-native-svg';
 import { useTheme } from '@/providers/ThemeProvider';
 
 // أبعاد الرسمة الأصلية (بتتكبر/تتصغر حسب size)
@@ -10,72 +10,79 @@ const CX = 55;
 const CY = 48;
 const RX = 46; // نص عرض المدار
 const RY = 13; // نص ارتفاع المدار
-const TILT_DEG = -18;
-const TILT = (TILT_DEG * Math.PI) / 180;
-const STEPS = 36; // عدد النقط اللي بنحسبها على المدار (كل ما تزيد الحركة تبقى أنعم)
+const TILT = (-18 * Math.PI) / 180;
+const PERIOD = 4500; // لفة كاملة كل 4.5 ثانية
+
+// نقطة على المدار المايل
+function pt(t: number): [number, number] {
+  const x = RX * Math.cos(t);
+  const y = RY * Math.sin(t);
+  return [CX + x * Math.cos(TILT) - y * Math.sin(TILT), CY + x * Math.sin(TILT) + y * Math.cos(TILT)];
+}
+function arc(a: number, b: number) {
+  let d = '';
+  for (let i = 0; i <= 40; i++) {
+    const [x, y] = pt(a + ((b - a) * i) / 40);
+    d += `${i ? 'L' : 'M'}${x.toFixed(2)} ${y.toFixed(2)} `;
+  }
+  return d;
+}
+const BACK = arc(Math.PI, Math.PI * 2); // النص اللي ورا الـ T
+const FRONT = arc(0, Math.PI); // النص اللي قدام الـ T
+
+function Badge({ x, y, fill }: { x: number; y: number; fill: string }) {
+  return (
+    <G transform={`translate(${x.toFixed(2)} ${y.toFixed(2)})`}>
+      <Circle r={6.6} fill={fill} />
+      <Path d="M-3 0.2 L-0.9 2.4 L3.2 -2" fill="none" stroke="#FFFFFF" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" />
+    </G>
+  );
+}
 
 /**
- * لوجو تاسكاية: كوكب + مدار + نجمة بتلف.
- * بياخد لون التطبيق تلقائيًا، والحركة شغالة على معالج الرسم (مش بتتقّل الشاشة).
+ * لوجو تاسكاية: حرف T + مدار مايل + علامة صح بتلف حواليه.
+ * المدار بيتقطع حوالين علامة الصح (كأنها منفصلة عنه)، ولما بتلف من ورا بتعدي من ضهر الـ T.
+ * بياخد لون التطبيق تلقائيًا (الـ T أغمق من المدار).
  */
 export function OrbitLogo({ size = 110, animated = true }: { size?: number; animated?: boolean }) {
   const { c } = useTheme();
-  const k = size / W;
-  const star = Math.round(11 * k);
-  const [t] = useState(() => new Animated.Value(0));
-
-  // بنحسب مكان النجمة على المدار المايل مرة واحدة، والـ interpolate بيمشّيها بينهم
-  const orbit = useMemo(() => {
-    const input: number[] = [];
-    const xs: number[] = [];
-    const ys: number[] = [];
-    for (let i = 0; i <= STEPS; i++) {
-      const th = (i / STEPS) * Math.PI * 2;
-      const x = RX * Math.cos(th);
-      const y = RY * Math.sin(th);
-      input.push(i / STEPS);
-      xs.push((CX + x * Math.cos(TILT) - y * Math.sin(TILT)) * k - star / 2);
-      ys.push((CY + x * Math.sin(TILT) + y * Math.cos(TILT)) * k - star / 2);
-    }
-    return { input, xs, ys };
-  }, [k, star]);
+  const id = 'tl' + useId().replace(/[^a-zA-Z0-9]/g, '');
+  const [t, setT] = useState(0.55);
 
   useEffect(() => {
     if (!animated) return;
-    const loop = Animated.loop(
-      Animated.timing(t, { toValue: 1, duration: 6000, easing: Easing.linear, useNativeDriver: Platform.OS !== 'web' })
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [animated, t]);
+    let raf = 0;
+    const start = Date.now() - (0.55 / (Math.PI * 2)) * PERIOD;
+    const tick = () => {
+      setT((((Date.now() - start) % PERIOD) / PERIOD) * Math.PI * 2);
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [animated]);
 
-  const translateX = t.interpolate({ inputRange: orbit.input, outputRange: orbit.xs });
-  const translateY = t.interpolate({ inputRange: orbit.input, outputRange: orbit.ys });
+  const [bx, by] = pt(t);
+  const front = Math.sin(t) > 0;
+  const k = size / W;
 
   return (
     <View style={{ width: W * k, height: H * k }} accessibilityRole="image" accessibilityLabel="Taskaya">
       <Svg width={W * k} height={H * k} viewBox={`0 0 ${W} ${H}`}>
-        {/* الكوكب + لمعة */}
-        <Circle cx={CX} cy={CY} r={24} fill={c.accent} />
-        <Circle cx={CX - 8} cy={CY - 8} r={7} fill={c.accentLight} opacity={0.85} />
-        {/* المدار */}
-          <Ellipse transform={`rotate(${TILT_DEG} ${CX} ${CY})`} cx={CX} cy={CY} rx={RX} ry={RY} fill="none" stroke={c.accentLight} strokeWidth={4} />
+        <Defs>
+          {/* فراغ حوالين علامة الصح: المدار بيتقطع عندها */}
+          <Mask id={id} maskUnits="userSpaceOnUse" x="0" y="0" width={W} height={H}>
+            <Rect x="0" y="0" width={W} height={H} fill="#FFFFFF" />
+            <Circle cx={bx} cy={by} r={10.5} fill="#000000" />
+          </Mask>
+        </Defs>
+        <Path d={BACK} fill="none" stroke={c.accentLight} strokeWidth={4} strokeLinecap="round" mask={`url(#${id})`} />
+        {!front ? <Badge x={bx} y={by} fill={c.accent} /> : null}
+        {/* حرف T */}
+        <Rect x={37} y={23} width={36} height={10} rx={3} fill={c.accent} />
+        <Rect x={50} y={29} width={10} height={42} rx={3} fill={c.accent} />
+        <Path d={FRONT} fill="none" stroke={c.accentLight} strokeWidth={4} strokeLinecap="round" mask={`url(#${id})`} />
+        {front ? <Badge x={bx} y={by} fill={c.accent} /> : null}
       </Svg>
-      {/* النجمة اللي بتلف */}
-      <Animated.View
-        style={{
-          position: 'absolute',
-          left: 0,
-          top: 0,
-          width: star,
-          height: star,
-          borderRadius: star / 2,
-          backgroundColor: c.accent,
-          borderWidth: Math.max(1.5, 2 * k),
-          borderColor: '#FFFFFF',
-          transform: [{ translateX }, { translateY }],
-        }}
-      />
     </View>
   );
 }

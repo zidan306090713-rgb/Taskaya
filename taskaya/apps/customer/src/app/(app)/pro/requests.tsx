@@ -5,6 +5,8 @@ import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Btn, custOf, IconName, L, money, NEW_STATUSES, ProCard, StatusBadge, svcOf, toNum, useProStyles, whenOf, addrOf } from '@/components/pro/ProUI';
 import { Screen } from '@/components/ui/Screen';
+import { oldestFirst } from '@/components/pro/Ago';
+import { usePullRefresh } from '@/components/ui/Refresh';
 import { ListSkeleton } from '@/components/ui/Skeleton';
 import { isRTL, tr } from '@/i18n';
 import { getProBookings, ProBooking, sendProQuote, setProStatus } from '@/lib/provider';
@@ -243,35 +245,54 @@ function RequestSheet({ b, onClose, onDone }: { b: ProBooking; onClose: () => vo
   );
 }
 
+const tm = (iso: string | null) => (iso ? new Date(iso).getTime() : Number.MAX_SAFE_INTEGER);
+// الترتيب: الجديدة الأقدم فوق (مستنية من بدري) · المؤكدة والشغالة الأقرب ميعاد فوق · الباقي الأحدث فوق
+function sortFor(k: Filter) {
+  if (k === 'new') return oldestFirst;
+  if (k === 'confirmed' || k === 'active') return (a: ProBooking, b: ProBooking) => tm(a.scheduled_at) - tm(b.scheduled_at);
+  return undefined;
+}
+
 export default function ProRequests() {
   const { c } = useTheme();
   const s = useProStyles();
   const { session } = useAuth();
   const uid = session?.user.id ?? '';
   const [list, setList] = useState<ProBooking[] | null>(null);
+  const [loadErr, setLoadErr] = useState(false);
   const [filter, setFilter] = useState<Filter>('new');
   const [openId, setOpenId] = useState<string | null>(null);
 
   const load = useCallback(
     (force = false) => {
-      if (!uid) return;
-      getProBookings(uid, force).then(setList);
+      if (!uid) return Promise.resolve();
+      return getProBookings(uid, force).then(
+        (l) => {
+          setList(l);
+          setLoadErr(false);
+        },
+        () => setLoadErr(true), // خطأ في النت/السيرفر ≠ "مفيش طلبات"
+      );
     },
     [uid],
   );
   useFocusEffect(
     useCallback(() => {
-      load();
+      void load();
     }, [load]),
   );
-  useOnPush(useCallback(() => load(true), [load]));
+  useOnPush(useCallback(() => void load(true), [load]));
+  const refreshControl = usePullRefresh(() => load(true)); // السحب لتحت = من السيرفر على طول
 
-  // جاي من إشعار (?open=<رقم الحجز>) → افتح الطلب ده على طول
+  // جاي من إشعار أو من كارت الرئيسية (?open=<رقم الحجز>) → افتح الطلب ده على طول
   const { open: openParam } = useLocalSearchParams<{ open?: string }>();
   const tried = useRef<string | null>(null);
   useEffect(() => {
     if (!openParam || !list) return;
-    if (list.some((b) => b.id === openParam)) {
+    const hit = list.find((b) => b.id === openParam);
+    if (hit) {
+      const f = FILTERS.find((x) => x.statuses.includes(hit.status));
+      if (f) setFilter(f.k); // ورا الشيت تبان القايمة اللي فيها الطلب
       setOpenId(openParam);
       router.setParams({ open: undefined });
       return;
@@ -279,18 +300,20 @@ export default function ProRequests() {
     // مش في القايمة المتخزنة (حجز جديد) → نحدّث مرة واحدة
     if (tried.current !== openParam) {
       tried.current = openParam;
-      load(true);
+      void load(true);
       return;
     }
     router.setParams({ open: undefined });
   }, [openParam, list, load]);
 
   const cur = FILTERS.find((f) => f.k === filter) ?? FILTERS[0];
-  const shown = (list ?? []).filter((b) => cur.statuses.includes(b.status));
+  const sorter = sortFor(filter);
+  const filtered = (list ?? []).filter((b) => cur.statuses.includes(b.status));
+  const shown = sorter ? filtered.sort(sorter) : filtered;
   const open = list?.find((b) => b.id === openId) ?? null;
 
   return (
-    <Screen hero title={tr('الطلبات', 'Requests')}>
+    <Screen hero title={tr('الطلبات', 'Requests')} refreshControl={refreshControl}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filters}>
         {FILTERS.map((f) => {
           const on = f.k === filter;
@@ -306,8 +329,14 @@ export default function ProRequests() {
         })}
       </ScrollView>
 
-      {list === null ? <ListSkeleton rows={3} height={150} /> : null}
-      {list !== null && shown.length === 0 ? (
+      {loadErr ? (
+        <View style={s.panel}>
+          <Text style={s.err}>{tr('مقدرناش نجيب الطلبات — اتأكد من النت وحاول تاني.', "Couldn't load requests — check your connection.")}</Text>
+          <Btn title={tr('حاول تاني', 'Try again')} icon="refresh" kind="ghost" onPress={() => void load(true)} />
+        </View>
+      ) : null}
+      {list === null && !loadErr ? <ListSkeleton rows={3} height={150} /> : null}
+      {list !== null && !loadErr && shown.length === 0 ? (
         <View style={s.emptyWrap}>
           <View style={s.emptyIcon}>
             <Ionicons name="clipboard-outline" size={30} color={c.accentText} />
@@ -325,7 +354,7 @@ export default function ProRequests() {
           onClose={() => setOpenId(null)}
           onDone={() => {
             setOpenId(null);
-            load(true);
+            void load(true);
           }}
         />
       ) : null}

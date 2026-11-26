@@ -36,6 +36,16 @@ function when(lang: Lang, iso: string | null): string | null {
 type Ctx = { svc: string; when: string | null; who: string | null; price: string | null; reason: string | null };
 const join = (...parts: Array<string | null | undefined | false>) => parts.filter(Boolean).join(SEP);
 
+// Fixed cancel reasons written by the DB in Arabic -> English. Free-text reasons stay as typed.
+const FIXED_REASONS: Record<string, string> = {
+  'رفض العميل عرض السعر': 'Price quote declined',
+};
+function reasonText(lang: Lang, raw: string | null | undefined): string | null {
+  const r = raw?.trim();
+  if (!r) return null;
+  return lang === 'ar' ? r : FIXED_REASONS[r] ?? r;
+}
+
 function text(lang: Lang, status: string, c: Ctx): [string, string] | null {
   const ar = lang === 'ar';
   const withWho = c.who ? (ar ? `مع ${c.who}` : `with ${c.who}`) : null;
@@ -170,7 +180,7 @@ async function pushNotification(id: string) {
         when: when(lang, booking.scheduled_at),
         who,
         price: booking.quoted_price != null ? new Intl.NumberFormat(lang === 'ar' ? 'ar-EG' : 'en-US').format(Number(booking.quoted_price)) : null,
-        reason: booking.cancel_reason?.trim() || null,
+        reason: reasonText(lang, booking.cancel_reason),
       };
       pair = forCustomer ? text(lang, status, ctx) : proText(lang, status, n.data?.quote ?? null, ctx);
     }

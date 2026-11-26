@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { ReactNode } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, type ScrollViewProps, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/providers/ThemeProvider';
 import { fonts, spacing } from '@/theme';
@@ -15,6 +15,7 @@ export function Screen({
   subtitle,
   padTop,
   hero,
+  refreshControl,
   right,
   children,
 }: {
@@ -22,6 +23,7 @@ export function Screen({
   subtitle?: string;
   padTop?: number;
   hero?: boolean;
+  refreshControl?: ScrollViewProps['refreshControl'];
   right?: ReactNode;
   children: ReactNode;
 }) {
@@ -29,7 +31,7 @@ export function Screen({
   const insets = useSafeAreaInsets();
   if (hero) {
     return (
-      <ScrollView style={{ backgroundColor: 'transparent' }} contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
+      <ScrollView style={{ backgroundColor: 'transparent' }} contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false} refreshControl={refreshControl}>
         <LinearGradient colors={c.gradient} start={{ x: 0.1, y: 0 }} end={{ x: 0.9, y: 1 }} style={[styles.hero, { paddingTop: insets.top + 18 }]}>
           <View style={[styles.heroInner, right ? styles.heroRow : null]}>
             <View style={{ flex: 1 }}>
@@ -44,7 +46,7 @@ export function Screen({
     );
   }
   return (
-    <ScrollView
+    <ScrollView refreshControl={refreshControl}
       style={{ backgroundColor: 'transparent' }}
       contentContainerStyle={[styles.container, padTop !== undefined && { paddingTop: padTop }]}
       showsVerticalScrollIndicator={false}

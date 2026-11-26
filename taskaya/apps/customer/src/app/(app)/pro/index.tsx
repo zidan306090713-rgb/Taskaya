@@ -2,8 +2,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, Switch, Text, View } from 'react-native';
-import { money, NEW_STATUSES, ProCard, useProStyles } from '@/components/pro/ProUI';
+import { oldestFirst } from '@/components/pro/Ago';
+import { Btn, money, NEW_STATUSES, ProCard, useProStyles } from '@/components/pro/ProUI';
 import { BellButton } from '@/components/ui/BellButton';
+import { usePullRefresh } from '@/components/ui/Refresh';
 import { Screen } from '@/components/ui/Screen';
 import { ListSkeleton } from '@/components/ui/Skeleton';
 import { tr } from '@/i18n';
@@ -23,27 +25,37 @@ export default function ProHome() {
 
   const [me, setMe] = useState<ProProfile | null>(null);
   const [list, setList] = useState<ProBooking[] | null>(null);
+  const [loadErr, setLoadErr] = useState(false);
   const [ledger, setLedger] = useState<LedgerRow[] | null>(null);
   const [avBusy, setAvBusy] = useState(false);
   const [err, setErr] = useState('');
 
   const load = useCallback(
     (force = false) => {
-      if (!uid) return;
-      getMyProvider(uid, force).then(setMe);
-      getProBookings(uid, force).then(setList);
-      getMyLedger(uid, force).then(setLedger);
+      if (!uid) return Promise.resolve();
+      return Promise.all([
+        getMyProvider(uid, force).then(setMe),
+        getProBookings(uid, force).then(
+          (l) => {
+            setList(l);
+            setLoadErr(false);
+          },
+          () => setLoadErr(true), // خطأ في النت/السيرفر ≠ "مفيش طلبات"
+        ),
+        getMyLedger(uid, force).then(setLedger),
+      ]);
     },
     [uid],
   );
   useFocusEffect(
     useCallback(() => {
-      load();
+      void load();
     }, [load]),
   );
-  useOnPush(useCallback(() => load(true), [load]));
+  useOnPush(useCallback(() => void load(true), [load]));
+  const refreshControl = usePullRefresh(() => load(true)); // السحب لتحت = من السيرفر على طول
 
-  const fresh = (list ?? []).filter((b) => NEW_STATUSES.includes(b.status));
+  const fresh = (list ?? []).filter((b) => NEW_STATUSES.includes(b.status)).sort(oldestFirst);
   const today = (list ?? []).filter((b) => (b.status === 'confirmed' || b.status === 'in_progress') && b.scheduled_at && sameDay(b.scheduled_at));
   const balance = (ledger ?? []).reduce((a, r) => a + r.amount, 0);
   const owes = balance > 0.004;
@@ -62,9 +74,10 @@ export default function ProHome() {
   };
 
   const goRequests = () => router.push('/pro/requests' as never);
+  const openRequest = (id: string) => router.navigate({ pathname: '/pro/requests', params: { open: id } } as never);
 
   return (
-    <Screen hero title={me?.business_name ?? tr('أهلًا بيك', 'Welcome')} subtitle={tr('لوحة مقدم الخدمة', 'Provider dashboard')} right={<BellButton />}>
+    <Screen hero title={me?.business_name ?? tr('أهلًا بيك', 'Welcome')} subtitle={tr('لوحة مقدم الخدمة', 'Provider dashboard')} right={<BellButton />} refreshControl={refreshControl}>
       <View style={s.panel}>
         <View style={s.panelRow}>
           <Ionicons name={me?.is_available ? 'radio-button-on' : 'radio-button-off'} size={22} color={me?.is_available ? '#16A34A' : c.iconMuted} />
@@ -104,14 +117,20 @@ export default function ProHome() {
       </View>
 
       <Text style={s.section}>{tr('طلبات مستنية ردك', 'Waiting for your reply')}</Text>
-      {list === null ? <ListSkeleton rows={2} height={150} /> : null}
-      {list !== null && fresh.length === 0 ? (
+      {loadErr ? (
+        <View style={s.panel}>
+          <Text style={s.err}>{tr('مقدرناش نجيب الطلبات — اتأكد من النت وحاول تاني.', "Couldn't load requests — check your connection.")}</Text>
+          <Btn title={tr('حاول تاني', 'Try again')} icon="refresh" kind="ghost" onPress={() => void load(true)} />
+        </View>
+      ) : null}
+      {list === null && !loadErr ? <ListSkeleton rows={2} height={150} /> : null}
+      {list !== null && !loadErr && fresh.length === 0 ? (
         <View style={s.panel}>
           <Text style={s.panelSub}>{tr('مفيش طلبات جديدة دلوقتي — هيوصلك إشعار أول ما يجي طلب.', "No new requests — you'll get a notification.")}</Text>
         </View>
       ) : null}
       {fresh.slice(0, 3).map((b) => (
-        <ProCard key={b.id} b={b} onOpen={goRequests} />
+        <ProCard key={b.id} b={b} onOpen={() => openRequest(b.id)} />
       ))}
     </Screen>
   );

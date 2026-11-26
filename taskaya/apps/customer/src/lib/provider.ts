@@ -75,7 +75,8 @@ const SELECT =
 export async function getProBookings(uid: string, force = false): Promise<ProBooking[]> {
   const hit = force ? undefined : bookingsStore.get(uid);
   if (hit) return hit;
-  const { data } = await supabase.from('bookings').select(SELECT).eq('provider_id', uid).order('created_at', { ascending: false }).limit(200);
+  const { data, error } = await supabase.from('bookings').select(SELECT).eq('provider_id', uid).order('created_at', { ascending: false }).limit(200);
+  if (error) throw new Error(error.message);
   const list = (data ?? []) as unknown as ProBooking[];
   bookingsStore.set(uid, list);
   return list;

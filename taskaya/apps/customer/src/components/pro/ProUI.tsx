@@ -1,3 +1,4 @@
+import { Ago } from '@/components/pro/Ago';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ComponentProps, useMemo } from 'react';
@@ -132,6 +133,12 @@ export function ProCard({ b, onOpen }: { b: ProBooking; onOpen: () => void }) {
             <View style={s.infoRow}>
               <Ionicons name="calendar-outline" size={16} color={c.iconMuted} />
               <Text style={s.infoText}>{when}</Text>
+            </View>
+          ) : null}
+          {hot ? (
+            <View style={s.infoRow}>
+              <Ionicons name="time-outline" size={16} color="#D97706" />
+              <Text style={[s.infoText, { color: '#D97706' }]}><Ago iso={b.created_at} /></Text>
             </View>
           ) : null}
           <View style={s.divider} />

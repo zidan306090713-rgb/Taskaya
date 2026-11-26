@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { BellButton } from '@/components/ui/BellButton';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
@@ -108,9 +109,7 @@ export default function Home() {
             <Pressable onPress={() => router.push('/profile' as never)} style={styles.avatar} accessibilityLabel={tr('حسابي', 'Profile')}>
               {me?.avatar_url ? <Image source={{ uri: me.avatar_url }} style={StyleSheet.absoluteFill} contentFit="cover" /> : <Text style={styles.avatarText}>{initial}</Text>}
             </Pressable>
-            <Pressable style={styles.bell} accessibilityLabel={tr('الإشعارات', 'Notifications')}>
-              <Ionicons name="notifications-outline" size={20} color="#FFFFFF" />
-            </Pressable>
+            <BellButton style={styles.bell} />
           </View>
           <Text style={styles.hello} numberOfLines={1}>
             {hello}

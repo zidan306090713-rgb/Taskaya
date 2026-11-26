@@ -1,5 +1,7 @@
-// send-push: قاعدة البيانات بتناديها مع كل إشعار جديد → بتبعته لموبايلات صاحبه عن طريق Expo
-// آمنة من غير مفتاح: بتاخد رقم الإشعار بس، وبتقرأ الباقي بنفسها، وكل إشعار بيتبعت مرة واحدة (pushed_at)
+// send-push: بتتنادى من قاعدة البيانات في حالتين:
+//  1) {id}: إشعار حجز/مراجعة لمستخدم واحد (صف في notifications)
+//  2) {broadcast_id}: رسالة جماعية = صف واحد في broadcasts → بنبعتها لكل موبايلات المستلمين على دفعات
+// آمنة من غير مفتاح: بتاخد رقم بس وبتقرأ الباقي بنفسها، وكل حاجة بتتبعت مرة واحدة (pushed_at)
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
@@ -7,15 +9,14 @@ const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SE
 });
 
 type Lang = 'ar' | 'en';
+type Msg = { to: string; title: string; body: string; sound: 'default'; channelId: string; priority: 'high'; data: Record<string, unknown> };
 const TZ = 'Africa/Cairo';
 const SEP = ' · ';
 
-// تاريخ اليوم بتوقيت مصر (YYYY-MM-DD) عشان نعرف "اليوم / غدًا"
 function dayKey(d: Date) {
   return new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
 }
 
-// الميعاد بشكل لطيف: "غدًا، ٥:٠٠ م" / "الخميس، ٥:٠٠ م" / "٢٧ نوفمبر، ٥:٠٠ م"
 function when(lang: Lang, iso: string | null): string | null {
   if (!iso) return null;
   const d = new Date(iso);
@@ -33,10 +34,8 @@ function when(lang: Lang, iso: string | null): string | null {
 }
 
 type Ctx = { svc: string; when: string | null; who: string | null; price: string | null; reason: string | null };
-
 const join = (...parts: Array<string | null | undefined | false>) => parts.filter(Boolean).join(SEP);
 
-// نص الإشعار للعميل حسب الحالة الجديدة ولغته
 function text(lang: Lang, status: string, c: Ctx): [string, string] | null {
   const ar = lang === 'ar';
   const withWho = c.who ? (ar ? `مع ${c.who}` : `with ${c.who}`) : null;
@@ -53,10 +52,7 @@ function text(lang: Lang, status: string, c: Ctx): [string, string] | null {
     case 'in_progress':
       return [ar ? 'بدأ العمل على طلبك 🛠️' : 'Work has started 🛠️', join(c.svc, withWho)];
     case 'completed':
-      return [
-        ar ? 'تم تنفيذ خدمتك 🎉' : 'Service completed 🎉',
-        join(c.svc, ar ? 'شكرًا لاختيارك TASKAYA' : 'Thanks for choosing TASKAYA'),
-      ];
+      return [ar ? 'تم تنفيذ خدمتك 🎉' : 'Service completed 🎉', join(c.svc, ar ? 'شكرًا لاختيارك TASKAYA' : 'Thanks for choosing TASKAYA')];
     case 'cancelled':
       return [ar ? 'تم إلغاء الحجز' : 'Booking cancelled', join(c.svc, c.reason ?? c.when)];
     case 'rejected':
@@ -69,91 +65,118 @@ function text(lang: Lang, status: string, c: Ctx): [string, string] | null {
   }
 }
 
-Deno.serve(async (req) => {
-  try {
-    const { id } = await req.json();
-    if (typeof id !== 'string') return new Response('bad request', { status: 400 });
-
-    // نعلّم الإشعار إنه اتبعت — لو كان اتبعت قبل كده مش هنبعته تاني
-    // deno-lint-ignore no-explicit-any
-    const { data: n }: { data: any } = await db
-      .from('notifications')
-      .update({ pushed_at: new Date().toISOString() })
-      .eq('id', id)
-      .is('pushed_at', null)
-      .select('user_id, title, body, data')
-      .maybeSingle();
-    if (!n) return new Response('skip');
-
-    const { data: tokens } = await db.from('push_tokens').select('token, lang').eq('user_id', n.user_id);
-    if (!tokens?.length) return new Response('no devices');
-
-    const bookingId: string | null = n.data?.booking_id ?? null;
-    // deno-lint-ignore no-explicit-any
-    let booking: any = null;
-    let who: string | null = null;
-    if (bookingId) {
-      const { data } = await db
-        .from('bookings')
-        .select('status, quoted_price, customer_id, provider_id, scheduled_at, cancel_reason, services(name_ar, name_en)')
-        .eq('id', bookingId)
-        .maybeSingle();
-      booking = data;
-      if (booking?.provider_id) {
-        const { data: p } = await db
-          .from('provider_profiles')
-          .select('business_name')
-          .eq('id', booking.provider_id)
-          .maybeSingle();
-        who = p?.business_name?.trim() || null;
-      }
-    }
-    const forCustomer = booking && booking.customer_id === n.user_id;
-
-    const messages = tokens.map((t) => {
-      const lang: Lang = t.lang === 'en' ? 'en' : 'ar';
-      let pair: [string, string] | null = null;
-      if (forCustomer) {
-        const svc = (lang === 'ar' ? booking.services?.name_ar : booking.services?.name_en) ?? '';
-        const price =
-          booking.quoted_price != null
-            ? new Intl.NumberFormat(lang === 'ar' ? 'ar-EG' : 'en-US').format(Number(booking.quoted_price))
-            : null;
-        pair = text(lang, n.data?.status ?? booking.status, {
-          svc,
-          when: when(lang, booking.scheduled_at),
-          who,
-          price,
-          reason: booking.cancel_reason?.trim() || null,
-        });
-      }
-      const [title, body] = pair ?? [n.title, n.body ?? ''];
-      return {
-        to: t.token,
-        title,
-        body,
-        sound: 'default',
-        channelId: 'default',
-        priority: 'high',
-        data: { url: n.data?.url ?? '/orders', booking_id: bookingId },
-      };
-    });
-
+// بيبعت على دفعات (Expo بيقبل 100 في الطلب) وبيشيل الموبايلات اللي التطبيق اتمسح منها
+async function deliver(messages: Msg[]) {
+  for (let i = 0; i < messages.length; i += 100) {
+    const chunk = messages.slice(i, i + 100);
     const res = await fetch('https://exp.host/--/api/v2/push/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify(messages),
+      body: JSON.stringify(chunk),
     });
     // deno-lint-ignore no-explicit-any
     const out: any = await res.json().catch(() => null);
-
-    // الموبايلات اللي التطبيق اتمسح منها: نشيلها
     const dead = ((out?.data ?? []) as Array<{ status?: string; details?: { error?: string } }>)
-      .map((r, i) => (r?.status === 'error' && r?.details?.error === 'DeviceNotRegistered' ? messages[i].to : null))
+      .map((r, j) => (r?.status === 'error' && r?.details?.error === 'DeviceNotRegistered' ? chunk[j].to : null))
       .filter((x): x is string => !!x);
     if (dead.length) await db.from('push_tokens').delete().in('token', dead);
+  }
+}
 
-    return new Response('ok');
+async function pushBroadcast(id: string) {
+  const { data: b } = await db
+    .from('broadcasts')
+    .update({ pushed_at: new Date().toISOString() })
+    .eq('id', id)
+    .is('pushed_at', null)
+    .select('title, body')
+    .maybeSingle();
+  if (!b) return new Response('skip');
+  const { data: tokens } = await db.rpc('broadcast_tokens', { p_broadcast: id });
+  const list = (tokens ?? []) as Array<{ token: string; lang: string }>;
+  if (!list.length) return new Response('no devices');
+  await deliver(
+    list.map((t) => ({
+      to: t.token,
+      title: b.title,
+      body: b.body,
+      sound: 'default',
+      channelId: 'default',
+      priority: 'high',
+      data: { url: '/inbox', broadcast_id: id },
+    })),
+  );
+  return new Response('ok');
+}
+
+async function pushNotification(id: string) {
+  // deno-lint-ignore no-explicit-any
+  const { data: n }: { data: any } = await db
+    .from('notifications')
+    .update({ pushed_at: new Date().toISOString() })
+    .eq('id', id)
+    .is('pushed_at', null)
+    .select('user_id, title, body, data')
+    .maybeSingle();
+  if (!n) return new Response('skip');
+
+  const { data: tokens } = await db.from('push_tokens').select('token, lang').eq('user_id', n.user_id);
+  if (!tokens?.length) return new Response('no devices');
+
+  const bookingId: string | null = n.data?.booking_id ?? null;
+  // deno-lint-ignore no-explicit-any
+  let booking: any = null;
+  let who: string | null = null;
+  if (bookingId) {
+    const { data } = await db
+      .from('bookings')
+      .select('status, quoted_price, customer_id, provider_id, scheduled_at, cancel_reason, services(name_ar, name_en)')
+      .eq('id', bookingId)
+      .maybeSingle();
+    booking = data;
+    if (booking?.provider_id) {
+      const { data: p } = await db.from('provider_profiles').select('business_name').eq('id', booking.provider_id).maybeSingle();
+      who = p?.business_name?.trim() || null;
+    }
+  }
+  const forCustomer = booking && booking.customer_id === n.user_id;
+
+  const messages: Msg[] = tokens.map((t) => {
+    const lang: Lang = t.lang === 'en' ? 'en' : 'ar';
+    let pair: [string, string] | null = null;
+    if (forCustomer) {
+      const svc = (lang === 'ar' ? booking.services?.name_ar : booking.services?.name_en) ?? '';
+      const price =
+        booking.quoted_price != null ? new Intl.NumberFormat(lang === 'ar' ? 'ar-EG' : 'en-US').format(Number(booking.quoted_price)) : null;
+      pair = text(lang, n.data?.status ?? booking.status, {
+        svc,
+        when: when(lang, booking.scheduled_at),
+        who,
+        price,
+        reason: booking.cancel_reason?.trim() || null,
+      });
+    }
+    const [title, body] = pair ?? [n.title, n.body ?? ''];
+    return {
+      to: t.token,
+      title,
+      body,
+      sound: 'default',
+      channelId: 'default',
+      priority: 'high',
+      data: { url: n.data?.url ?? '/orders', booking_id: bookingId },
+    };
+  });
+  await deliver(messages);
+  return new Response('ok');
+}
+
+Deno.serve(async (req) => {
+  try {
+    const payload = await req.json();
+    if (typeof payload?.broadcast_id === 'string') return await pushBroadcast(payload.broadcast_id);
+    if (typeof payload?.id === 'string') return await pushNotification(payload.id);
+    return new Response('bad request', { status: 400 });
   } catch (e) {
     return new Response(String(e), { status: 500 });
   }

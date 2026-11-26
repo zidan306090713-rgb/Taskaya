@@ -189,13 +189,26 @@ async function pushNotification(id: string) {
   return new Response('ok');
 }
 
+const PUSH_SECRET = Deno.env.get('PUSH_SECRET') ?? '';
+
+// constant-time compare; fails closed when the secret is not set
+function authorized(req: Request): boolean {
+  const got = req.headers.get('x-push-secret') ?? '';
+  if (!PUSH_SECRET || got.length !== PUSH_SECRET.length) return false;
+  let diff = 0;
+  for (let i = 0; i < got.length; i++) diff |= got.charCodeAt(i) ^ PUSH_SECRET.charCodeAt(i);
+  return diff === 0;
+}
+
 Deno.serve(async (req) => {
+  if (req.method !== 'POST' || !authorized(req)) return new Response('unauthorized', { status: 401 });
   try {
-    const payload = await req.json();
+    const payload = await req.json().catch(() => null);
     if (typeof payload?.broadcast_id === 'string') return await pushBroadcast(payload.broadcast_id);
     if (typeof payload?.id === 'string') return await pushNotification(payload.id);
     return new Response('bad request', { status: 400 });
   } catch (e) {
-    return new Response(String(e), { status: 500 });
+    console.error('send-push failed', e);
+    return new Response('error', { status: 500 });
   }
 });

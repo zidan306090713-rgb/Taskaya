@@ -18,6 +18,8 @@ function look(i: InboxItem, accent: string): { icon: IconName; color: string } {
   if (i.kind === 'broadcast') return { icon: 'megaphone', color: '#D97706' };
   if (i.kind === 'service_review')
     return i.title.startsWith('تم قبول') ? { icon: 'checkmark-circle', color: '#16A34A' } : { icon: 'alert-circle', color: '#DC2626' };
+  if (i.quote === 'accepted') return { icon: 'pricetag', color: '#16A34A' };
+  if (i.quote === 'rejected' && i.status !== 'cancelled') return { icon: 'pricetag', color: '#DC2626' };
   switch (i.status) {
     case 'accepted':
     case 'confirmed':

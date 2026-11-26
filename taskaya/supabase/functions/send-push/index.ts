@@ -65,6 +65,24 @@ function text(lang: Lang, status: string, c: Ctx): [string, string] | null {
   }
 }
 
+// نصوص مقدم الخدمة (بيوصله: طلب جديد، رد العميل على عرض السعر، إلغاء)
+function proText(lang: Lang, status: string, quote: string | null, c: Ctx): [string, string] {
+  const ar = lang === 'ar';
+  if (status === 'pending') return [ar ? 'طلب جديد 🔔' : 'New request 🔔', join(c.svc, c.when, ar ? 'اضغط للرد' : 'Tap to respond')];
+  if (status === 'cancelled') return [ar ? 'تم إلغاء الطلب ❌' : 'Request cancelled ❌', join(c.svc, c.reason ?? c.when)];
+  if (quote === 'accepted')
+    return [ar ? 'العميل وافق على السعر ✅' : 'Customer accepted your price ✅', join(c.svc, c.price && (ar ? `${c.price} ج.م` : `${c.price} EGP`))];
+  if (quote === 'rejected')
+    return [ar ? 'العميل رفض السعر الجديد' : 'Customer declined the new price', join(c.svc, ar ? 'السعر القديم مستمر' : 'The previous price stays')];
+  const label: Record<string, [string, string]> = {
+    confirmed: ['الطلب مؤكد', 'Request confirmed'],
+    in_progress: ['الشغل شغال', 'Work in progress'],
+    completed: ['الطلب اتنفذ', 'Request completed'],
+  };
+  const l = label[status];
+  return [ar ? 'تحديث على الطلب' : 'Request update', join(c.svc, l ? l[ar ? 0 : 1] : null)];
+}
+
 // بيبعت على دفعات (Expo بيقبل 100 في الطلب) وبيشيل الموبايلات اللي التطبيق اتمسح منها
 async function deliver(messages: Msg[]) {
   for (let i = 0; i < messages.length; i += 100) {
@@ -128,7 +146,7 @@ async function pushNotification(id: string) {
     bookingId
       ? db
           .from('bookings')
-          .select('status, quoted_price, customer_id, scheduled_at, cancel_reason, services(name_ar, name_en), provider_profiles(business_name)')
+          .select('status, quoted_price, customer_id, provider_id, scheduled_at, cancel_reason, services(name_ar, name_en), provider_profiles(business_name)')
           .eq('id', bookingId)
           .maybeSingle()
       : Promise.resolve({ data: null }),
@@ -139,21 +157,22 @@ async function pushNotification(id: string) {
   const booking = bkRes.data;
   const who: string | null = booking?.provider_profiles?.business_name?.trim() || null;
   const forCustomer = booking && booking.customer_id === n.user_id;
+  const forProvider = booking && !forCustomer && booking.provider_id === n.user_id;
+  const url: string = forProvider ? '/pro/requests' : n.data?.url ?? '/orders';
 
   const messages: Msg[] = tokens.map((t) => {
     const lang: Lang = t.lang === 'en' ? 'en' : 'ar';
     let pair: [string, string] | null = null;
-    if (forCustomer) {
-      const svc = (lang === 'ar' ? booking.services?.name_ar : booking.services?.name_en) ?? '';
-      const price =
-        booking.quoted_price != null ? new Intl.NumberFormat(lang === 'ar' ? 'ar-EG' : 'en-US').format(Number(booking.quoted_price)) : null;
-      pair = text(lang, n.data?.status ?? booking.status, {
-        svc,
+    if (forCustomer || forProvider) {
+      const status: string = n.data?.status ?? booking.status;
+      const ctx: Ctx = {
+        svc: (lang === 'ar' ? booking.services?.name_ar : booking.services?.name_en) ?? '',
         when: when(lang, booking.scheduled_at),
         who,
-        price,
+        price: booking.quoted_price != null ? new Intl.NumberFormat(lang === 'ar' ? 'ar-EG' : 'en-US').format(Number(booking.quoted_price)) : null,
         reason: booking.cancel_reason?.trim() || null,
-      });
+      };
+      pair = forCustomer ? text(lang, status, ctx) : proText(lang, status, n.data?.quote ?? null, ctx);
     }
     const [title, body] = pair ?? [n.title, n.body ?? ''];
     return {
@@ -163,7 +182,7 @@ async function pushNotification(id: string) {
       sound: 'default',
       channelId: 'default',
       priority: 'high',
-      data: { url: n.data?.url ?? '/orders', booking_id: bookingId },
+      data: { url, booking_id: bookingId },
     };
   });
   await deliver(messages);

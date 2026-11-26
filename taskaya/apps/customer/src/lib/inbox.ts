@@ -21,6 +21,7 @@ export type InboxItem = {
   svc_en: string | null;
   price: number | null;
   is_customer: boolean;
+  quote: 'accepted' | 'rejected' | null;
 };
 type State = { uid: string | null; items: InboxItem[] | null; at: number; readAll: number; read: string[] };
 
@@ -114,8 +115,30 @@ export function textOf(i: InboxItem): { title: string; body: string } {
     }
     return { title: tr(...t), body: svc };
   }
+  if (i.kind === 'booking' && !i.is_customer && i.status) return proTextOf(i);
   return { title: i.title, body: i.body ?? '' };
 }
+
+// نفس نصوص push بتاعة مقدم الخدمة (send-push → proText)
+function proTextOf(i: InboxItem): { title: string; body: string } {
+  const svc = (lang === 'ar' ? i.svc_ar : i.svc_en) ?? '';
+  const dot = (...p: Array<string | null | false>) => p.filter(Boolean).join(' · ');
+  if (i.status === 'pending') return { title: tr('طلب جديد', 'New request'), body: dot(svc, tr('اضغط للرد', 'Tap to respond')) };
+  if (i.status === 'cancelled') return { title: tr('تم إلغاء الطلب', 'Request cancelled'), body: svc };
+  if (i.quote === 'accepted') {
+    const p = i.price != null ? i.price.toLocaleString(lang === 'ar' ? 'ar-EG' : 'en-US') : null;
+    return { title: tr('العميل وافق على السعر', 'Customer accepted your price'), body: dot(svc, p && tr(`${p} ج.م`, `${p} EGP`)) };
+  }
+  if (i.quote === 'rejected')
+    return { title: tr('العميل رفض السعر الجديد', 'Customer declined the new price'), body: dot(svc, tr('السعر القديم مستمر', 'The previous price stays')) };
+  const l = PRO_STATUS[i.status ?? ''];
+  return { title: tr('تحديث على الطلب', 'Request update'), body: dot(svc, l ? tr(...l) : null) };
+}
+const PRO_STATUS: Record<string, [string, string]> = {
+  confirmed: ['الطلب مؤكد', 'Request confirmed'],
+  in_progress: ['الشغل شغال', 'Work in progress'],
+  completed: ['الطلب اتنفذ', 'Request completed'],
+};
 
 // "ملاحظة" للتنقّل: صفحة الإشعارات بتسيبها وترجع (back)، والتابات الموجودة تنفّذها أول ما تظهر
 // (لو اتنقلنا من صفحة الإشعارات نفسها، Expo Router بيبني تابات جديدة فوق القديمة)

@@ -109,7 +109,7 @@ export default function Home() {
             <Pressable onPress={() => router.push('/profile' as never)} style={styles.avatar} accessibilityLabel={tr('حسابي', 'Profile')}>
               {me?.avatar_url ? <Image source={{ uri: me.avatar_url }} style={StyleSheet.absoluteFill} contentFit="cover" /> : <Text style={styles.avatarText}>{initial}</Text>}
             </Pressable>
-            <BellButton style={styles.bell} />
+            <BellButton />
           </View>
           <Text style={styles.hello} numberOfLines={1}>
             {hello}
@@ -196,16 +196,6 @@ const makeStyles = (c: Palette) =>
       borderColor: 'rgba(255,255,255,0.45)',
     },
     avatarText: { fontFamily: fonts.bold, fontSize: 19, color: '#FFFFFF' },
-    bell: {
-      width: 44,
-      height: 44,
-      borderRadius: 15,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: 'rgba(255,255,255,0.14)',
-      borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.3)',
-    },
     hello: { fontFamily: fonts.bold, fontSize: 23, color: '#FFFFFF', marginTop: 16 },
     tagline: { fontFamily: fonts.regular, fontSize: 13.5, color: 'rgba(255,255,255,0.82)', marginTop: 2 },
     body: { flex: 1, paddingHorizontal: 16 },

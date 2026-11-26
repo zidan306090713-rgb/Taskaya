@@ -31,7 +31,7 @@ type Row = {
 };
 
 const PROFILE_COLS =
-  'id, business_name, is_verified, is_featured, is_available, rating_avg, rating_count, logo_url, cover_url, description';
+  'id, business_name, is_verified, is_featured, is_available, away_until, rating_avg, rating_count, logo_url, cover_url, description';
 
 function aggregate(rows: Row[]) {
   const map = new Map<string, { p: ProfileRow; min: number | null; parts: string[] }>();

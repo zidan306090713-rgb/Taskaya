@@ -5,7 +5,7 @@ import { Link } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { isRTL, tr } from '@/i18n';
-import { prefetchProvider, ProviderCard as P } from '@/lib/api';
+import { isOpen, prefetchProvider, ProviderCard as P } from '@/lib/api';
 import { useTheme } from '@/providers/ThemeProvider';
 import { fonts, Palette } from '@/theme';
 
@@ -21,12 +21,13 @@ export function ProviderRow({ p, height }: { p: P; height: number }) {
   const uri = p.cover_url ?? p.logo_url;
   const imgW = Math.round((height - 20) * 0.98);
   const initial = (p.business_name || '؟').trim().charAt(0);
+  const closed = !isOpen(p);
 
   return (
     <Link href={`/provider/${p.id}`} asChild>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={p.business_name}
+        accessibilityLabel={closed ? `${p.business_name}، ${tr('مش متاح حاليًا', 'Unavailable now')}` : p.business_name}
         onPressIn={() => { prefetchProvider(p); press(0.97); }}
         onPressOut={() => press(1)}
       >
@@ -76,6 +77,17 @@ export function ProviderRow({ p, height }: { p: P; height: number }) {
               </LinearGradient>
             </View>
           </View>
+
+          {/* مش متاح: طبقة رمادي ثابتة (من غير elevation ولا opacity متحركة) + شارة */}
+          {closed ? (
+            <>
+              <View style={styles.dim} />
+              <View style={styles.closed}>
+                <Ionicons name="moon" size={12} color="#FFFFFF" />
+                <Text style={styles.closedText}>{tr('مش متاح حاليًا', 'Unavailable now')}</Text>
+              </View>
+            </>
+          ) : null}
         </Animated.View>
       </Pressable>
     </Link>
@@ -140,4 +152,28 @@ const makeStyles = (c: Palette) =>
     price: { fontFamily: fonts.bold, fontSize: 15, color: c.accentText, flexShrink: 1 },
     from: { fontFamily: fonts.regular, fontSize: 11.5, color: c.textSecondary },
     go: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+    dim: {
+      position: 'absolute',
+      top: 0,
+      bottom: 0,
+      left: 0,
+      right: 0,
+      borderRadius: 22,
+      backgroundColor: c.isDark ? 'rgba(20,24,32,0.62)' : 'rgba(226,230,238,0.66)',
+      pointerEvents: 'none',
+    },
+    closed: {
+      position: 'absolute',
+      top: 10,
+      ...(isRTL ? { left: 10 } : { right: 10 }),
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 999,
+      backgroundColor: '#64748B',
+      pointerEvents: 'none',
+    },
+    closedText: { fontFamily: fonts.semibold, fontSize: 11.5, color: '#FFFFFF' },
   });

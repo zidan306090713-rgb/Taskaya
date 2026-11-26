@@ -52,10 +52,13 @@ export default function ProHome() {
   const toggle = async (v: boolean) => {
     setErr('');
     setAvBusy(true);
+    setMe((m) => (m ? { ...m, is_available: v } : m)); // يتغيّر على طول
     const e = await setAvailable(uid, v);
     setAvBusy(false);
-    if (e) setErr(e);
-    else setMe((m) => (m ? { ...m, is_available: v } : m));
+    if (e) {
+      setMe((m) => (m ? { ...m, is_available: !v } : m)); // الحفظ فشل → يرجع زي ما كان
+      setErr(e);
+    }
   };
 
   const goRequests = () => router.push('/pro/requests' as never);
@@ -68,7 +71,7 @@ export default function ProHome() {
           <View style={{ flex: 1 }}>
             <Text style={s.panelTitle}>{me?.is_available ? tr('متاح لاستقبال طلبات', 'Accepting requests') : tr('مش متاح دلوقتي', 'Not available now')}</Text>
             <Text style={s.panelSub}>
-              {me?.is_available ? tr('العملاء يقدروا يحجزوا معاك', 'Customers can book you') : tr('مش هتظهر للعملاء لحد ما تفتحها', "You're hidden from customers")}
+              {me?.is_available ? tr('العملاء يقدروا يحجزوا معاك', 'Customers can book you') : tr('العملاء هيشوفوك بس مش هيقدروا يحجزوا', "Customers see you but can't book")}
             </Text>
           </View>
           <Switch

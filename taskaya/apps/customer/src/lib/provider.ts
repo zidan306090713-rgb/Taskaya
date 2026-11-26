@@ -117,9 +117,12 @@ export async function getMyProvider(uid: string, force = false): Promise<ProProf
 }
 
 export async function setAvailable(uid: string, value: boolean): Promise<string | null> {
-  const { error } = await supabase.from('provider_profiles').update({ is_available: value }).eq('id', uid);
+  // select بعد التعديل: لو الـ RLS ماسمحتش، بيرجع صفر صفوف من غير error — نعتبره فشل
+  const { data, error } = await supabase.from('provider_profiles').update({ is_available: value }).eq('id', uid).select('is_available').maybeSingle();
   meStore.clear();
-  return error ? proError(error.message) : null;
+  if (error) return proError(error.message);
+  if (!data || data.is_available !== value) return tr('ماتحفظش، حاول تاني', "Couldn't save, please try again");
+  return null;
 }
 
 export async function getMyLedger(uid: string, force = false): Promise<LedgerRow[]> {

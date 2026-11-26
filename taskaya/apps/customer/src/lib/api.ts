@@ -9,6 +9,7 @@ export type ProviderCard = {
   is_verified: boolean;
   is_featured: boolean;
   is_available: boolean;
+  away_until?: string | null;
   rating_avg: number;
   rating_count: number;
   min_price: number | null;
@@ -16,6 +17,18 @@ export type ProviderCard = {
   cover_url: string | null;
   description: string | null;
 };
+
+// ---------- متاح ولا لأ ----------
+// متاح = is_available وأجازته (away_until) فاضية أو عدّت — بيتحسب هنا عشان الكاش مايبقاش قديم لما الأجازة تخلص
+export function isOpen(p: { is_available?: boolean | null; away_until?: string | null } | null | undefined): boolean {
+  if (!p) return true;
+  if (p.is_available === false) return false;
+  return !(p.away_until && Date.parse(p.away_until) > Date.now());
+}
+// المتاحين الأول، والترتيب جوه كل مجموعة يفضل زي ما هو (sort ثابت)
+export function openFirst<T extends { is_available?: boolean | null; away_until?: string | null }>(list: T[]): T[] {
+  return [...list].sort((a, b) => Number(isOpen(b)) - Number(isOpen(a)));
+}
 
 // ---------- كاش بسيط في الذاكرة: بيمنع تكرار نفس الطلب، وبيرجّع النتيجة فورًا لو لسه جديدة ----------
 type Entry<T> = { at: number; data?: T; p?: Promise<T> };
@@ -66,7 +79,7 @@ function aggregateProviders(rows: Row[]): ProviderCard[] {
     if (!existing) map.set(p.id, { ...p, min_price: price });
     else if (price != null && (existing.min_price == null || price < existing.min_price)) existing.min_price = price;
   });
-  return [...map.values()].sort((a, b) => b.rating_avg - a.rating_avg);
+  return openFirst([...map.values()].sort((a, b) => b.rating_avg - a.rating_avg));
 }
 
 // ---------- احتياطي لصفحة القسم (بيشتغل بس لو app_category فشل) ----------
@@ -92,7 +105,7 @@ export async function getProviders(opts: { categoryId?: string; subcategoryId?: 
   let q = supabase
     .from('provider_services')
     .select(
-      'provider_id, base_price, provider_profiles!inner(id, business_name, is_verified, is_featured, is_available, rating_avg, rating_count, logo_url, cover_url, description), services!inner(subcategory_id, service_subcategories!inner(category_id))'
+      'provider_id, base_price, provider_profiles!inner(id, business_name, is_verified, is_featured, is_available, away_until, rating_avg, rating_count, logo_url, cover_url, description), services!inner(subcategory_id, service_subcategories!inner(category_id))'
     )
     .eq('is_active', true);
   if (opts.subcategoryId) q = q.eq('services.subcategory_id', opts.subcategoryId);
@@ -130,6 +143,7 @@ export type ProviderProfile = {
   description: string | null;
   is_verified: boolean;
   is_available: boolean;
+  away_until?: string | null;
   rating_avg: number;
   rating_count: number;
   business_address?: string | null;
@@ -167,7 +181,7 @@ export function getProvider(id: string): Promise<ProviderData> {
     const [{ data: profile }, { data: services }] = await Promise.all([
       supabase
         .from('provider_profiles')
-        .select('id, business_name, description, is_verified, is_available, rating_avg, rating_count, business_address')
+        .select('id, business_name, description, is_verified, is_available, away_until, rating_avg, rating_count, business_address')
         .eq('id', id)
         .single(),
       supabase
@@ -188,6 +202,7 @@ export function prefetchProvider(card: ProviderCard) {
     description: card.description,
     is_verified: card.is_verified,
     is_available: card.is_available,
+    away_until: card.away_until ?? null,
     rating_avg: card.rating_avg,
     rating_count: card.rating_count,
   });
@@ -209,7 +224,7 @@ export type ServiceOption = {
   pricing_model: PricingModel;
   base_price: number | null;
   estimated_duration_minutes: number | null;
-  provider_profiles: { business_name: string };
+  provider_profiles: { business_name: string; is_available?: boolean; away_until?: string | null };
   services: { name_ar: string; name_en: string };
 };
 
@@ -219,7 +234,7 @@ export function getProviderService(id: string): Promise<ServiceOption | null> {
   return cached(psStore, id, PROVIDER_TTL, async () => {
     const { data } = await supabase
       .from('provider_services')
-      .select('id, provider_id, pricing_model, base_price, estimated_duration_minutes, provider_profiles(business_name, logo_url, cover_url), services(name_ar, name_en)')
+      .select('id, provider_id, pricing_model, base_price, estimated_duration_minutes, provider_profiles(business_name, logo_url, cover_url, is_available, away_until), services(name_ar, name_en)')
       .eq('id', id)
       .single();
     return data as unknown as ServiceOption | null;
@@ -228,6 +243,13 @@ export function getProviderService(id: string): Promise<ServiceOption | null> {
 
 export function seedProviderService(s: ServiceOption) {
   psStore.set(s.id, { at: Date.now(), data: s });
+}
+
+// السيرفر رفض الحجز (المقدم مش متاح): ننسى بياناته المتخزنة عشان الصفحات تتحدث
+export function forgetProvider(providerId: string, psid?: string) {
+  providerStore.delete(providerId);
+  providerSeed.delete(providerId);
+  if (psid) psStore.delete(psid);
 }
 
 export function peekProviderService(id: string): ServiceOption | null {

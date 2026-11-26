@@ -11,8 +11,8 @@ import { PageSkeleton } from '@/components/ui/Skeleton';
 import { StickyBar } from '@/components/ui/StickyBar';
 import { isRTL, lang, tr } from '@/i18n';
 import {
-  Address, Area, getAreas, getMyAddresses, getProviderService, invalidateAddresses, invalidateBookings,
-  peekAddresses, peekAreas, peekProviderService, ServiceOption,
+  Address, Area, forgetProvider, getAreas, getMyAddresses, getProviderService, invalidateAddresses, invalidateBookings,
+  isOpen, peekAddresses, peekAreas, peekProviderService, ServiceOption,
 } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/AuthProvider';
@@ -100,8 +100,12 @@ export default function Booking() {
   const addrDone = addrId !== undefined && (addrId !== 'new' || (!!areaId && !!street.trim()));
   const step = 1 + (hour !== undefined ? 1 : 0) + (hour !== undefined && addrDone ? 1 : 0);
 
+  const open = isOpen(svc.provider_profiles);
+  const closedMsg = tr('مقدم الخدمة مش متاح حاليًا، جرّب مقدم تاني أو ارجع بعدين', 'This provider is unavailable right now. Try another provider or come back later.');
+
   const submit = async () => {
     setError('');
+    if (!open) return setError(closedMsg);
     key.current ??= `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     if (hour === undefined) return setError(tr('اختر الموعد المناسب', 'Pick a time slot'));
     if (addrId === 'new' && (!areaId || !street.trim())) return setError(tr('أكمل بيانات العنوان', 'Complete the address'));
@@ -135,6 +139,12 @@ export default function Booking() {
       idempotency_key: key.current,
     });
     setLoading(false);
+    if (bookErr?.hint === 'PROVIDER_UNAVAILABLE') {
+      // السيرفر رفض: المقدم قفل استقبال الطلبات — نحدّث بياناته عشان الصفحة تبان مقفولة
+      forgetProvider(svc.provider_id, psid);
+      getProviderService(psid).then(setSvc).catch(() => {});
+      return setError(closedMsg);
+    }
     if (bookErr && bookErr.code !== '23505') return setError(bookErr.message);
     invalidateBookings();
     router.dismissTo('/orders');
@@ -253,9 +263,10 @@ export default function Booking() {
       <StickyBar
         label={hour !== undefined ? `${weekday(days[dayIdx], dayIdx)} ${dayNum(days[dayIdx])} · ${hourLabel(hour)}` : tr('اختار اليوم والوقت', 'Pick a day and time')}
         value={priceText}
-        title={tr('تأكيد الحجز', 'Confirm booking')}
+        title={open ? tr('تأكيد الحجز', 'Confirm booking') : tr('مش متاح حاليًا', 'Unavailable')}
         onPress={() => void submit()}
         busy={loading}
+        disabled={!open}
       />
     </View>
   );

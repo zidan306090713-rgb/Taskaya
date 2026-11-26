@@ -10,7 +10,7 @@ import { ProviderRow } from '@/components/ui/ProviderRow';
 import { SearchField } from '@/components/ui/SearchField';
 import { ListSkeleton } from '@/components/ui/Skeleton';
 import { lang, t, tr } from '@/i18n';
-import { Category, getCategories, getCategoryPage, ProviderCard } from '@/lib/api';
+import { Category, getCategories, getCategoryPage, openFirst, ProviderCard } from '@/lib/api';
 import { checkCatalog, useCatalogVersion, wireCatalogChecks } from '@/lib/catalogVersion';
 import { useMyProfile } from '@/lib/profile';
 import { usePushSetup } from '@/lib/push';
@@ -92,7 +92,9 @@ export default function Home() {
 
   const searching = q.trim().length > 0;
   const top = useMemo(() => [...featured].sort((a, b) => b.rating_avg - a.rating_avg), [featured]);
-  const list: ProviderCard[] | null = searching ? results : catId ? byCat[catId] ?? null : dir ? top : null;
+  const raw: ProviderCard[] | null = searching ? results : catId ? byCat[catId] ?? null : dir ? top : null;
+  // المتاحين الأول، واللي مش متاحين في الآخر
+  const list = useMemo(() => (raw ? openFirst(raw) : null), [raw]);
   const current = cats.find((x) => x.id === catId);
   const title = searching ? tr('نتائج البحث', 'Search results') : current ? catName(current) : tr('الأعلى تقييمًا', 'Top rated');
   const hello = hour < 12 ? tr('صباح الخير', 'Good morning') : hour < 18 ? tr('مساء الخير', 'Good afternoon') : tr('مساء النور', 'Good evening');

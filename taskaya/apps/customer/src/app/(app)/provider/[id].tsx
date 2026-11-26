@@ -9,7 +9,7 @@ import { ListSkeleton, PageSkeleton } from '@/components/ui/Skeleton';
 import { StickyBar } from '@/components/ui/StickyBar';
 import { useEntrance, useFocusHide } from '@/hooks/use-screen-entrance';
 import { isRTL, lang, tr } from '@/i18n';
-import { getProvider, peekProvider, ProviderSvc, seedProviderService } from '@/lib/api';
+import { getProvider, isOpen, peekProvider, ProviderSvc, seedProviderService } from '@/lib/api';
 import { useAuth } from '@/providers/AuthProvider';
 import { useTheme } from '@/providers/ThemeProvider';
 import { fonts, Palette } from '@/theme';
@@ -83,16 +83,17 @@ export default function ProviderScreen() {
   const svcName = (s: ProviderSvc) => (lang === 'ar' ? s.services.name_ar : s.services.name_en);
   const priceOf = (s: ProviderSvc) => (s.pricing_model === 'custom_quote' ? tr('حسب العرض', 'Custom quote') : `${s.base_price} ${tr('ج.م', 'EGP')}`);
   const chosen = services?.find((x) => x.id === sel) ?? null;
+  const open = isOpen(p);
 
   const book = () => {
-    if (!chosen) return;
+    if (!chosen || !open) return;
     seedProviderService({
       id: chosen.id,
       provider_id: p.id,
       pricing_model: chosen.pricing_model,
       base_price: chosen.base_price,
       estimated_duration_minutes: chosen.estimated_duration_minutes,
-      provider_profiles: { business_name: p.business_name },
+      provider_profiles: { business_name: p.business_name, is_available: p.is_available, away_until: p.away_until ?? null },
       services: chosen.services,
     });
     router.push(`/booking/${chosen.id}`);
@@ -144,6 +145,12 @@ export default function ProviderScreen() {
                   <Text style={styles.pillText}>{tr('موثّق', 'Verified')}</Text>
                 </View>
               ) : null}
+              {!open ? (
+                <View style={[styles.pill, { backgroundColor: '#64748B' }]}>
+                  <Ionicons name="moon" size={13} color="#FFFFFF" />
+                  <Text style={[styles.pillText, { color: '#FFFFFF' }]}>{tr('مش متاح حاليًا', 'Unavailable now')}</Text>
+                </View>
+              ) : null}
             </View>
           </View>
 
@@ -186,11 +193,11 @@ export default function ProviderScreen() {
       </Pressable>
 
       <StickyBar
-        label={chosen ? svcName(chosen) : tr('اختار خدمة', 'Pick a service')}
-        value={chosen ? priceOf(chosen) : null}
-        title={tr('احجز الآن', 'Book now')}
+        label={!open ? tr('مقدم الخدمة مش متاح حاليًا', 'This provider is unavailable now') : chosen ? svcName(chosen) : tr('اختار خدمة', 'Pick a service')}
+        value={open && chosen ? priceOf(chosen) : null}
+        title={open ? tr('احجز الآن', 'Book now') : tr('مش متاح حاليًا', 'Unavailable')}
         onPress={book}
-        disabled={!chosen}
+        disabled={!chosen || !open}
       />
     </View>
   );

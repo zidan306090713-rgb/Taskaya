@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GradientHeader } from '@/components/ui/GradientHeader';
 import { ListSkeleton } from '@/components/ui/Skeleton';
 import { lang, tr } from '@/i18n';
-import { InboxItem, loadInbox, markAllRead, markRead, textOf, useInbox } from '@/lib/inbox';
+import { InboxItem, loadInbox, markAllRead, markRead, setPendingNav, textOf, useInbox } from '@/lib/inbox';
 import { isProvider } from '@/lib/provider';
 import { useAuth } from '@/providers/AuthProvider';
 import { useTheme } from '@/providers/ThemeProvider';
@@ -69,10 +69,24 @@ export default function Inbox() {
     setRefreshing(false);
   }
 
+  // نقفل الإشعارات (back) ونسيب "ملاحظة" بالتاب المطلوب — التابات الموجودة هي اللي تتنقّل أول ما تظهر
+  // (لو اتنقلنا من هنا مباشرة، Expo Router بيبني تابات جديدة فوق القديمة)
+  function goTab(tab: string, params?: Record<string, string>) {
+    if (router.canGoBack()) {
+      setPendingNav({ tab, params });
+      router.back();
+      return;
+    }
+    router.replace({ pathname: pro ? `/pro/${tab}` : `/${tab}`, params } as never);
+  }
+
   function press(i: InboxItem) {
     markRead(i.id);
-    if (i.kind === 'booking') return router.push(pro ? '/pro/requests' : '/orders');
-    if (i.url && i.url !== '/inbox' && i.url !== '/') return router.push(i.url as never);
+    if (i.kind === 'booking') return goTab(pro ? 'requests' : 'orders', i.booking_id ? { open: i.booking_id } : undefined);
+    if (i.url && i.url !== '/inbox' && i.url !== '/') {
+      const tab = i.url.split('/').filter(Boolean).pop();
+      if (tab) return goTab(tab);
+    }
     setOpen(open === i.id ? null : i.id);
   }
 

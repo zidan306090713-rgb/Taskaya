@@ -81,8 +81,8 @@ export async function unregisterPush() {
 }
 
 function openFrom(resp: Notifications.NotificationResponse | null | undefined) {
-  const data = resp?.notification.request.content.data as { url?: string } | undefined;
-  if (data?.url) router.push(data.url as never);
+  const data = resp?.notification.request.content.data as { url?: string; booking_id?: string | null } | undefined;
+  if (data?.url) router.navigate((data.booking_id && (data.url === '/orders' || data.url === '/pro/requests') ? { pathname: data.url, params: { open: data.booking_id } } : data.url) as never);
 }
 
 // بيتنادى مرة في الرئيسية: يسجّل الموبايل + لما تدوس على إشعار يفتح المكان بتاعه

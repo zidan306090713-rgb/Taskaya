@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useFocusEffect } from 'expo-router';
-import { ReactNode, useCallback, useState } from 'react';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Btn, custOf, IconName, L, money, NEW_STATUSES, ProCard, StatusBadge, svcOf, toNum, useProStyles, whenOf, addrOf } from '@/components/pro/ProUI';
 import { Screen } from '@/components/ui/Screen';
@@ -265,6 +265,25 @@ export default function ProRequests() {
     }, [load]),
   );
   useOnPush(useCallback(() => load(true), [load]));
+
+  // جاي من إشعار (?open=<رقم الحجز>) → افتح الطلب ده على طول
+  const { open: openParam } = useLocalSearchParams<{ open?: string }>();
+  const tried = useRef<string | null>(null);
+  useEffect(() => {
+    if (!openParam || !list) return;
+    if (list.some((b) => b.id === openParam)) {
+      setOpenId(openParam);
+      router.setParams({ open: undefined });
+      return;
+    }
+    // مش في القايمة المتخزنة (حجز جديد) → نحدّث مرة واحدة
+    if (tried.current !== openParam) {
+      tried.current = openParam;
+      load(true);
+      return;
+    }
+    router.setParams({ open: undefined });
+  }, [openParam, list, load]);
 
   const cur = FILTERS.find((f) => f.k === filter) ?? FILTERS[0];
   const shown = (list ?? []).filter((b) => cur.statuses.includes(b.status));

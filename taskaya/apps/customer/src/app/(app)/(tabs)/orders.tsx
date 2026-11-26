@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useFocusEffect } from 'expo-router';
-import { ComponentProps, ReactNode, useCallback, useMemo, useState } from 'react';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { ComponentProps, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Chips } from '@/components/ui/Chips';
@@ -334,6 +334,25 @@ export default function Orders() {
   );
   useOnPush(useCallback(() => load(true), [load]));
 
+  // جاي من إشعار (?open=<رقم الحجز>) → افتح الطلب ده على طول
+  const { open: openParam } = useLocalSearchParams<{ open?: string }>();
+  const tried = useRef<string | null>(null);
+  useEffect(() => {
+    if (!openParam || !list) return;
+    if (list.some((b) => b.id === openParam)) {
+      setOpenId(openParam);
+      router.setParams({ open: undefined });
+      return;
+    }
+    // مش في القايمة المتخزنة (حجز جديد) → نحدّث مرة واحدة
+    if (tried.current !== openParam) {
+      tried.current = openParam;
+      load(true);
+      return;
+    }
+    router.setParams({ open: undefined });
+  }, [openParam, list, load]);
+
   const all = list ?? [];
   const current = all.filter((b) => CURRENT.includes(b.status));
   const done = all.filter((b) => !CURRENT.includes(b.status));
@@ -421,13 +440,13 @@ const makeStyles = (c: Palette) =>
     quoteVal: { fontFamily: fonts.bold, fontSize: 14, color: '#7C3AED' },
     when: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 },
     whenText: { fontFamily: fonts.regular, fontSize: 12.5, color: c.textSecondary },
-    trk: { flexDirection: 'row', alignItems: 'center', direction: 'ltr' },
+    trk: { flexDirection: 'row', alignItems: 'center' },
     trkItem: { flex: 1, flexDirection: 'row', alignItems: 'center' },
     dot: { width: 11, height: 11, borderRadius: 6, backgroundColor: c.isDark ? 'rgba(255,255,255,0.15)' : '#D5DEEE' },
     dotOn: { backgroundColor: c.accent },
     line: { flex: 1, height: 2.5, borderRadius: 2, backgroundColor: c.isDark ? 'rgba(255,255,255,0.12)' : '#D5DEEE' },
     lineOn: { backgroundColor: c.accent },
-    trkLabels: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 5, direction: 'ltr' },
+    trkLabels: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 5 },
     trkLabel: { fontFamily: fonts.regular, fontSize: 10.5, color: c.textSecondary },
     trkLabelOn: { fontFamily: fonts.semibold, color: c.accentText },
     foot: {

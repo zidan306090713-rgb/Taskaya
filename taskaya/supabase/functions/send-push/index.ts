@@ -120,25 +120,24 @@ async function pushNotification(id: string) {
     .maybeSingle();
   if (!n) return new Response('skip');
 
-  const { data: tokens } = await db.from('push_tokens').select('token, lang').eq('user_id', n.user_id);
-  if (!tokens?.length) return new Response('no devices');
-
   const bookingId: string | null = n.data?.booking_id ?? null;
+  // الموبايلات + الحجز (ومعاه اسم مقدم الخدمة) في نفس الوقت، بدل 3 طلبات ورا بعض
   // deno-lint-ignore no-explicit-any
-  let booking: any = null;
-  let who: string | null = null;
-  if (bookingId) {
-    const { data } = await db
-      .from('bookings')
-      .select('status, quoted_price, customer_id, provider_id, scheduled_at, cancel_reason, services(name_ar, name_en)')
-      .eq('id', bookingId)
-      .maybeSingle();
-    booking = data;
-    if (booking?.provider_id) {
-      const { data: p } = await db.from('provider_profiles').select('business_name').eq('id', booking.provider_id).maybeSingle();
-      who = p?.business_name?.trim() || null;
-    }
-  }
+  const [tokRes, bkRes]: any[] = await Promise.all([
+    db.from('push_tokens').select('token, lang').eq('user_id', n.user_id),
+    bookingId
+      ? db
+          .from('bookings')
+          .select('status, quoted_price, customer_id, scheduled_at, cancel_reason, services(name_ar, name_en), provider_profiles(business_name)')
+          .eq('id', bookingId)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+  const tokens = (tokRes.data ?? []) as Array<{ token: string; lang: string }>;
+  if (!tokens.length) return new Response('no devices');
+
+  const booking = bkRes.data;
+  const who: string | null = booking?.provider_profiles?.business_name?.trim() || null;
   const forCustomer = booking && booking.customer_id === n.user_id;
 
   const messages: Msg[] = tokens.map((t) => {

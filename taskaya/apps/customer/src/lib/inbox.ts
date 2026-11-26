@@ -15,6 +15,7 @@ export type InboxItem = {
   created_at: string;
   url: string | null;
   booking_number: number | null;
+  booking_id: string | null;
   status: string | null;
   svc_ar: string | null;
   svc_en: string | null;
@@ -114,4 +115,16 @@ export function textOf(i: InboxItem): { title: string; body: string } {
     return { title: tr(...t), body: svc };
   }
   return { title: i.title, body: i.body ?? '' };
+}
+
+// "ملاحظة" للتنقّل: صفحة الإشعارات بتسيبها وترجع (back)، والتابات الموجودة تنفّذها أول ما تظهر
+// (لو اتنقلنا من صفحة الإشعارات نفسها، Expo Router بيبني تابات جديدة فوق القديمة)
+let pendingNav: unknown = null;
+export function setPendingNav(href: unknown) {
+  pendingNav = href;
+}
+export function takePendingNav(): unknown {
+  const h = pendingNav;
+  pendingNav = null;
+  return h;
 }

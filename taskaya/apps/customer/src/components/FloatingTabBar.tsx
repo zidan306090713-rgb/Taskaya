@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useId, useMemo, useState } from 'react';
 import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Svg, { Defs, LinearGradient, Path, Stop } from 'react-native-svg';
 import { useRouter } from 'expo-router';
@@ -58,6 +58,8 @@ export default function FloatingTabBar({ state, descriptors, navigation, base }:
   // التجويف بيتحسب مرة واحدة لكل تاب — مش 60 مرة في الثانية
   const notchX = pad + vIndex * tabWidth + tabWidth / 2;
   const path = useMemo(() => buildPath(barWidth, BAR_HEIGHT, notchX), [barWidth, notchX]);
+  // id مختلف لكل شريط: لو اتنين بنفس الـ id و الأول مخفي، Chrome مش بيرسم التدرّج (الشريط يبان شفاف)
+  const gid = "navGrad" + useId().replace(/[^a-zA-Z0-9_-]/g, "");
 
   useEffect(() => {
     Animated.timing(x, {
@@ -73,16 +75,16 @@ export default function FloatingTabBar({ state, descriptors, navigation, base }:
 
   return (
     <View
-      style={{ position: 'absolute', left: side, width: barWidth, bottom: Math.max(insets.bottom, 12), height: BAR_HEIGHT, pointerEvents: 'box-none', direction: 'ltr' }}
+      style={{ position: 'absolute', left: side, width: barWidth, bottom: Math.max(insets.bottom, 12), height: BAR_HEIGHT, pointerEvents: 'box-none', ...((Platform.OS === 'web' ? { writingDirection: 'ltr' } : { direction: 'ltr' }) as object) }}
     >
       <Svg width={barWidth} height={BAR_HEIGHT} style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]}>
         <Defs>
-          <LinearGradient id="navGrad" x1="0" y1="0" x2="1" y2="1">
+          <LinearGradient id={gid} x1="0" y1="0" x2="1" y2="1">
             <Stop offset="0" stopColor={c.tabGradient[0]} />
             <Stop offset="1" stopColor={c.tabGradient[1]} />
           </LinearGradient>
         </Defs>
-        <Path d={path} fill="url(#navGrad)" stroke="rgba(255,255,255,0.45)" strokeWidth={1.5} />
+        <Path d={path} fill={`url(#${gid})`} stroke="rgba(255,255,255,0.45)" strokeWidth={1.5} />
       </Svg>
 
       <View style={[styles.row, { paddingHorizontal: pad }]}>
@@ -110,7 +112,7 @@ export default function FloatingTabBar({ state, descriptors, navigation, base }:
               <View style={{ opacity: focused ? 0 : 1 }}>
                 {options.tabBarIcon?.({ color, size: 24, focused })}
               </View>
-              <Text style={[styles.label, { color, fontFamily: fonts.semibold }, Platform.OS === 'web' ? ({ direction: layoutRTL() ? 'rtl' : 'ltr' } as any) : null]} numberOfLines={Platform.OS === 'web' ? undefined : 1}>
+              <Text style={[styles.label, { color, fontFamily: fonts.semibold }, Platform.OS === 'web' ? ({ writingDirection: layoutRTL() ? 'rtl' : 'ltr' } as any) : null]} numberOfLines={Platform.OS === 'web' ? undefined : 1}>
                 {label}
               </Text>
             </Pressable>

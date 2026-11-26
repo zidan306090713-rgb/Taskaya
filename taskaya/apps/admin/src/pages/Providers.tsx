@@ -2,20 +2,30 @@ import { Skeleton } from '../components/Skeleton';
 import { Ico } from '../components/Ico';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import NewProviderModal from '../components/NewProviderModal';
 import ProviderModal, { ProviderLogo } from '../components/ProviderModal';
+import ServiceRequests from '../components/ServiceRequests';
 import { fetchProviders, P_ORDER, P_STATUS, type PStatus } from '../lib/providers';
+import { countServiceRequests } from '../lib/serviceRequests';
 
-type Tab = 'all' | PStatus;
+type Tab = 'all' | PStatus | 'services';
 
 export default function Providers() {
   const { data, isLoading, error } = useQuery({ queryKey: ['providers'], queryFn: fetchProviders });
-  const [tab, setTab] = useState<Tab>('all');
+  const { data: reqCount } = useQuery({ queryKey: ['service-requests-count'], queryFn: countServiceRequests });
+  const [params, setParams] = useSearchParams();
+  const [tab, setTabState] = useState<Tab>(params.get('tab') === 'services' ? 'services' : 'all');
   const [q, setQ] = useState('');
   const [openId, setOpenId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const canEdit = useAuth().can('providers', true);
+
+  const setTab = (t: Tab) => {
+    setTabState(t);
+    setParams(t === 'services' ? { tab: 'services' } : {}, { replace: true });
+  };
 
   const counts = useMemo(() => {
     const m: Partial<Record<PStatus, number>> = {};
@@ -45,9 +55,11 @@ export default function Providers() {
         {canEdit ? <button className="btn btn-primary" onClick={() => setAdding(true)}>+ مقدم خدمة جديد</button> : null}
       </div>
 
-      <div className="toolbar">
-        <input className="inp search" placeholder="ابحث باسم النشاط، صاحب الحساب أو الموبايل" value={q} onChange={(e) => setQ(e.target.value)} />
-      </div>
+      {tab !== 'services' ? (
+        <div className="toolbar">
+          <input className="inp search" placeholder="ابحث باسم النشاط، صاحب الحساب أو الموبايل" value={q} onChange={(e) => setQ(e.target.value)} />
+        </div>
+      ) : null}
 
       <div className="tabs">
         <button className={`tab${tab === 'all' ? ' on' : ''}`} onClick={() => setTab('all')}>
@@ -58,35 +70,44 @@ export default function Providers() {
             {P_STATUS[s].label} <span className="count">{counts[s] ?? 0}</span>
           </button>
         ))}
+        <button className={`tab${tab === 'services' ? ' on' : ''}`} onClick={() => setTab('services')}>
+          طلبات الخدمات <span className="count">{reqCount ?? 0}</span>
+        </button>
       </div>
 
-      {error ? <div className="alert">تعذّر التحميل: {(error as Error).message}</div> : null}
-      {isLoading ? <Skeleton kind="cards" /> : null}
-      {!isLoading && shown.length === 0 ? <div className="card muted">مفيش مقدمي خدمة هنا</div> : null}
+      {tab === 'services' ? (
+        <ServiceRequests canEdit={canEdit} />
+      ) : (
+        <>
+          {error ? <div className="alert">تعذّر التحميل: {(error as Error).message}</div> : null}
+          {isLoading ? <Skeleton kind="cards" /> : null}
+          {!isLoading && shown.length === 0 ? <div className="card muted">مفيش مقدمي خدمة هنا</div> : null}
 
-      <div className="pgrid">
-        {shown.map((p) => (
-          <button key={p.id} className="pcard" onClick={() => setOpenId(p.id)}>
-            <div className="pcard-cover" style={p.cover_url ? { backgroundImage: `url(${p.cover_url})` } : undefined} />
-            <div className="pcard-body">
-              <ProviderLogo p={p} size={56} />
-              <div className="pcard-name">
-                {p.business_name} {p.is_verified ? <span title="موثّق" className="verified"><Ico e="✔" /></span> : null}
-              </div>
-              <div className="muted small">{p.owner?.full_name || '—'}</div>
-              <div className="pcard-meta">
-                <span className={`badge t-${P_STATUS[p.status].tone}`}>{P_STATUS[p.status].label}</span>
-                {p.is_featured ? <span className="badge t-amber"><Ico e="⭐" /> مميز</span> : null}
-                {!p.is_available ? <span className="badge t-gray">مش متاح</span> : null}
-              </div>
-              <div className="pcard-foot">
-                <span><Ico e="★" /> {Number(p.rating_avg).toFixed(1)} <span className="muted">({p.rating_count})</span></span>
-                <span>{p.services.length} خدمة</span>
-              </div>
-            </div>
-          </button>
-        ))}
-      </div>
+          <div className="pgrid">
+            {shown.map((p) => (
+              <button key={p.id} className="pcard" onClick={() => setOpenId(p.id)}>
+                <div className="pcard-cover" style={p.cover_url ? { backgroundImage: `url(${p.cover_url})` } : undefined} />
+                <div className="pcard-body">
+                  <ProviderLogo p={p} size={56} />
+                  <div className="pcard-name">
+                    {p.business_name} {p.is_verified ? <span title="موثّق" className="verified"><Ico e="✔" /></span> : null}
+                  </div>
+                  <div className="muted small">{p.owner?.full_name || '—'}</div>
+                  <div className="pcard-meta">
+                    <span className={`badge t-${P_STATUS[p.status].tone}`}>{P_STATUS[p.status].label}</span>
+                    {p.is_featured ? <span className="badge t-amber"><Ico e="⭐" /> مميز</span> : null}
+                    {!p.is_available ? <span className="badge t-gray">مش متاح</span> : null}
+                  </div>
+                  <div className="pcard-foot">
+                    <span><Ico e="★" /> {Number(p.rating_avg).toFixed(1)} <span className="muted">({p.rating_count})</span></span>
+                    <span>{p.services.length} خدمة</span>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
 
       {open ? <ProviderModal key={open.id} p={open} onClose={() => setOpenId(null)} /> : null}
       {adding ? <NewProviderModal onClose={() => setAdding(false)} /> : null}

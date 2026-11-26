@@ -611,3 +611,23 @@ fieldset.drawer-body:disabled .switch { opacity: 0.6; cursor: default; }
   border: 1px solid color-mix(in srgb, #16A34A 30%, transparent); }
 .pw-done b { color: inherit; font-size: 15px; letter-spacing: 1px; }
 .pw-done .btn { margin-inline-start: auto; }
+
+/* ===== طلبات الخدمات ===== */
+.sr-list{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(340px,1fr))}
+.sr-card{display:flex;flex-direction:column;gap:10px}
+.sr-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.sr-title{font-weight:700;font-size:16px}
+.sr-prov{font-size:14px}
+.sr-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px;font-size:14px;padding:10px 12px;border-radius:12px;background:color-mix(in srgb,currentColor 5%,transparent)}
+.sr-facts .muted{display:block;font-size:12px}
+.sr-desc{margin:0;font-size:14px;line-height:1.7}
+.sr-prev{font-size:13px;color:#B45309;background:color-mix(in srgb,#F59E0B 12%,transparent);padding:8px 10px;border-radius:10px}
+.sr-actions,.sr-form{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.sr-form .inp{flex:1;min-width:140px}
+.sr-form textarea.inp{flex-basis:100%;min-height:68px;resize:vertical;font:inherit}
+.sr-danger{color:#DC2626 !important}
+.sr-danger-fill{background:#DC2626 !important;color:#fff !important;border-color:#DC2626 !important}
+.sr-nudge{display:flex;align-items:center;gap:10px;width:100%;text-align:start;padding:12px 14px;margin:0 0 10px;border-radius:14px;border:1px solid color-mix(in srgb,#F59E0B 45%,transparent);background:color-mix(in srgb,#F59E0B 10%,transparent);color:inherit;font:inherit;cursor:pointer}
+.sr-nudge>span:nth-child(2){flex:1}
+.sr-nudge-ic{color:#D97706;display:flex}
+@media (max-width:420px){.sr-list{grid-template-columns:1fr}}

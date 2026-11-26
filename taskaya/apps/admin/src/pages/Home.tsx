@@ -1,4 +1,5 @@
 import { Ico } from '../components/Ico';
+import ServiceRequestsNudge from '../components/ServiceRequestsNudge';
 import { useQuery } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -252,6 +253,7 @@ export default function Home() {
           <div className="panel-head">
             <h3><Ico e="⚡" /> محتاج تحرّك {data?.needs_total ? <span className="count-pill">{data.needs_total}</span> : null}</h3>
           </div>
+          <ServiceRequestsNudge />
           {data && !data.needs.length ? (
             <div className="all-good">
               <span><Ico e="🎉" /></span>

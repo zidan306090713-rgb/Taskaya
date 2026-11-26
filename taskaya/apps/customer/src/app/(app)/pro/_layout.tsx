@@ -14,6 +14,7 @@ export default function ProLayout() {
       tabs={[
         { name: 'index', title: tr('الرئيسية', 'Home'), icon: 'home' },
         { name: 'requests', title: tr('الطلبات', 'Requests'), icon: 'clipboard' },
+        { name: 'services', title: tr('خدماتي', 'Services'), icon: 'briefcase' },
         { name: 'wallet', title: tr('المحفظة', 'Wallet'), icon: 'wallet' },
         { name: 'account', title: tr('حسابي', 'Profile'), icon: 'person' },
       ]}

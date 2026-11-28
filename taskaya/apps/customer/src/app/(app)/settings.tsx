@@ -3,6 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useRouter } from 'expo-router';
 import { ComponentProps, useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { GradientHeader } from '@/components/ui/GradientHeader';
 import { Screen } from '@/components/ui/Screen';
 import { isRTL, layoutRTL, Lang, lang, setLanguage, tr } from '@/i18n';
 import { useTheme } from '@/providers/ThemeProvider';
@@ -18,17 +19,9 @@ export default function Settings() {
 
   return (
     <>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          title: tr('الإعدادات', 'Settings'),
-          headerTitleStyle: { fontFamily: fonts.bold, color: c.text },
-          headerStyle: { backgroundColor: c.headerBg },
-          headerShadowVisible: false,
-          headerTintColor: c.accentText,
-        }}
-      />
-      <Screen>
+      <Stack.Screen options={{ headerShown: false }} />
+      <GradientHeader title={tr('الإعدادات', 'Settings')} padBottom={22} />
+      <Screen padTop={18}>
         <Text style={styles.group}>{tr('عام', 'General')}</Text>
         <View style={styles.card}>
           <Row
@@ -68,7 +61,7 @@ const LANGS: { key: Lang; label: string; sub: string }[] = [
   { key: 'en', label: 'English', sub: 'الإنجليزية' },
 ];
 
-function LanguageSheet({ onClose }: { onClose: () => void }) {
+export function LanguageSheet({ onClose }: { onClose: () => void }) {
   const { c } = useTheme();
   const styles = useMemo(() => makeStyles(c), [c]);
   const [pick, setPick] = useState<Lang>(lang);

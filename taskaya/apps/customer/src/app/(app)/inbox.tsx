@@ -57,6 +57,7 @@ export default function Inbox() {
   const uid = session?.user.id ?? '';
   const pro = isProvider(session);
   const { items, unread, isUnread } = useInbox();
+  const [headH, setHeadH] = useState(0);
   const [only, setOnly] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -123,31 +124,32 @@ export default function Inbox() {
   return (
     <View style={{ flex: 1 }}>
       <Stack.Screen options={{ headerShown: false }} />
+      <View style={st.headWrap} onLayout={(e) => setHeadH(e.nativeEvent.layout.height)}>
       <GradientHeader
         title={tr('الإشعارات', 'Notifications')}
         subtitle={unread ? tr(`${unread} غير مقروءة`, `${unread} unread`) : tr('كله مقروء', 'All caught up')}
         right={
-          unread ? (
-            <Pressable onPress={markAllRead} style={st.readAll} accessibilityRole="button">
-              <Text style={st.readAllText}>{tr('قراءة الكل', 'Mark all read')}</Text>
-            </Pressable>
-          ) : null
+          <View style={st.headBtns}>
+            {unread || only ? (
+              <Pressable onPress={() => setOnly(!only)} style={st.readAll} accessibilityRole="button">
+                <Text style={st.readAllText}>
+                  {only ? tr('الكل', 'All') : tr(`غير مقروء · ${unread}`, `Unread · ${unread}`)}
+                </Text>
+              </Pressable>
+            ) : null}
+            {unread ? (
+              <Pressable onPress={markAllRead} style={st.readAll} accessibilityRole="button">
+                <Text style={st.readAllText}>{tr('قراءة الكل', 'Mark all read')}</Text>
+              </Pressable>
+            ) : null}
+          </View>
         }
       />
+      </View>
       <ScrollView
-        contentContainerStyle={[st.wrap, { paddingBottom: insets.bottom + 32 }]}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={c.accent} colors={[c.accent]} />}
+        contentContainerStyle={[st.wrap, { paddingTop: headH + 12, paddingBottom: insets.bottom + 32 }]}
+        refreshControl={<RefreshControl progressViewOffset={headH} refreshing={refreshing} onRefresh={refresh} tintColor={c.accent} colors={[c.accent]} />}
       >
-        <View style={st.chips}>
-          {[false, true].map((v) => (
-            <Pressable key={String(v)} onPress={() => setOnly(v)} style={[st.chip, only === v && { backgroundColor: c.accent, borderColor: c.accent }]}>
-              <Text style={[st.chipText, only === v && { color: '#FFFFFF' }]}>
-                {v ? tr(`غير مقروء${unread ? ` · ${unread}` : ''}`, `Unread${unread ? ` · ${unread}` : ''}`) : tr('الكل', 'All')}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-
         {items === null ? <ListSkeleton rows={4} height={76} /> : null}
         {items !== null && list.length === 0 ? (
           <View style={st.empty}>
@@ -159,9 +161,7 @@ export default function Inbox() {
           </View>
         ) : null}
 
-        {today.length ? <Text style={st.group}>{tr('النهارده', 'Today')}</Text> : null}
         {today.map(row)}
-        {older.length ? <Text style={st.group}>{tr('قبل كده', 'Earlier')}</Text> : null}
         {older.map(row)}
         {items && items.length ? (
           <Text style={st.foot}>{tr('بنحتفظ بآخر 30 يوم للحجوزات و90 يوم للرسايل', 'We keep 30 days of bookings and 90 days of messages')}</Text>
@@ -199,6 +199,8 @@ const makeStyles = (c: Palette) =>
     body: { fontFamily: fonts.regular, fontSize: 13, color: c.textSecondary, lineHeight: 20 },
     meta: { fontFamily: fonts.regular, fontSize: 11.5, color: c.textSecondary, opacity: 0.8 },
     dot: { width: 9, height: 9, borderRadius: 5, marginTop: 6 },
+    headBtns: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    headWrap: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 },
     readAll: { paddingHorizontal: 12, height: 32, borderRadius: 999, justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.2)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.35)' },
     readAllText: { fontFamily: fonts.semibold, fontSize: 12.5, color: '#FFFFFF' },
     empty: { alignItems: 'center', marginTop: 40, gap: 10, paddingHorizontal: 20 },

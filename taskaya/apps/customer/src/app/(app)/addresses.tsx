@@ -4,6 +4,7 @@ import { Stack } from 'expo-router';
 import { ComponentProps, useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { PremiumInput } from '@/components/ui/PremiumInput';
+import { GradientHeader } from '@/components/ui/GradientHeader';
 import { Screen } from '@/components/ui/Screen';
 import { ListSkeleton } from '@/components/ui/Skeleton';
 import { isRTL, layoutRTL, lang, tr } from '@/i18n';
@@ -68,17 +69,9 @@ export default function Addresses() {
 
   return (
     <>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          title: tr('عناويني', 'My addresses'),
-          headerTitleStyle: { fontFamily: fonts.bold, color: c.text },
-          headerStyle: { backgroundColor: c.headerBg },
-          headerShadowVisible: false,
-          headerTintColor: c.accentText,
-        }}
-      />
-      <Screen>
+      <Stack.Screen options={{ headerShown: false }} />
+      <GradientHeader title={tr('عناويني', 'My addresses')} padBottom={22} />
+      <Screen padTop={18}>
         {list === null ? (
           <ListSkeleton rows={3} height={84} />
         ) : list.length === 0 ? (

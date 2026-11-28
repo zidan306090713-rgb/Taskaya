@@ -1,3 +1,5 @@
+import { useState as useLangState } from 'react';
+import { LanguageSheet } from '../settings';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -74,6 +76,7 @@ export default function Profile() {
   const { c, setMode } = useTheme();
   const styles = useMemo(() => makeStyles(c), [c]);
   const insets = useSafeAreaInsets();
+  const [langOpen, setLangOpen] = useLangState(false);
   const { session } = useAuth();
   const uid = session?.user.id ?? '';
   const me = useMyProfile();
@@ -114,7 +117,8 @@ export default function Profile() {
         <View style={styles.inner}>
           {/* ===== كل الخانات في قائمة واحدة ===== */}
           <Glass style={{ marginTop: 12 }}>
-            <Row icon="language-outline" tint={['rgba(15,118,110,0.12)', '#0F766E']} label={tr('اللغة', 'Language')} value={lang === 'ar' ? 'العربية' : 'English'} onPress={() => router.push('/settings')} />
+            {langOpen ? <LanguageSheet onClose={() => setLangOpen(false)} /> : null}
+            <Row icon="language-outline" tint={['rgba(15,118,110,0.12)', '#0F766E']} label={tr('اللغة', 'Language')} value={lang === 'ar' ? 'العربية' : 'English'} onPress={() => setLangOpen(true)} />
             <Row icon="location-outline" tint={['rgba(31,91,255,0.12)', '#1F5BFF']} label={tr('عناويني', 'My addresses')} onPress={() => router.push('/addresses')} />
             <Row icon="headset-outline" tint={['rgba(219,39,119,0.12)', '#DB2777']} label={tr('الدعم الفني', 'Support')} value={tr('قريبًا', 'Soon')} />
             <View

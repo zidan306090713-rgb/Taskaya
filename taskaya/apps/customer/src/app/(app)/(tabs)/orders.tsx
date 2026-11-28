@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { ComponentProps, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Animated, Easing, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import { GlowBg } from '@/components/home/GlowBg';
@@ -16,6 +16,9 @@ import { useTheme } from '@/providers/ThemeProvider';
 import { fonts, Palette, rgba } from '@/theme';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
+
+const SHEET_FROST = Platform.OS === 'web' ? ({ backdropFilter: 'blur(16px) saturate(160%)', WebkitBackdropFilter: 'blur(16px) saturate(160%)' } as any) : null;
+const SHEET_DIM = Platform.OS === 'web' ? ({ backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' } as any) : null;
 
 const STATUS: Record<string, { ar: string; en: string; color: string; icon: IconName }> = {
   pending: { ar: 'قيد الانتظار', en: 'Pending', color: '#D97706', icon: 'time-outline' },
@@ -196,6 +199,15 @@ function OrderSheet({ b, onClose, onChanged }: { b: Booking; onClose: () => void
   const price = b.final_price ?? b.quoted_price;
   const when = whenOf(b);
 
+
+  const anim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(anim, { toValue: 1, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: Platform.OS !== 'web' }).start();
+  }, [anim]);
+  // زجاج: شفاف على الويب و iOS، شبه مصمت على أندرويد (من غير elevation)
+  const sheetBg = c.isDark
+    ? Platform.OS === 'android' ? 'rgba(21,26,36,0.97)' : 'rgba(21,26,36,0.78)'
+    : Platform.OS === 'android' ? 'rgba(255,255,255,0.97)' : 'rgba(255,255,255,0.78)';
   const answer = async (accept: boolean) => {
     setErr('');
     setBusy(accept ? 'yes' : 'no');
@@ -210,21 +222,28 @@ function OrderSheet({ b, onClose, onChanged }: { b: Booking; onClose: () => void
   };
 
   return (
-    <Modal visible transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
+    <Modal visible transparent animationType="none" statusBarTranslucent onRequestClose={onClose}>
       <View style={{ flex: 1, direction: isRTL ? 'rtl' : 'ltr' }}>
-        <Pressable style={[StyleSheet.absoluteFill, styles.backdrop]} onPress={onClose} accessibilityLabel={tr('إغلاق', 'Close')} />
+        <Pressable style={[StyleSheet.absoluteFill, styles.backdrop, SHEET_DIM]} onPress={onClose} accessibilityLabel={tr('إغلاق', 'Close')} />
         <View style={styles.wrap}>
-          <View style={[styles.sheet, { backgroundColor: c.isDark ? '#151A24' : '#FFFFFF', borderColor: rgba(c.accent, 0.3), shadowColor: c.accent }]}>
-            <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.accent} />
-            <ScrollView contentContainerStyle={styles.sheetBody} bounces={false}>
-              <View style={styles.topRow}>
-                <Thumb b={b} size={44} />
-                <Text style={styles.sheetTitle} numberOfLines={2}>{titleOf(b)}</Text>
-                <Pressable onPress={onClose} hitSlop={10} style={styles.close} accessibilityLabel={tr('إغلاق', 'Close')}>
-                  <Ionicons name="close" size={20} color={c.accentText} />
+          <Animated.View style={[styles.sheet, SHEET_FROST, { overflow: 'hidden', backgroundColor: sheetBg, borderColor: c.isDark ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.9)', shadowColor: c.accent, transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }, { scale: anim.interpolate({ inputRange: [0, 1], outputRange: [0.96, 1] }) }] }]}>
+            {Platform.OS === 'ios' ? <BlurView intensity={40} tint={c.isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} /> : null}
+            <View style={SG.band}>
+              <LinearGradient colors={c.gradient} start={{ x: 0.1, y: 0 }} end={{ x: 0.9, y: 1 }} style={[StyleSheet.absoluteFill, { opacity: Platform.OS === 'android' ? 0.95 : 0.85 }]} />
+              <View style={SG.glow} />
+              <View style={SG.glow2} />
+              <LinearGradient colors={['rgba(255,255,255,0.22)', 'rgba(255,255,255,0)']} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={SG.sheen} />
+              <View style={SG.bandRow}>
+                <View style={SG.ring}>
+                  <Thumb b={b} size={44} />
+                </View>
+                <Text style={[styles.sheetTitle, { color: '#FFFFFF' }]} numberOfLines={2}>{titleOf(b)}</Text>
+                <Pressable onPress={onClose} hitSlop={10} style={SG.close} accessibilityLabel={tr('إغلاق', 'Close')}>
+                  <Ionicons name="close" size={20} color="#FFFFFF" />
                 </Pressable>
               </View>
-
+            </View>
+            <ScrollView contentContainerStyle={styles.sheetBody} bounces={false}>
               <View style={styles.badgeRow}>
                 <Badge status={b.status} />
                 <View style={styles.numPill}>
@@ -307,7 +326,7 @@ function OrderSheet({ b, onClose, onChanged }: { b: Booking; onClose: () => void
                 </View>
               ) : null}
             </ScrollView>
-          </View>
+          </Animated.View>
         </View>
       </View>
     </Modal>
@@ -559,3 +578,14 @@ const makeStyles = (c: Palette) =>
     emptyTitle: { fontFamily: fonts.bold, fontSize: 17, color: c.text },
     emptySub: { fontFamily: fonts.regular, fontSize: 13.5, color: c.textSecondary, textAlign: 'center' },
   });
+
+// ===== ستايل الشريط الزجاجي لنافذة التفاصيل =====
+const SG = StyleSheet.create({
+  band: { paddingTop: 16, paddingBottom: 16, paddingHorizontal: 16, overflow: 'hidden', borderBottomLeftRadius: 22, borderBottomRightRadius: 22 },
+  bandRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  ring: { padding: 2, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.9)' },
+  close: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.18)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.35)' },
+  sheen: { position: 'absolute', top: 0, left: 0, right: 0, height: '65%', pointerEvents: 'none' },
+  glow: { position: 'absolute', width: 220, height: 220, borderRadius: 110, top: -110, left: -70, backgroundColor: 'rgba(255,255,255,0.10)', pointerEvents: 'none' },
+  glow2: { position: 'absolute', width: 160, height: 160, borderRadius: 80, bottom: -80, right: -40, backgroundColor: 'rgba(255,255,255,0.07)', pointerEvents: 'none' },
+});

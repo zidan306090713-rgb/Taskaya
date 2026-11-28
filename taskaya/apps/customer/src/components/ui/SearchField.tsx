@@ -44,7 +44,7 @@ export function SearchField({ value, onChangeText, placeholder, onDark = false }
         boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.22), 0 10px 26px rgba(11,27,63,0.30)',
       } as any)
     : null;
-  const webGlow = web ? ({ boxShadow: '0 0 24px rgba(255,255,255,0.30)' } as any) : null;
+  const webGlow = web ? ({ boxShadow: '0 0 30px rgba(255,255,255,0.16)' } as any) : null;
 
   const iconColor = focused ? c.accentText : c.iconMuted;
 
@@ -126,7 +126,7 @@ const makeStyles = (c: Palette) =>
       borderRadius: R,
       backgroundColor: c.searchBg,
       borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.55)',
+      borderColor: 'rgba(255,255,255,0.12)',
       pointerEvents: 'none',
       ...Platform.select({
         ios: { shadowColor: '#0B1B3F', shadowOpacity: 0.28, shadowRadius: 14, shadowOffset: { width: 0, height: 8 } },
@@ -138,10 +138,10 @@ const makeStyles = (c: Palette) =>
       borderRadius: R,
       backgroundColor: 'transparent',
       borderWidth: 1,
-      borderColor: rgba(c.accent, 0.6),
+      borderColor: rgba(c.accent, 0.22),
       pointerEvents: 'none',
     },
-    sheen: { position: 'absolute', top: 1, left: 18, right: 18, height: 1, borderRadius: 1, backgroundColor: 'rgba(255,255,255,0.45)', pointerEvents: 'none' },
+    sheen: { position: 'absolute', top: 1, left: 18, right: 18, height: 1, borderRadius: 1, backgroundColor: 'rgba(255,255,255,0.18)', pointerEvents: 'none' },
     glow: {
       position: 'absolute',
       top: -5,
@@ -149,8 +149,8 @@ const makeStyles = (c: Palette) =>
       right: -5,
       bottom: -5,
       borderRadius: R + 5,
-      backgroundColor: 'rgba(255,255,255,0.08)',
-      borderWidth: 1,
+      backgroundColor: 'rgba(255,255,255,0.06)',
+      borderWidth: 0,
       borderColor: 'rgba(255,255,255,0.35)',
       pointerEvents: 'none',
       ...Platform.select({

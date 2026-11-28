@@ -133,13 +133,13 @@ export default function Home() {
           </View>
           <Text style={styles.tagline}>{t('tagline')}</Text>
                     <View style={styles.tools}>
+        {/* ===== كبسولات الأقسام ===== */}
+        {!searching ? <CatTiles cats={cats} catId={catId} onPick={pickCat} icon={catIcon} name={catName} /> : null}
+
         {/* ===== البحث العايم ===== */}
         <View style={styles.search}>
           <SearchField onDark value={q} onChangeText={setQ} placeholder={tr('بتدور على إيه؟', 'What are you looking for?')} />
         </View>
-
-        {/* ===== كبسولات الأقسام ===== */}
-        {!searching ? <CatTiles cats={cats} catId={catId} onPick={pickCat} icon={catIcon} name={catName} /> : null}
           </View>
         </Animated.View>
       </View>
@@ -173,7 +173,7 @@ const makeStyles = (c: Palette) =>
   StyleSheet.create({
     page: { flex: 1 },
     inner: { width: '100%', maxWidth: 720, alignSelf: 'center' },
-    header: { position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: 20, paddingBottom: 0, zIndex: 1, overflow: 'hidden', borderWidth: 1, borderTopWidth: 0, borderColor: 'rgba(255,255,255,0.28)', borderBottomLeftRadius: 30, borderBottomRightRadius: 30 },
+    header: { position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: 20, paddingBottom: 0, zIndex: 1, overflow: 'hidden', borderWidth: 0, borderTopWidth: 0, borderColor: 'rgba(255,255,255,0.28)', borderBottomLeftRadius: 30, borderBottomRightRadius: 30 },
     sheen: { position: 'absolute', top: 0, left: 0, right: 0, height: '65%', pointerEvents: 'none' },
     glow: { position: 'absolute', width: 260, height: 260, borderRadius: 130, top: -120, left: -80, backgroundColor: 'rgba(255,255,255,0.10)', pointerEvents: 'none' },
     glow2: { position: 'absolute', width: 180, height: 180, borderRadius: 90, bottom: -90, right: -50, backgroundColor: 'rgba(255,255,255,0.07)', pointerEvents: 'none' },
@@ -189,7 +189,8 @@ const makeStyles = (c: Palette) =>
     body: { flex: 1, paddingHorizontal: 16 },
     tools: { marginHorizontal: -4 },
     search: {
-      marginTop: 4,
+      marginTop: 12,
+      transform: [{ translateY: -16 }],
       borderRadius: 18,
       shadowColor: c.accent,
       shadowOpacity: 0.22,

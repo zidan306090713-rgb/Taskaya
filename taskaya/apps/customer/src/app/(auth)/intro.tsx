@@ -1,360 +1,228 @@
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Animated, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Circle, Defs, G, Mask, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
+import { GlowBg } from '@/components/home/GlowBg';
+import { AuthHero } from '@/components/ui/AuthHero';
+import { IntroSplash } from '@/components/IntroSplash';
 import { tr } from '@/i18n';
 import { setOnboarded } from '@/lib/onboarding';
 import { useTheme } from '@/providers/ThemeProvider';
-import { fonts, Palette } from '@/theme';
+import { fonts } from '@/theme';
 
 /**
- * الانترو (أول استخدام بس): سرعة الضوء → ومضة → الـ T بيظهر والمدار بيترسم →
- * علامة الصح بتلف → TASKAYA + لمعة + "في العاشر من رمضان" → الكاميرا بتطير جوه اللوجو → صفحة التسجيل.
+ * الانترو (أول استخدام بس): هيدر زجاج (AuthHero) + 3 شرايح كروت زجاج بتتقلب بالسحب
+ * + نقط + زرار التالي/ابدأ → صفحة التسجيل. "تخطي" و"عندي حساب" بيسجلوا إن الانترو اتشاف.
  */
+type Icon = keyof typeof Ionicons.glyphMap;
+type Slide = { icon: Icon; title: [string, string]; body: [string, string]; chips: [Icon, string, string][] };
+
+const SLIDES: Slide[] = [
+  {
+    icon: 'grid',
+    title: ['كل خدماتك في مكان واحد', 'All your services in one place'],
+    body: ['سباكة وكهربا وتنضيف وأكتر، من مقدّمي خدمة موثوقين في العاشر من رمضان.', 'Plumbing, electrical, cleaning and more, from trusted providers in 10th of Ramadan City.'],
+    chips: [['water-outline', 'سباكة', 'Plumbing'], ['flash-outline', 'كهربا', 'Electrical'], ['sparkles-outline', 'تنضيف', 'Cleaning']],
+  },
+  {
+    icon: 'calendar',
+    title: ['احجز في ثواني', 'Book in seconds'],
+    body: ['اختار مقدّم الخدمة والميعاد اللي يناسبك، ولو الشغل محتاج معاينة هيوصلك عرض سعر توافق عليه الأول.', 'Pick a provider and a time that suits you. If the job needs a look first, you get a price quote to approve.'],
+    chips: [['time-outline', 'ميعادك', 'Your time'], ['pricetag-outline', 'عرض سعر', 'Price quote'], ['star-outline', 'تقييمات', 'Ratings']],
+  },
+  {
+    icon: 'notifications',
+    title: ['تابع طلبك خطوة بخطوة', 'Track every step'],
+    body: ['إشعار مع كل خطوة: اتأكد، اتبدأ، خلص. وكل طلباتك قدامك في مكان واحد.', 'A notification at every step: confirmed, started, done. All your orders in one place.'],
+    chips: [['checkmark-circle-outline', 'اتأكد', 'Confirmed'], ['construct-outline', 'شغّال', 'In progress'], ['ribbon-outline', 'خلص', 'Done']],
+  },
+];
+
 const ND = Platform.OS !== 'web';
-const LETTERS = 'TASKAYA'.split('');
-const EXIT_AT = 5400;
 const LTR = Platform.OS === 'web' ? ({ writingDirection: 'ltr' } as object) : { direction: 'ltr' as const };
-
-// ===== رياضة المدار (نفس اللوجو) =====
-const CX = 55;
-const CY = 48;
-const RX = 46;
-const RY = 13;
-const TILT = (-18 * Math.PI) / 180;
-function pt(t: number): [number, number] {
-  const x = RX * Math.cos(t);
-  const y = RY * Math.sin(t);
-  return [CX + x * Math.cos(TILT) - y * Math.sin(TILT), CY + x * Math.sin(TILT) + y * Math.cos(TILT)];
-}
-function arc(a: number, b: number) {
-  let d = '';
-  for (let i = 0; i <= 40; i++) {
-    const [x, y] = pt(a + ((b - a) * i) / 40);
-    d += `${i ? 'L' : 'M'}${x.toFixed(2)} ${y.toFixed(2)} `;
-  }
-  return d;
-}
-const BACK = arc(Math.PI, Math.PI * 2);
-const FRONT = arc(0, Math.PI);
-const ARC_LEN = 110;
-const clamp = (v: number) => Math.max(0, Math.min(1, v));
-const seg = (t: number, a: number, b: number) => clamp((t - a) / (b - a));
-const easeOut = (x: number) => 1 - Math.pow(1 - x, 3);
-const easeBack = (x: number) => 1 + 2.7 * Math.pow(x - 1, 3) + 1.7 * Math.pow(x - 1, 2);
-
-// اللوجو بيترسم قدامك (ليه ساعة لوحده)
-function IntroLogo({ start, size, c }: { start: number; size: number; c: Palette }) {
-  const [t, setT] = useState(0);
-  useEffect(() => {
-    let raf = 0;
-    const tick = () => {
-      setT(Date.now() - start);
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [start]);
-
-  const lg = seg(t, 1150, 1900);
-  const scale = 0.55 + 0.45 * easeBack(lg);
-  const back = easeOut(seg(t, 1350, 1950));
-  const front = easeOut(seg(t, 1700, 2300));
-  const pop = seg(t, 2200, 2550);
-  const ang = 0.55 + (Math.max(0, t - 2200) / 4500) * Math.PI * 2;
-  const [bx, by] = pt(ang);
-  const isFront = Math.sin(ang) > 0;
-  const badge =
-    pop > 0 ? (
-      <G transform={`translate(${bx.toFixed(2)} ${by.toFixed(2)}) scale(${easeBack(pop).toFixed(3)})`}>
-        <Circle r={6.6} fill={c.accent} />
-        <Path d="M-3 0.2 L-0.9 2.4 L3.2 -2" fill="none" stroke="#FFFFFF" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" />
-      </G>
-    ) : null;
-  const k = size / 110;
-
-  return (
-    <Svg width={110 * k} height={96 * k} viewBox="0 0 110 96">
-      <Defs>
-        <Mask id="introMask" maskUnits="userSpaceOnUse" x="-20" y="-20" width="150" height="136">
-          <Rect x="-20" y="-20" width="150" height="136" fill="#FFFFFF" />
-          <Circle cx={bx} cy={by} r={pop > 0 ? 10.5 : 0} fill="#000000" />
-        </Mask>
-      </Defs>
-      <Path d={BACK} fill="none" stroke={c.accentLight} strokeWidth={4} strokeLinecap="round" strokeDasharray={[ARC_LEN, ARC_LEN]} strokeDashoffset={ARC_LEN * (1 - back)} mask="url(#introMask)" />
-      {!isFront ? badge : null}
-      <G opacity={clamp(lg * 3)} transform={`translate(55 47) scale(${scale.toFixed(3)}) translate(-55 -47)`}>
-        <Rect x={37} y={23} width={36} height={10} rx={3} fill={c.accent} />
-        <Rect x={50} y={29} width={10} height={42} rx={3} fill={c.accent} />
-      </G>
-      <Path d={FRONT} fill="none" stroke={c.accentLight} strokeWidth={4} strokeLinecap="round" strokeDasharray={[ARC_LEN, ARC_LEN]} strokeDashoffset={ARC_LEN * (1 - front)} mask="url(#introMask)" />
-      {isFront ? badge : null}
-    </Svg>
-  );
-}
-
-// نجوم بتندفع من النص لبره (سرعة الضوء) وبعدين بتهدى وتقف مكانها
-const WEB_FROST = Platform.OS === 'web' ? ({ backdropFilter: 'blur(10px) saturate(160%)', WebkitBackdropFilter: 'blur(10px) saturate(160%)' } as object) : null;
-
-// بقعة لون ناعمة (زي خلفية الرئيسية)
-function Blob({ id, size, color, style }: { id: string; size: number; color: string; style: object }) {
-  return (
-    <View pointerEvents="none" style={[{ position: 'absolute', width: size, height: size }, style]}>
-      <Svg width={size} height={size}>
-        <Defs>
-          <RadialGradient id={id} cx="50%" cy="50%" r="50%">
-            <Stop offset="0" stopColor={color} stopOpacity={0.4} />
-            <Stop offset="1" stopColor={color} stopOpacity={0} />
-          </RadialGradient>
-        </Defs>
-        <Circle cx={size / 2} cy={size / 2} r={size / 2} fill={'url(#' + id + ')'} />
-      </Svg>
-    </View>
-  );
-}
-
-function seeded(n: number, w: number, h: number) {
-  let s = 17;
-  const r = () => (s = (s * 9301 + 49297) % 233280) / 233280;
-  const far = Math.hypot(w, h) * 0.6;
-  return Array.from({ length: n }, () => ({ a: r() * Math.PI * 2, r0: 4 + r() * 30, r1: 70 + r() * far, size: 1 + r() * 1.8, o: 0.45 + r() * 0.55 }));
-}
+const WEB_FROST = Platform.OS === 'web' ? ({ backdropFilter: 'blur(18px) saturate(170%)', WebkitBackdropFilter: 'blur(18px) saturate(170%)' } as object) : null;
 
 export default function Intro() {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
-  const { width: w, height: h } = useWindowDimensions();
-  const ox = w / 2;
-  const oy = h * 0.42;
-  const stars = useMemo(() => seeded(70, w, h), [w, h]);
-  const start = useRef(Date.now()).current;
-  const [warp] = useState(() => new Animated.Value(0));
-  const [flash] = useState(() => new Animated.Value(0));
-  const [glow] = useState(() => new Animated.Value(0));
-  const [letters] = useState(() => LETTERS.map(() => new Animated.Value(0)));
-  const [shine] = useState(() => new Animated.Value(0));
-  const [city] = useState(() => new Animated.Value(0));
-  const [tag] = useState(() => new Animated.Value(0));
-  const [out] = useState(() => new Animated.Value(0));
-  const [ring] = useState(() => new Animated.Value(0));
-  const [wordW, setWordW] = useState(280);
-  const main = useRef<Animated.CompositeAnimation | null>(null);
+  const { width: w } = useWindowDimensions();
+  const dark = !!c.isDark;
+  const ink = dark ? '#FFFFFF' : '#0B1B3F';
+  const sub = dark ? 'rgba(255,255,255,0.72)' : 'rgba(11,27,63,0.66)';
+  const glass = dark ? 'rgba(255,255,255,0.08)' : Platform.OS === 'android' ? 'rgba(255,255,255,0.86)' : 'rgba(255,255,255,0.5)';
+  const edge = dark ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.75)';
+  const chipBg = dark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.7)';
+  const [x] = useState(() => new Animated.Value(0));
+  const [rise] = useState(() => new Animated.Value(0));
+  const [page, setPage] = useState(0);
+  const [splash, setSplash] = useState(true);
+  const ref = useRef<ScrollView>(null);
   const done = useRef(false);
-
-  const exit = useCallback(() => {
-    if (done.current) return;
-    done.current = true;
-    main.current?.stop();
-    void setOnboarded();
-    Animated.timing(out, { toValue: 1, duration: 650, easing: Easing.in(Easing.cubic), useNativeDriver: ND }).start(() =>
-      router.replace('/register'),
-    );
-  }, [out]);
+  const last = SLIDES.length - 1;
 
   useEffect(() => {
-    const at = (v: Animated.Value, delay: number, duration: number, easing = Easing.out(Easing.cubic)) =>
-      Animated.timing(v, { toValue: 1, delay, duration, easing, useNativeDriver: ND });
-    main.current = Animated.parallel([
-      at(warp, 0, 1500),
-      at(flash, 1050, 550, Easing.out(Easing.quad)),
-      at(glow, 1150, 1050),
-      Animated.spring(ring, { toValue: 1, delay: 2250, friction: 6, tension: 60, useNativeDriver: ND }),
-      ...letters.map((v, i) => Animated.spring(v, { toValue: 1, delay: 2450 + i * 80, friction: 7, tension: 70, useNativeDriver: ND })),
-      at(shine, 3300, 800, Easing.inOut(Easing.quad)),
-      at(city, 3350, 600),
-      at(tag, 3700, 600),
-    ]);
-    main.current.start();
-    const timer = setTimeout(exit, EXIT_AT);
-    return () => {
-      clearTimeout(timer);
-      main.current?.stop();
-    };
-  }, [warp, flash, glow, ring, letters, shine, city, tag, exit]);
+    if (splash) return;
+    Animated.spring(rise, { toValue: 1, friction: 8, tension: 45, useNativeDriver: ND }).start();
+  }, [rise, splash]);
 
-  const fadeOut = out.interpolate({ inputRange: [0, 1], outputRange: [1, 0] });
-  const rise = (v: Animated.Value, d: number) => ({
-    opacity: v,
-    transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [d, 0] }) }],
-  });
+  const leave = useCallback((to: '/register' | '/login') => {
+    if (done.current) return;
+    done.current = true;
+    void setOnboarded();
+    router.replace(to);
+  }, []);
+
+  const next = () => {
+    if (page >= last) leave('/register');
+    else ref.current?.scrollTo({ x: (page + 1) * w, animated: true });
+  };
+  const near = (i: number, a: number, b: number) =>
+    x.interpolate({ inputRange: [(i - 1) * w, i * w, (i + 1) * w], outputRange: [a, b, a], extrapolate: 'clamp' });
+  const up = (d: number) => ({ transform: [{ translateY: rise.interpolate({ inputRange: [0, 1], outputRange: [d, 0] }) }] });
 
   return (
-    <Animated.View style={[StyleSheet.absoluteFill, styles.root, { opacity: out.interpolate({ inputRange: [0, 0.6, 1], outputRange: [1, 1, 0] }) }]}>
-      {/* خلفية الهوية: navy بتدرّج + بقع ألوان ناعمة */}
-      <LinearGradient colors={['#0B1B3F', '#06112B', '#030817']} start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }} style={StyleSheet.absoluteFill} pointerEvents="none" />
-      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity: glow }]}>
-        <Blob id="introBlobA" size={420} color={c.accent} style={{ top: -160, left: -170 }} />
-        <Blob id="introBlobB" size={460} color={c.accentLight} style={{ bottom: -190, right: -190 }} />
-      </Animated.View>
-      {/* سرعة الضوء */}
-      <Animated.View style={[StyleSheet.absoluteFill, { opacity: fadeOut }]} pointerEvents="none">
-        {stars.map((s, i) => (
-          <Animated.View
-            key={i}
-            style={{
-              position: 'absolute',
-              left: ox - s.size / 2,
-              top: oy - s.size / 2,
-              width: s.size,
-              height: s.size,
-              borderRadius: s.size,
-              backgroundColor: '#DCE6FF',
-              opacity: s.o,
-              transform: [
-                { translateX: warp.interpolate({ inputRange: [0, 1], outputRange: [Math.cos(s.a) * s.r0, Math.cos(s.a) * s.r1] }) },
-                { translateY: warp.interpolate({ inputRange: [0, 1], outputRange: [Math.sin(s.a) * s.r0, Math.sin(s.a) * s.r1] }) },
-                { rotate: `${s.a}rad` },
-                { scaleX: warp.interpolate({ inputRange: [0, 0.08, 0.6, 1], outputRange: [1, 16, 4, 1] }) },
-              ],
-            }}
-          />
+    <View style={[StyleSheet.absoluteFill, styles.root, { backgroundColor: dark ? '#060D20' : '#F4F6FA' }]}>
+      <GlowBg />
+      <AuthHero compact />
+
+      <ScrollView
+        ref={ref}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        scrollEventThrottle={16}
+        onScroll={(e) => {
+          const ox = e.nativeEvent.contentOffset.x;
+          x.setValue(ox);
+          const i = Math.round(ox / Math.max(1, w));
+          if (i !== page) setPage(i);
+        }}
+        style={[styles.pager, LTR]}
+        contentContainerStyle={LTR}
+      >
+        {SLIDES.map((s, i) => (
+          <View key={i} style={[styles.slide, { width: w }]}>
+            <Animated.View style={[styles.card, WEB_FROST, { backgroundColor: glass, borderColor: edge }, up(40)]}>
+              {Platform.OS === 'ios' ? <BlurView intensity={30} tint={dark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} /> : null}
+              <Animated.View
+                style={[
+                  styles.iconRing,
+                  { backgroundColor: dark ? 'rgba(255,255,255,0.14)' : '#FFFFFF', transform: [{ scale: near(i, 0.72, 1) }] },
+                ]}
+              >
+                <LinearGradient colors={c.gradient} start={{ x: 0.1, y: 0 }} end={{ x: 0.9, y: 1 }} style={styles.iconBall}>
+                  <Ionicons name={s.icon} size={34} color="#FFFFFF" />
+                </LinearGradient>
+              </Animated.View>
+              <Text style={[styles.step, { color: c.accent }]}>{`${i + 1} / ${SLIDES.length}`}</Text>
+              <Text style={[styles.title, { color: ink }]}>{tr(s.title[0], s.title[1])}</Text>
+              <Text style={[styles.body, { color: sub }]}>{tr(s.body[0], s.body[1])}</Text>
+              <View style={styles.chips}>
+                {s.chips.map(([ic, ar, en]) => (
+                  <View key={en} style={[styles.chip, { backgroundColor: chipBg, borderColor: edge }]}>
+                    <Ionicons name={ic} size={15} color={c.accent} />
+                    <Text style={[styles.chipText, { color: ink }]}>{tr(ar, en)}</Text>
+                  </View>
+                ))}
+              </View>
+            </Animated.View>
+          </View>
         ))}
-      </Animated.View>
+      </ScrollView>
 
-      {/* توهّج ناعم ورا اللوجو */}
-      <Animated.View
-        pointerEvents="none"
-        style={[styles.abs, { left: ox - 230, top: oy - 230, opacity: glow, transform: [{ scale: out.interpolate({ inputRange: [0, 1], outputRange: [1, 2.4] }) }] }]}
-      >
-        <Svg width={460} height={460}>
-          <Defs>
-            <RadialGradient id="introGlow" cx="50%" cy="50%" r="50%">
-              <Stop offset="0" stopColor={c.accent} stopOpacity={0.5} />
-              <Stop offset="0.4" stopColor={c.accent} stopOpacity={0.15} />
-              <Stop offset="1" stopColor={c.accent} stopOpacity={0} />
-            </RadialGradient>
-          </Defs>
-          <Circle cx={230} cy={230} r={230} fill="url(#introGlow)" />
-        </Svg>
-      </Animated.View>
-
-      {/* المشهد: اللوجو + الاسم + المكان + الجملة (وبيطير لقدام في الآخر) */}
-      <Animated.View
-        style={[
-          styles.abs,
-          styles.scene,
-          { left: 0, right: 0, top: oy - 140, opacity: fadeOut, transform: [{ scale: out.interpolate({ inputRange: [0, 1], outputRange: [1, 2.8] }) }] },
-        ]}
-      >
-        <View style={styles.logoBox}>
-          <Animated.View style={[styles.ring, WEB_FROST, { transform: [{ scale: ring }] }]}>
-            <LinearGradient colors={['rgba(255,255,255,0.22)', 'rgba(255,255,255,0)']} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={styles.ringSheen} />
-          </Animated.View>
-          <IntroLogo start={start} size={190} c={c} />
-        </View>
-
-        <View style={[styles.word, LTR]} onLayout={(e) => setWordW(e.nativeEvent.layout.width)}>
-          {LETTERS.map((ch, i) => (
-            <Animated.Text
-              key={i}
-              style={[
-                styles.letter,
-                { textShadowColor: c.accent },
-                {
-                  opacity: letters[i],
-                  transform: [
-                    { translateY: letters[i].interpolate({ inputRange: [0, 1], outputRange: [22, 0] }) },
-                    { scale: letters[i].interpolate({ inputRange: [0, 1], outputRange: [0.7, 1] }) },
-                  ],
-                },
-              ]}
-            >
-              {ch}
-            </Animated.Text>
+      <Animated.View style={[styles.bottom, { paddingBottom: insets.bottom + 18 }, up(70)]}>
+        <View style={[styles.dots, LTR]}>
+          {SLIDES.map((_, i) => (
+            <Pressable key={i} onPress={() => ref.current?.scrollTo({ x: i * w, animated: true })} hitSlop={8}>
+              <Animated.View style={[styles.dot, { backgroundColor: c.accent, width: near(i, 8, 26), opacity: near(i, 0.3, 1) }]} />
+            </Pressable>
           ))}
-          {/* لمعة ضوء بتعدي على الحروف */}
-          <Animated.View
-            pointerEvents="none"
-            style={[
-              styles.shine,
-              { transform: [{ translateX: shine.interpolate({ inputRange: [0, 1], outputRange: [-70, wordW + 20] }) }, { rotate: '18deg' }] },
-            ]}
-          >
-            <LinearGradient
-              colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.55)', 'rgba(255,255,255,0)']}
-              start={{ x: 0, y: 0.5 }}
-              end={{ x: 1, y: 0.5 }}
-              style={StyleSheet.absoluteFill}
-            />
-          </Animated.View>
         </View>
 
-        <Animated.View style={[styles.cityRow, rise(city, 12)]}>
-          <Ionicons name="location" size={15} color={c.accentLight} />
-          <Text style={[styles.city, { color: c.accentLight }]}>{tr('في العاشر من رمضان', 'in 10th of Ramadan City')}</Text>
-        </Animated.View>
+        <Pressable onPress={next} accessibilityRole="button" style={({ pressed }) => [styles.btnWrap, pressed && { transform: [{ scale: 0.98 }] }]}>
+          <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.btn, LTR, { flexDirection: tr('row', 'row-reverse') as 'row' | 'row-reverse' }]}>
+            <View style={styles.btnSheen} />
+            <Text style={styles.btnText}>{page >= last ? tr('يلا نبدأ', "Let's start") : tr('التالي', 'Next')}</Text>
+            <Ionicons name={page >= last ? 'checkmark' : (tr('arrow-forward', 'arrow-back') as Icon)} size={18} color="#FFFFFF" />
+          </LinearGradient>
+        </Pressable>
 
-        <Animated.Text style={[styles.tag, rise(tag, 10)]}>{tr('كل خدماتك. في مكان واحد.', 'All your services. One place.')}</Animated.Text>
+        <Pressable onPress={() => leave('/login')} hitSlop={8}>
+          <Text style={[styles.login, { color: sub }]}>
+            {tr('عندك حساب؟ ', 'Have an account? ')}
+            <Text style={{ color: c.accent, fontFamily: fonts.bold }}>{tr('سجّل دخول', 'Log in')}</Text>
+          </Text>
+        </Pressable>
       </Animated.View>
 
-      {/* الومضة */}
-      <Animated.View
-        pointerEvents="none"
-        style={[
-          styles.abs,
-          {
-            left: ox - 30,
-            top: oy - 30,
-            opacity: flash.interpolate({ inputRange: [0, 0.05, 1], outputRange: [0, 1, 0] }),
-            transform: [{ scale: flash.interpolate({ inputRange: [0, 1], outputRange: [1, 14] }) }],
-          },
-        ]}
+      <Pressable
+        onPress={() => leave('/register')}
+        accessibilityRole="button"
+        hitSlop={10}
+        style={[styles.skip, WEB_FROST, { top: insets.top + 12 }, tr('l', 'r') === 'l' ? { left: 16 } : { right: 16 }]}
       >
-        <Svg width={60} height={60}>
-          <Defs>
-            <RadialGradient id="introFlash" cx="50%" cy="50%" r="50%">
-              <Stop offset="0" stopColor="#FFFFFF" stopOpacity={1} />
-              <Stop offset="0.35" stopColor="#BED2FF" stopOpacity={0.85} />
-              <Stop offset="1" stopColor="#BED2FF" stopOpacity={0} />
-            </RadialGradient>
-          </Defs>
-          <Circle cx={30} cy={30} r={30} fill="url(#introFlash)" />
-        </Svg>
-      </Animated.View>
-
-      <Pressable onPress={exit} style={[styles.skip, WEB_FROST, { top: insets.top + 14 }]} accessibilityRole="button" hitSlop={10}>
         <Text style={styles.skipText}>{tr('تخطي', 'Skip')}</Text>
       </Pressable>
-    </Animated.View>
+      {splash ? <IntroSplash onDone={() => setSplash(false)} /> : null}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { backgroundColor: '#030817', zIndex: 10, overflow: 'hidden' },
-  abs: { position: 'absolute' },
-  scene: { alignItems: 'center' },
-  logoBox: { width: 236, height: 236, alignItems: 'center', justifyContent: 'center' },
-  ring: {
-    position: 'absolute', top: 0, left: 0, width: 236, height: 236, borderRadius: 118, overflow: 'hidden',
-    borderWidth: 2.5, borderColor: 'rgba(255,255,255,0.9)', backgroundColor: 'rgba(255,255,255,0.07)',
-    shadowColor: '#FFFFFF', shadowOpacity: 0.35, shadowRadius: 24, shadowOffset: { width: 0, height: 0 },
+  root: { zIndex: 10, overflow: 'hidden' },
+  pager: { flex: 1, marginTop: -62 },
+  slide: { paddingHorizontal: 20 },
+  card: {
+    alignItems: 'center',
+    overflow: 'hidden',
+    borderRadius: 26,
+    borderWidth: 1,
+    paddingHorizontal: 22,
+    paddingTop: 26,
+    paddingBottom: 24,
+    shadowColor: '#0B1B3F',
+    shadowOpacity: 0.12,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 12 },
   },
-  ringSheen: { position: 'absolute', top: 0, left: 0, right: 0, height: '55%' },
-  word: { flexDirection: 'row', marginTop: 4, overflow: 'hidden', paddingHorizontal: 6 },
-  letter: {
-    fontFamily: fonts.bold,
-    fontSize: 36,
-    color: '#FFFFFF',
-    marginHorizontal: 5,
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 16,
+  iconRing: {
+    padding: 5,
+    borderRadius: 48,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.6)',
+    shadowColor: '#0B1B3F',
+    shadowOpacity: 0.16,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
   },
-  shine: { position: 'absolute', top: -10, bottom: -10, left: 0, width: 46 },
-  cityRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 },
-  city: { fontFamily: fonts.bold, fontSize: 16, letterSpacing: 0.3 },
-  tag: { marginTop: 8, fontFamily: fonts.semibold, fontSize: 14, color: 'rgba(255,255,255,0.68)' },
+  iconBall: { width: 76, height: 76, borderRadius: 38, alignItems: 'center', justifyContent: 'center' },
+  step: { marginTop: 16, fontFamily: fonts.bold, fontSize: 12, letterSpacing: 1.5 },
+  title: { marginTop: 6, fontFamily: fonts.bold, fontSize: 22, textAlign: 'center' },
+  body: { marginTop: 8, fontFamily: fonts.regular, fontSize: 14.5, lineHeight: 24, textAlign: 'center' },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginTop: 18 },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 34, paddingHorizontal: 12, borderRadius: 17, borderWidth: 1 },
+  chipText: { fontFamily: fonts.regular, fontSize: 13 },
+  bottom: { paddingHorizontal: 20, paddingTop: 10, gap: 14 },
+  dots: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 },
+  dot: { height: 8, borderRadius: 4 },
+  btnWrap: { borderRadius: 18, overflow: 'hidden' },
+  btn: { height: 54, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  btnSheen: { position: 'absolute', top: 0, left: 0, right: 0, height: '50%', backgroundColor: 'rgba(255,255,255,0.12)' },
+  btnText: { fontFamily: fonts.bold, fontSize: 16, color: '#FFFFFF' },
+  login: { fontFamily: fonts.regular, fontSize: 14, textAlign: 'center' },
   skip: {
     position: 'absolute',
-    end: 18,
-    paddingHorizontal: 16,
-    paddingVertical: 7,
-    borderRadius: 999,
+    zIndex: 5,
+    height: 34,
+    paddingHorizontal: 14,
+    borderRadius: 17,
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.35)',
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderColor: 'rgba(255,255,255,0.45)',
   },
-  skipText: { fontFamily: fonts.semibold, fontSize: 13, color: 'rgba(255,255,255,0.8)' },
+  skipText: { fontFamily: fonts.bold, fontSize: 13, color: '#FFFFFF' },
 });

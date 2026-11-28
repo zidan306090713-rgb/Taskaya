@@ -67,7 +67,7 @@ export function RoleChooser({ visible, onPick, onLogin }: { visible: boolean; on
           {Platform.OS === 'ios' ? <BlurView intensity={40} tint={c.isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} /> : null}
 
           {/* ===== الشريط المتدرّج فوق ===== */}
-          <View style={styles.band}>
+          <View style={[styles.band, styles.bandRound]}>
             <LinearGradient colors={c.gradient} start={{ x: 0.1, y: 0 }} end={{ x: 0.9, y: 1 }} style={StyleSheet.absoluteFill} />
             <View style={styles.glow} />
             <View style={styles.glow2} />
@@ -144,6 +144,7 @@ const styles = StyleSheet.create({
     elevation: 0,
   },
   band: { alignItems: 'center', paddingTop: 22, paddingBottom: 20, paddingHorizontal: 18, overflow: 'hidden' },
+  bandRound: { borderBottomLeftRadius: 28, borderBottomRightRadius: 28, overflow: 'hidden' },
   sheen: { position: 'absolute', top: 0, left: 0, right: 0, height: '65%', pointerEvents: 'none' },
   glow: { position: 'absolute', width: 220, height: 220, borderRadius: 110, top: -110, left: -70, backgroundColor: 'rgba(255,255,255,0.10)', pointerEvents: 'none' },
   glow2: { position: 'absolute', width: 150, height: 150, borderRadius: 75, bottom: -80, right: -40, backgroundColor: 'rgba(255,255,255,0.07)', pointerEvents: 'none' },

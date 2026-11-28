@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useMemo, useState } from 'react';
-import { Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Animated, DeviceEventEmitter, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { isRTL, tr } from '@/i18n';
 import { useTheme } from '@/providers/ThemeProvider';
 import { fonts, Palette, rgba } from '@/theme';
@@ -9,7 +9,7 @@ type Props = {
   value: string;
   onChangeText: (v: string) => void;
   placeholder: string;
-  /** الحقل فوق خلفية ملوّنة (الهيدر الأزرق): الإضاءة بيضا بدل لون التطبيق */
+  /** الحقل فوق خلفية ملوّنة (الهيدر الأزرق): شكل زجاجي وإضاءة بيضا */
   onDark?: boolean;
 };
 
@@ -17,40 +17,71 @@ export function SearchField({ value, onChangeText, placeholder, onDark = false }
   const { c } = useTheme();
   const styles = useMemo(() => makeStyles(c), [c]);
   const [focused, setFocused] = useState(false);
+  const [f] = useState(() => new Animated.Value(0));
 
-  const webField =
-    Platform.OS === 'web'
-      ? ({
-          transition: 'box-shadow .2s ease, border-color .2s ease',
-          boxShadow: onDark
-            ? focused
-              ? '0 14px 30px rgba(11,27,63,0.38)'
-              : '0 6px 18px rgba(11,27,63,0.22)'
-            : focused
-              ? `0 0 0 4px ${rgba(c.accent, 0.16)}, 0 8px 18px ${rgba(c.accent, 0.12)}`
-              : `0 4px 14px ${rgba(c.accent, 0.1)}`,
-        } as any)
-      : null;
-  const webRing = Platform.OS === 'web' ? ({ transition: 'opacity .2s ease, transform .2s ease' } as any) : null;
+  // الإضاءة: طبقات منفصلة بس (مش بنغيّر شكل أبو الـ TextInput). أندرويد: من غير أنيميشن شفافية.
+  useEffect(() => {
+    Animated.timing(f, {
+      toValue: focused ? 1 : 0,
+      duration: Platform.OS === 'android' ? 0 : 220,
+      useNativeDriver: Platform.OS !== 'web',
+    }).start();
+  }, [focused, f]);
+
+  const web = Platform.OS === 'web';
+  const webField = web
+    ? ({
+        transition: 'box-shadow .2s ease, border-color .2s ease',
+        boxShadow: focused
+          ? `0 0 0 4px ${rgba(c.accent, 0.16)}, 0 8px 18px ${rgba(c.accent, 0.12)}`
+          : `0 4px 14px ${rgba(c.accent, 0.1)}`,
+      } as any)
+    : null;
+  const webGlass = web
+    ? ({
+        backdropFilter: 'blur(14px) saturate(140%)',
+        WebkitBackdropFilter: 'blur(14px) saturate(140%)',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.22), 0 10px 26px rgba(11,27,63,0.30)',
+      } as any)
+    : null;
+  const webGlow = web ? ({ boxShadow: '0 0 24px rgba(255,255,255,0.30)' } as any) : null;
+
+  const iconColor = focused ? c.accentText : c.iconMuted;
 
   return (
     <View>
-      {/* حلقة الإضاءة على الخلفية الملوّنة: طبقة منفصلة، مش بنغيّر شكل أبو الـ TextInput */}
-      {onDark ? <View style={[styles.ring, webRing, { opacity: focused ? 1 : 0, transform: [{ scale: focused ? 1 : 0.98 }] }]} /> : null}
-      <View style={[styles.wrap, onDark && styles.wrapDark, !onDark && focused && Platform.OS !== 'android' && styles.focus, webField]}>
-        <Ionicons name="search" size={20} color={focused ? c.accentText : c.iconMuted} />
+      {onDark ? (
+        <>
+          <Animated.View
+            style={[styles.glow, webGlow, { opacity: f, transform: [{ scale: f.interpolate({ inputRange: [0, 1], outputRange: [0.97, 1] }) }] }]}
+          />
+          <View style={[styles.glass, webGlass]} />
+          <Animated.View style={[styles.glassFocus, { opacity: f }]} />
+          <View style={styles.sheen} />
+        </>
+      ) : null}
+      <View style={[styles.wrap, onDark && styles.wrapDark, !onDark && focused && Platform.OS !== 'android' && styles.focus, !onDark && webField]}>
+        <Ionicons name="search" size={20} color={iconColor} />
         <TextInput
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
           placeholderTextColor={c.placeholder}
-          onFocus={() => setFocused(true)}
+          onFocus={() => {
+            setFocused(true);
+            if (Platform.OS === 'android') DeviceEventEmitter.emit('taskaya:kb', true);
+          }}
           onBlur={() => setFocused(false)}
           returnKeyType="search"
           autoCorrect={false}
           selectionColor={c.accent}
           accessibilityLabel={placeholder}
-          style={[styles.input, { textAlign: isRTL ? 'right' : 'left' }, Platform.OS === 'web' && ({ outlineStyle: 'none', textAlign: isRTL ? 'right' : 'left', direction: isRTL ? 'rtl' : 'ltr' } as any)]}
+          style={[
+            styles.input,
+            onDark && styles.inputDark,
+            { textAlign: isRTL ? 'right' : 'left' },
+            web && ({ outlineStyle: 'none', textAlign: isRTL ? 'right' : 'left', direction: isRTL ? 'rtl' : 'ltr' } as any),
+          ]}
         />
         {value ? (
           <Pressable
@@ -66,6 +97,9 @@ export function SearchField({ value, onChangeText, placeholder, onDark = false }
     </View>
   );
 }
+
+const R = 16;
+const fill = { position: 'absolute' as const, top: 0, left: 0, right: 0, bottom: 0 };
 
 const makeStyles = (c: Palette) =>
   StyleSheet.create({
@@ -84,19 +118,46 @@ const makeStyles = (c: Palette) =>
       shadowRadius: 12,
       shadowOffset: { width: 0, height: 4 },
     },
-    wrapDark: { height: 46, borderRadius: 14, gap: 10, borderColor: 'rgba(255,255,255,0.9)', shadowColor: '#0B1B3F', shadowOpacity: 0.22 },
     focus: { borderColor: c.accent, shadowOpacity: 0.28 },
-    ring: {
+    // الزجاجي: الصف نفسه شفاف وثابت، والشكل كله في الطبقات اللي وراه
+    wrapDark: { height: 48, borderRadius: R, gap: 10, backgroundColor: 'transparent', borderWidth: 0, shadowOpacity: 0 },
+    glass: {
+      ...fill,
+      borderRadius: R,
+      backgroundColor: c.searchBg,
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.55)',
+      pointerEvents: 'none',
+      ...Platform.select({
+        ios: { shadowColor: '#0B1B3F', shadowOpacity: 0.28, shadowRadius: 14, shadowOffset: { width: 0, height: 8 } },
+        default: {},
+      }),
+    },
+    glassFocus: {
+      ...fill,
+      borderRadius: R,
+      backgroundColor: 'transparent',
+      borderWidth: 1,
+      borderColor: rgba(c.accent, 0.6),
+      pointerEvents: 'none',
+    },
+    sheen: { position: 'absolute', top: 1, left: 18, right: 18, height: 1, borderRadius: 1, backgroundColor: 'rgba(255,255,255,0.45)', pointerEvents: 'none' },
+    glow: {
       position: 'absolute',
       top: -5,
       left: -5,
       right: -5,
       bottom: -5,
-      borderRadius: 19,
-      borderWidth: 2.5,
-      borderColor: 'rgba(255,255,255,0.75)',
-      backgroundColor: 'rgba(255,255,255,0.12)',
+      borderRadius: R + 5,
+      backgroundColor: 'rgba(255,255,255,0.08)',
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.35)',
       pointerEvents: 'none',
+      ...Platform.select({
+        ios: { shadowColor: '#FFFFFF', shadowOpacity: 0.45, shadowRadius: 12, shadowOffset: { width: 0, height: 0 } },
+        default: {},
+      }),
     },
-    input: { flex: 1, height: '100%', fontFamily: fonts.regular, fontSize: 16, color: c.ink, backgroundColor: 'transparent' },
+    input: { flex: 1, height: '100%', fontFamily: fonts.regular, fontSize: 16, color: c.ink, backgroundColor: 'transparent', paddingVertical: 0, includeFontPadding: false, textAlignVertical: 'center' },
+    inputDark: { color: c.ink },
   });

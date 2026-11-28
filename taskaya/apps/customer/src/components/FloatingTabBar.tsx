@@ -1,5 +1,5 @@
 import React, { useEffect, useId, useMemo, useState } from 'react';
-import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Animated, DeviceEventEmitter, Easing, Keyboard, Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Svg, { Defs, LinearGradient, Path, Stop } from 'react-native-svg';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -75,9 +75,27 @@ export default function FloatingTabBar({ state, descriptors, navigation, base }:
   const activeRoute = state.routes[state.index];
   const activeOptions = descriptors[activeRoute.key].options;
 
+  // أندرويد: البار يفضل تحت الكيبورد (يستخبى وهي مفتوحة) بدل ما يطلع فوقها
+  const [kb, setKb] = useState(false);
+  // أندرويد: بنثبّت البار من فوق (بُعده وقت ما الشاشة كاملة)، فلما الكيبورد تصغّر الشاشة ميتحركش
+  const [topY, setTopY] = useState(0);
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const s = Keyboard.addListener('keyboardDidShow', () => setKb(true));
+    const h = Keyboard.addListener('keyboardDidHide', () => setKb(false));
+    const e = DeviceEventEmitter.addListener('taskaya:kb', (v: boolean) => setKb(v));
+    return () => {
+      s.remove();
+      h.remove();
+      e.remove();
+    };
+  }, []);
+  if (kb) return null;
+
   return (
     <View
-      style={{ position: 'absolute', left: side, width: barWidth, bottom: Math.max(insets.bottom, 12), height: BAR_HEIGHT, pointerEvents: 'box-none', ...((Platform.OS === 'web' ? { writingDirection: 'ltr' } : { direction: 'ltr' }) as object) }}
+      onLayout={Platform.OS === 'android' ? (e) => { const y = Math.round(e.nativeEvent.layout.y); if (y > topY) setTopY(y); } : undefined}
+      style={{ position: 'absolute', left: side, width: barWidth, ...(Platform.OS === 'android' && topY ? { top: topY } : { bottom: Math.max(insets.bottom, 12) }), height: BAR_HEIGHT, pointerEvents: 'box-none', ...((Platform.OS === 'web' ? { writingDirection: 'ltr' } : { direction: 'ltr' }) as object) }}
     >
       {Platform.OS === 'web' ? (
         <View style={[StyleSheet.absoluteFill, { pointerEvents: 'none', backdropFilter: 'blur(18px) saturate(170%)', WebkitBackdropFilter: 'blur(18px) saturate(170%)', clipPath: `path('${path}')` } as any]} />

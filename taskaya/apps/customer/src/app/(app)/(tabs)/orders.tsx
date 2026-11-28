@@ -202,7 +202,7 @@ function OrderSheet({ b, onClose, onChanged }: { b: Booking; onClose: () => void
 
   const anim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    Animated.timing(anim, { toValue: 1, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: Platform.OS !== 'web' }).start();
+    Animated.timing(anim, { toValue: 1, duration: 100, easing: Easing.out(Easing.cubic), useNativeDriver: Platform.OS !== 'web' }).start();
   }, [anim]);
   // زجاج: شفاف على الويب و iOS، شبه مصمت على أندرويد (من غير elevation)
   const sheetBg = c.isDark

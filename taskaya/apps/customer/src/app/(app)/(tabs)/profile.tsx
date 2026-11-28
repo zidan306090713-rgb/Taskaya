@@ -1,5 +1,5 @@
 import { useState as useLangState } from 'react';
-import { LanguageSheet } from '../settings';
+import { LanguageSheet } from '@/components/LanguageSheet';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';

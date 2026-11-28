@@ -56,7 +56,7 @@ export function EditProfileSheet({ me, onClose }: { me: MyProfile; onClose: () =
   // دخول النافذة: spring (حركة + تكبير، من غير شفافية) والخلفية تظهر متغبّشة فورًا
   const anim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    Animated.timing(anim, { toValue: 1, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: Platform.OS !== 'web' }).start();
+    Animated.timing(anim, { toValue: 1, duration: 100, easing: Easing.out(Easing.cubic), useNativeDriver: Platform.OS !== 'web' }).start();
   }, [anim]);
 
   const pickPhoto = async () => {

@@ -1,3 +1,4 @@
+import { LanguageSheet } from '@/components/LanguageSheet';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useRouter } from 'expo-router';
@@ -53,78 +54,6 @@ function Row({ icon, label, value, onPress }: { icon: IconName; label: string; v
       {value ? <Text style={styles.rowValue}>{value}</Text> : null}
       <Ionicons name={layoutRTL() ? 'chevron-back' : 'chevron-forward'} size={18} color={c.iconMuted} />
     </Pressable>
-  );
-}
-
-const LANGS: { key: Lang; label: string; sub: string }[] = [
-  { key: 'ar', label: 'العربية', sub: 'Arabic' },
-  { key: 'en', label: 'English', sub: 'الإنجليزية' },
-];
-
-export function LanguageSheet({ onClose }: { onClose: () => void }) {
-  const { c } = useTheme();
-  const styles = useMemo(() => makeStyles(c), [c]);
-  const [pick, setPick] = useState<Lang>(lang);
-  const [busy, setBusy] = useState(false);
-  const [hint, setHint] = useState(false);
-
-  const save = async () => {
-    if (pick === lang) return onClose();
-    setBusy(true);
-    // لو التطبيق ما اتقفلش لوحده بعد ثانية ونص: نقول للمستخدم يقفله ويفتحه
-    setTimeout(() => setHint(true), 1500);
-    await setLanguage(pick);
-  };
-
-  return (
-    <Modal visible transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
-      <View style={{ flex: 1, direction: isRTL ? 'rtl' : 'ltr' }}>
-      <Pressable style={[StyleSheet.absoluteFill, styles.backdrop]} onPress={busy ? undefined : onClose} />
-      <View style={styles.center}>
-        <View style={styles.sheet}>
-          <Text style={styles.sheetTitle}>{tr('اللغة', 'Language')}</Text>
-          {LANGS.map((l) => {
-            const on = pick === l.key;
-            return (
-              <Pressable
-                key={l.key}
-                onPress={() => setPick(l.key)}
-                disabled={busy}
-                accessibilityRole="radio"
-                accessibilityState={{ selected: on }}
-                style={[styles.option, on && styles.optionOn]}
-              >
-                <Ionicons name={on ? 'radio-button-on' : 'radio-button-off'} size={22} color={on ? c.accentText : c.iconMuted} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.optionLabel}>{l.label}</Text>
-                  <Text style={styles.optionSub}>{l.sub}</Text>
-                </View>
-              </Pressable>
-            );
-          })}
-          <Text style={styles.note}>
-            {hint
-              ? tr('لو اللغة ما اتغيرتش، اقفل التطبيق وافتحه تاني', "If it didn't change, close and reopen the app")
-              : tr('اللغة والاتجاه هيتغيروا فورًا', 'Language and direction will change instantly')}
-          </Text>
-          <View style={styles.actions}>
-            <Pressable
-              onPress={onClose}
-              disabled={busy}
-              style={({ pressed }) => [styles.btn, styles.flex, styles.btnGhost, pressed && { opacity: 0.8 }]}
-            >
-              <Text style={[styles.btnText, { color: c.ink }]}>{tr('إلغاء', 'Cancel')}</Text>
-            </Pressable>
-            <Pressable onPress={save} disabled={busy} style={({ pressed }) => [styles.flex, pressed && { opacity: 0.9 }]}>
-              <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.btn}>
-                {busy ? <ActivityIndicator color="#FFFFFF" /> : <Text style={[styles.btnText, { color: '#FFFFFF' }]}>{tr('حفظ', 'Save')}</Text>}
-              </LinearGradient>
-            </Pressable>
-          </View>
-        </View>
-      </View>
-      </View>
-    </Modal>
   );
 }
 

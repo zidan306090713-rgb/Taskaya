@@ -197,11 +197,7 @@ export default function ProviderScreen() {
             </View>
           </Glass>
 
-          {/* ===== الخدمات ===== */}
-          <View style={styles.secRow}>
-            <LinearGradient colors={c.gradient} style={styles.secBar} />
-            <Text style={styles.sec}>{tr('الخدمات', 'Services')}</Text>
-          </View>
+          <View style={{ height: 18 }} />
           {services ? (
             services.map((s) => {
               const on = sel === s.id;
@@ -209,8 +205,8 @@ export default function ProviderScreen() {
                 .filter(Boolean)
                 .join(' · ');
               return (
-                <Pressable key={s.id} onPress={() => setSel(s.id)} accessibilityRole="radio" accessibilityState={{ selected: on }}>
-                  <Glass style={[styles.svc, on && styles.svcOn]}>
+                <Pressable key={s.id} style={[{ borderRadius: 24 }, Platform.OS === 'web' && ({ outlineStyle: 'none' } as any)]} style={{ borderRadius: 24 }} onPress={() => setSel(s.id)} accessibilityRole="radio" accessibilityState={{ selected: on }}>
+                  <Glass radius={24} style={[styles.svc, on && styles.svcOn]}>
                     <View style={[styles.radio, on && styles.radioOn]} />
                     <View style={{ flex: 1 }}>
                       <Text style={styles.svcName} numberOfLines={2}>{svcName(s)}</Text>
@@ -293,11 +289,15 @@ const makeStyles = (c: Palette) =>
     secRow: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 20, marginBottom: 10 },
     secBar: { width: 5, height: 20, borderRadius: 3 },
     sec: { fontFamily: fonts.bold, fontSize: 17, color: c.text },
-    svc: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, marginBottom: 10 },
+    svc: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 16, paddingHorizontal: 18, marginBottom: 12 },
     svcOn: {
       borderWidth: 1.5,
       borderColor: c.accent,
       backgroundColor: c.isDark ? 'rgba(255,255,255,0.1)' : Platform.OS === 'android' ? '#FFFFFF' : 'rgba(255,255,255,0.8)',
+      shadowColor: c.accent,
+      shadowOpacity: c.isDark ? 0.35 : 0.18,
+      shadowRadius: 16,
+      shadowOffset: { width: 0, height: 6 },
     },
     radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: c.iconMuted },
     radioOn: { borderWidth: 6, borderColor: c.accent },

@@ -120,10 +120,10 @@ export default function Login() {
                   {loading ? (
                     <ActivityIndicator color="#FFFFFF" />
                   ) : (
-                    <>
+                    <View style={{ flexDirection: tr('row', 'row-reverse') as 'row' | 'row-reverse', ...(Platform.OS === 'web' ? ({ writingDirection: 'ltr' } as object) : { direction: 'ltr' as const }), alignItems: 'center', gap: 8 }}>
                       <Text style={styles.ctaText}>{t('login')}</Text>
-                      <Ionicons name="arrow-forward" size={19} color="#FFFFFF" />
-                    </>
+                      <Ionicons name={tr('arrow-forward', 'arrow-back') as 'arrow-forward' | 'arrow-back'} size={19} color="#FFFFFF" />
+                    </View>
                   )}
                 </LinearGradient>
               </Pressable>

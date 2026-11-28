@@ -1,9 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+
+const WEB_GLASS =
+  Platform.OS === 'web'
+    ? ({ backdropFilter: 'blur(14px) saturate(160%)', WebkitBackdropFilter: 'blur(14px) saturate(160%)', transition: 'border-color .2s ease, box-shadow .2s ease' } as any)
+    : null;
 import { isRTL, tr } from '@/i18n';
 import { isOpen, prefetchProvider, ProviderCard as P } from '@/lib/api';
 import { useTheme } from '@/providers/ThemeProvider';
@@ -22,6 +28,8 @@ export function ProviderRow({ p, height }: { p: P; height: number }) {
   const imgW = Math.round((height - 20) * 0.98);
   const initial = (p.business_name || '؟').trim().charAt(0);
   const closed = !isOpen(p);
+  const [hover, setHover] = useState(false);
+  const sheen = c.isDark ? (['rgba(255,255,255,0.08)', 'rgba(255,255,255,0)'] as const) : (['rgba(255,255,255,0.7)', 'rgba(255,255,255,0)'] as const);
 
   return (
     <Link href={`/provider/${p.id}`} asChild>
@@ -30,8 +38,12 @@ export function ProviderRow({ p, height }: { p: P; height: number }) {
         accessibilityLabel={closed ? `${p.business_name}، ${tr('مش متاح حاليًا', 'Unavailable now')}` : p.business_name}
         onPressIn={() => { prefetchProvider(p); press(0.97); }}
         onPressOut={() => press(1)}
+        onHoverIn={() => setHover(true)}
+        onHoverOut={() => setHover(false)}
       >
-        <Animated.View style={[styles.card, { height, transform: [{ scale }] }]}>
+        <Animated.View style={[styles.card, WEB_GLASS, hover && styles.cardHover, { height, transform: [{ scale }] }]}>
+          {Platform.OS === 'ios' ? <BlurView intensity={28} tint={c.isDark ? 'dark' : 'light'} style={styles.blur} /> : null}
+          <LinearGradient colors={sheen} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={styles.sheen} />
           <View style={[styles.image, { width: imgW }]}>
             {uri ? (
               <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
@@ -101,9 +113,9 @@ const makeStyles = (c: Palette) =>
       gap: 12,
       padding: 10,
       borderRadius: 22,
-      backgroundColor: c.card,
+      backgroundColor: c.isDark ? 'rgba(30,36,52,0.55)' : Platform.OS === 'android' ? 'rgba(255,255,255,0.86)' : 'rgba(255,255,255,0.5)',
       borderWidth: 1,
-      borderColor: c.accentBorder,
+      borderColor: c.isDark ? 'rgba(255,255,255,0.12)' : Platform.OS === 'android' ? c.accentBorder : 'rgba(255,255,255,0.9)',
       shadowColor: c.shadow,
       shadowOpacity: c.isDark ? 0.22 : 0.1,
       shadowRadius: 14,
@@ -112,6 +124,9 @@ const makeStyles = (c: Palette) =>
     },
     image: { borderRadius: 16, overflow: 'hidden', backgroundColor: c.fieldBg },
     center: { alignItems: 'center', justifyContent: 'center' },
+    cardHover: { borderColor: c.accent, shadowOpacity: c.isDark ? 0.32 : 0.2 },
+    blur: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 22, overflow: 'hidden' },
+    sheen: { position: 'absolute', top: 0, left: 0, right: 0, height: '55%', borderTopLeftRadius: 22, borderTopRightRadius: 22, pointerEvents: 'none' },
     rating: {
       position: 'absolute',
       bottom: 7,

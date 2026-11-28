@@ -16,6 +16,8 @@ const BALL_CY = BALL_TOP + BALL / 2;
 const NOTCH_R = 31;
 const NOTCH_DX = Math.sqrt(Math.max(NOTCH_R * NOTCH_R - BALL_CY * BALL_CY, 1));
 const MIN_C = BAR_HEIGHT / 2 + NOTCH_DX + 2;
+// شفافية الشريط: الويب عليه بلور حقيقي مقصوص بشكل التجويف، الموبايل شبه مصمت
+const BAR_A = Platform.OS === 'web' ? 0.72 : 0.92;
 
 function buildPath(w: number, h: number, cx: number) {
   const r = h / 2;
@@ -77,14 +79,22 @@ export default function FloatingTabBar({ state, descriptors, navigation, base }:
     <View
       style={{ position: 'absolute', left: side, width: barWidth, bottom: Math.max(insets.bottom, 12), height: BAR_HEIGHT, pointerEvents: 'box-none', ...((Platform.OS === 'web' ? { writingDirection: 'ltr' } : { direction: 'ltr' }) as object) }}
     >
+      {Platform.OS === 'web' ? (
+        <View style={[StyleSheet.absoluteFill, { pointerEvents: 'none', backdropFilter: 'blur(18px) saturate(170%)', WebkitBackdropFilter: 'blur(18px) saturate(170%)', clipPath: `path('${path}')` } as any]} />
+      ) : null}
       <Svg width={barWidth} height={BAR_HEIGHT} style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]}>
         <Defs>
           <LinearGradient id={gid} x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0" stopColor={c.tabGradient[0]} />
-            <Stop offset="1" stopColor={c.tabGradient[1]} />
+            <Stop offset="0" stopColor={c.tabGradient[0]} stopOpacity={BAR_A} />
+            <Stop offset="1" stopColor={c.tabGradient[1]} stopOpacity={BAR_A} />
+          </LinearGradient>
+          <LinearGradient id={gid + 's'} x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor="#FFFFFF" stopOpacity={0.28} />
+            <Stop offset="0.6" stopColor="#FFFFFF" stopOpacity={0} />
           </LinearGradient>
         </Defs>
-        <Path d={path} fill={`url(#${gid})`} stroke="rgba(255,255,255,0.45)" strokeWidth={1.5} />
+        <Path d={path} fill={`url(#${gid})`} />
+        <Path d={path} fill={`url(#${gid}s)`} stroke="rgba(255,255,255,0.55)" strokeWidth={1.5} />
       </Svg>
 
       <View style={[styles.row, { paddingHorizontal: pad }]}>

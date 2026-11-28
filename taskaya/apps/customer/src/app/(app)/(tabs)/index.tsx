@@ -1,5 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { BellButton } from '@/components/ui/BellButton';
+import { CatTiles } from '@/components/home/CatTiles';
+import { GlowBg } from '@/components/home/GlowBg';
+import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
@@ -61,6 +64,8 @@ export default function Home() {
   const [cats, setCats] = useState<Category[]>([]);
   const [q, setQ] = useState('');
   const [hour] = useState(() => new Date().getHours());
+  const [avHover, setAvHover] = useState(false);
+  const [headH, setHeadH] = useState(200);
   const [catId, setCatId] = useState<string | null>(null);
   const [byCat, setByCat] = useState<Record<string, ProviderCard[]>>({});
   const [listW, setListW] = useState(0);
@@ -97,70 +102,51 @@ export default function Home() {
   const list = useMemo(() => (raw ? openFirst(raw) : null), [raw]);
   const current = cats.find((x) => x.id === catId);
   const title = searching ? tr('نتائج البحث', 'Search results') : current ? catName(current) : tr('الأعلى تقييمًا', 'Top rated');
-  const hello = hour < 12 ? tr('صباح الخير', 'Good morning') : hour < 18 ? tr('مساء الخير', 'Good afternoon') : tr('مساء النور', 'Good evening');
+  const hello = hour >= 5 && hour < 16 ? tr('صباح الخير', 'Good morning') : tr('مساء الخير', 'Good evening');
   const first = me?.first_name || '';
   const initial = (first || '؟').charAt(0).toUpperCase();
   const rowH = listW ? Math.max(140, Math.min(165, Math.round(((listW - 24) / 3) * 1.4))) : 145;
 
   return (
     <View style={styles.page}>
+      <GlowBg />
       {/* ===== الهيدر الملوّن ===== */}
-      <LinearGradient colors={c.gradient} start={{ x: 0.1, y: 0 }} end={{ x: 0.9, y: 1 }} style={[styles.header, { paddingTop: insets.top + 16 }]}>
+      <View onLayout={(e) => setHeadH(e.nativeEvent.layout.height)} style={[styles.header, WEB_FROST, { paddingTop: insets.top + 8 }]}>
+        {Platform.OS === 'ios' ? <BlurView intensity={40} tint="default" style={StyleSheet.absoluteFill} /> : null}
+        <LinearGradient colors={c.gradient} start={{ x: 0.1, y: 0 }} end={{ x: 0.9, y: 1 }} style={[StyleSheet.absoluteFill, { opacity: Platform.OS === 'android' ? 0.95 : 0.74 }]} />
+        <View style={styles.glow} />
+        <View style={styles.glow2} />
+        <LinearGradient colors={['rgba(255,255,255,0.22)', 'rgba(255,255,255,0)']} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={styles.sheen} />
         <Animated.View style={[styles.inner, headAnim]}>
           <View style={styles.headRow}>
-            <Pressable onPress={() => router.push('/profile' as never)} style={styles.avatar} accessibilityLabel={tr('حسابي', 'Profile')}>
-              {me?.avatar_url ? <Image source={{ uri: me.avatar_url }} style={StyleSheet.absoluteFill} contentFit="cover" /> : <Text style={styles.avatarText}>{initial}</Text>}
-            </Pressable>
+            <View style={styles.helloRow}>
+              <Pressable onPress={() => router.push('/profile' as never)} onHoverIn={() => setAvHover(true)} onHoverOut={() => setAvHover(false)} style={[styles.avatar, avHover && styles.avatarHover]} accessibilityLabel={tr('حسابي', 'Profile')}>
+                {me?.avatar_url ? <Image source={{ uri: me.avatar_url }} style={StyleSheet.absoluteFill} contentFit="cover" /> : <Text style={styles.avatarText}>{initial}</Text>}
+              </Pressable>
+              <View style={styles.helloCol}>
+                <Text style={[styles.hello, { textAlign: lang === 'ar' ? 'right' : 'left' }]} numberOfLines={1}>{hello}</Text>
+                {first ? <Text style={[styles.name, { textAlign: lang === 'ar' ? 'right' : 'left' }]} numberOfLines={1} adjustsFontSizeToFit>{first}</Text> : null}
+              </View>
+            </View>
             <BellButton />
           </View>
-          <Text style={styles.hello} numberOfLines={1}>
-            {hello}
-            {first ? tr(`، ${first}`, `, ${first}`) : ''}
-          </Text>
           <Text style={styles.tagline}>{t('tagline')}</Text>
-        </Animated.View>
-      </LinearGradient>
-
-      <Animated.View style={[styles.inner, styles.body, { paddingBottom: Math.max(insets.bottom, 12) + 84 }, bodyAnim]}>
+                    <View style={styles.tools}>
         {/* ===== البحث العايم ===== */}
         <View style={styles.search}>
-          <SearchField value={q} onChangeText={setQ} placeholder={tr('بتدور على إيه؟', 'What are you looking for?')} />
+          <SearchField onDark value={q} onChangeText={setQ} placeholder={tr('بتدور على إيه؟', 'What are you looking for?')} />
         </View>
 
         {/* ===== كبسولات الأقسام ===== */}
-        {!searching ? (
-          <View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
-              {[null, ...cats].map((cat) => {
-                const id = cat?.id ?? null;
-                const on = id === catId;
-                return (
-                  <Pressable key={id ?? 'all'} onPress={() => pickCat(id)} style={[styles.chip, on && styles.chipOn]}>
-                    <Ionicons name={cat ? catIcon(cat) : 'grid-outline'} size={15} color={on ? '#FFFFFF' : c.accentText} />
-                    <Text style={[styles.chipText, on && styles.chipTextOn]}>{cat ? catName(cat) : tr('الكل', 'All')}</Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
+        {!searching ? <CatTiles cats={cats} catId={catId} onPick={pickCat} icon={catIcon} name={catName} /> : null}
           </View>
-        ) : null}
+        </Animated.View>
+      </View>
 
-        {/* ===== العنوان ===== */}
-        <View style={styles.secRow}>
-          <View style={styles.secLeft}>
-            <LinearGradient colors={c.gradient} style={styles.secBar} />
-            <Text style={styles.sec}>{title}</Text>
-          </View>
-          {current && !searching ? (
-            <Pressable onPress={() => router.push(`/category/${current.id}` as never)} hitSlop={8}>
-              <Text style={styles.all}>{tr('عرض الكل', 'See all')}</Text>
-            </Pressable>
-          ) : null}
-        </View>
-
+      <Animated.View style={[styles.inner, styles.body, bodyAnim]}>
         {/* ===== القايمة: هي بس اللي بتتسحب ===== */}
         <View style={styles.listArea} onLayout={(e) => setListW(e.nativeEvent.layout.width)}>
-          <ScrollView style={[{ flex: 1 }, WEB_FADE]} contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={[styles.listContent, { paddingTop: headH + 12, paddingBottom: Math.max(insets.bottom, 12) + 100 }]} showsVerticalScrollIndicator={false}>
             {list === null ? <ListSkeleton rows={3} height={rowH} /> : null}
             {list !== null && list.length === 0 ? (
               <View style={styles.emptyWrap}>
@@ -180,11 +166,16 @@ export default function Home() {
   );
 }
 
+const WEB_FROST = Platform.OS === 'web' ? ({ backdropFilter: 'blur(18px) saturate(170%)', WebkitBackdropFilter: 'blur(18px) saturate(170%)' } as any) : null;
+
 const makeStyles = (c: Palette) =>
   StyleSheet.create({
     page: { flex: 1 },
     inner: { width: '100%', maxWidth: 720, alignSelf: 'center' },
-    header: { paddingHorizontal: 20, paddingBottom: 46, borderBottomLeftRadius: 30, borderBottomRightRadius: 30 },
+    header: { position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: 20, paddingBottom: 0, zIndex: 1, overflow: 'hidden', borderWidth: 1, borderTopWidth: 0, borderColor: 'rgba(255,255,255,0.28)', borderBottomLeftRadius: 30, borderBottomRightRadius: 30 },
+    sheen: { position: 'absolute', top: 0, left: 0, right: 0, height: '65%', pointerEvents: 'none' },
+    glow: { position: 'absolute', width: 260, height: 260, borderRadius: 130, top: -120, left: -80, backgroundColor: 'rgba(255,255,255,0.10)', pointerEvents: 'none' },
+    glow2: { position: 'absolute', width: 180, height: 180, borderRadius: 90, bottom: -90, right: -50, backgroundColor: 'rgba(255,255,255,0.07)', pointerEvents: 'none' },
     headRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     avatar: {
       width: 44,
@@ -198,11 +189,16 @@ const makeStyles = (c: Palette) =>
       borderColor: 'rgba(255,255,255,0.45)',
     },
     avatarText: { fontFamily: fonts.bold, fontSize: 19, color: '#FFFFFF' },
-    hello: { fontFamily: fonts.bold, fontSize: 23, color: '#FFFFFF', marginTop: 16 },
+    avatarHover: { backgroundColor: 'rgba(255,255,255,0.32)', borderColor: '#FFFFFF', transform: [{ scale: 1.05 }] },
+    helloRow: { flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 1 },
+    helloCol: { flexShrink: 1, justifyContent: 'center' },
+    hello: { fontFamily: fonts.regular, fontSize: 12, lineHeight: 16, color: 'rgba(255,255,255,0.85)' },
+    name: { fontFamily: fonts.bold, fontSize: 24, lineHeight: 30, color: '#FFFFFF', textTransform: 'uppercase', letterSpacing: 0.8 },
     tagline: { fontFamily: fonts.regular, fontSize: 13.5, color: 'rgba(255,255,255,0.82)', marginTop: 2 },
     body: { flex: 1, paddingHorizontal: 16 },
+    tools: { marginHorizontal: -4 },
     search: {
-      marginTop: -28,
+      marginTop: 4,
       borderRadius: 18,
       shadowColor: c.accent,
       shadowOpacity: 0.22,
@@ -210,7 +206,7 @@ const makeStyles = (c: Palette) =>
       shadowOffset: { width: 0, height: 10 },
       elevation: 0,
     },
-    chips: { gap: 8, paddingTop: 14, paddingBottom: 4 },
+    chips: { gap: 8, paddingTop: 10, paddingBottom: 2 },
     chip: {
       flexDirection: 'row',
       alignItems: 'center',

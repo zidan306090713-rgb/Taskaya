@@ -5,8 +5,8 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { ComponentProps, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Chips } from '@/components/ui/Chips';
-import { GradientHeader } from '@/components/ui/GradientHeader';
+import { BlurView } from 'expo-blur';
+import { GlowBg } from '@/components/home/GlowBg';
 import { ListSkeleton } from '@/components/ui/Skeleton';
 import { isRTL, lang, tr } from '@/i18n';
 import { answerQuote, Booking, getMyBookings } from '@/lib/api';
@@ -55,13 +55,11 @@ const whenOf = (b: Booking) =>
 const titleOf = (b: Booking) => (b.services ? (lang === 'ar' ? b.services.name_ar : b.services.name_en) : '-');
 const providerOf = (b: Booking) => b.provider_profiles?.business_name ?? tr('بانتظار ترشيح مقدم خدمة', 'Awaiting provider match');
 
-const WEB_FADE =
+const WEB_GLASS =
   Platform.OS === 'web'
-    ? ({
-        maskImage: 'linear-gradient(to bottom, transparent 0, #000 12px, #000 calc(100% - 18px), transparent 100%)',
-        WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, #000 12px, #000 calc(100% - 18px), transparent 100%)',
-      } as any)
+    ? ({ backdropFilter: 'blur(14px) saturate(160%)', WebkitBackdropFilter: 'blur(14px) saturate(160%)', transition: 'border-color .2s ease, box-shadow .2s ease' } as any)
     : null;
+const WEB_FROST = Platform.OS === 'web' ? ({ backdropFilter: 'blur(18px) saturate(170%)', WebkitBackdropFilter: 'blur(18px) saturate(170%)' } as any) : null;
 
 function useStyles() {
   const { c } = useTheme();
@@ -124,9 +122,19 @@ function OrderCard({ b, onOpen }: { b: Booking; onOpen: () => void }) {
   const price = b.final_price ?? b.quoted_price;
   const when = whenOf(b);
   const step = STEP[b.status];
+  const [hover, setHover] = useState(false);
+  const sheen = c.isDark ? (['rgba(255,255,255,0.08)', 'rgba(255,255,255,0)'] as const) : (['rgba(255,255,255,0.7)', 'rgba(255,255,255,0)'] as const);
 
   return (
-    <Pressable onPress={onOpen} accessibilityRole="button" style={({ pressed }) => [styles.card, awaiting && styles.cardHot, pressed && { opacity: 0.9 }]}>
+    <Pressable
+      onPress={onOpen}
+      onHoverIn={() => setHover(true)}
+      onHoverOut={() => setHover(false)}
+      accessibilityRole="button"
+      style={({ pressed }) => [styles.card, WEB_GLASS, hover && styles.cardHover, awaiting && styles.cardHot, pressed && { opacity: 0.9 }]}
+    >
+      {Platform.OS === 'ios' ? <BlurView intensity={28} tint={c.isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} /> : null}
+      <LinearGradient colors={sheen} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={styles.cardSheen} />
       <View style={styles.topRow}>
         <Thumb b={b} />
         <View style={{ flex: 1 }}>
@@ -316,6 +324,7 @@ export default function Orders() {
   const [list, setList] = useState<Booking[] | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>('all');
+  const [headH, setHeadH] = useState(170);
 
   // الحجوزات اللي مستنية ردك تظهر الأول
   const load = useCallback(
@@ -358,37 +367,21 @@ export default function Orders() {
   const done = all.filter((b) => !CURRENT.includes(b.status));
   const shown = filter === 'current' ? current : filter === 'done' ? done : all;
   const open = list?.find((b) => b.id === openId) ?? null;
+  const TABS: { key: Filter; label: string; n: number }[] = [
+    { key: 'all', label: tr('الكل', 'All'), n: all.length },
+    { key: 'current', label: tr('الحالية', 'Active'), n: current.length },
+    { key: 'done', label: tr('المنتهية', 'Past'), n: done.length },
+  ];
 
   return (
-    <View style={[styles.page, { paddingBottom: Math.max(insets.bottom, 12) + 86 }]}>
-      <GradientHeader
-        noBack
-        title={tr('طلباتي', 'My Orders')}
-        subtitle={tr('تابع حجوزاتك خطوة بخطوة', 'Track your bookings step by step')}
-        padBottom={22}
-        right={
-          list ? (
-            <View style={styles.countPill}>
-              <Text style={styles.countText}>{all.length}</Text>
-            </View>
-          ) : null
-        }
-      />
-
-      <View style={styles.body}>
-        <View>
-          <Chips
-            items={[
-              { key: 'all', label: `${tr('الكل', 'All')} · ${all.length}` },
-              { key: 'current', label: `${tr('الحالية', 'Active')} · ${current.length}` },
-              { key: 'done', label: `${tr('المنتهية', 'Past')} · ${done.length}` },
-            ]}
-            value={filter}
-            onChange={(k) => setFilter((k as Filter) ?? 'all')}
-          />
-        </View>
-
-        <ScrollView style={[{ flex: 1, marginHorizontal: -16 }, WEB_FADE]} contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
+    <View style={styles.page}>
+      <GlowBg />
+      <ScrollView
+        style={StyleSheet.absoluteFill}
+        contentContainerStyle={[styles.listContent, { paddingTop: headH + 14, paddingBottom: Math.max(insets.bottom, 12) + 100 }]}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.body}>
           {list === null ? <ListSkeleton rows={3} height={150} /> : null}
           {list !== null && shown.length === 0 ? (
             <View style={styles.emptyWrap}>
@@ -402,7 +395,40 @@ export default function Orders() {
           {shown.map((b) => (
             <OrderCard key={b.id} b={b} onOpen={() => setOpenId(b.id)} />
           ))}
-        </ScrollView>
+        </View>
+      </ScrollView>
+
+      <View onLayout={(e) => setHeadH(e.nativeEvent.layout.height)} style={[styles.header, WEB_FROST, { paddingTop: insets.top + 12 }]}>
+        {Platform.OS === 'ios' ? <BlurView intensity={40} tint="default" style={StyleSheet.absoluteFill} /> : null}
+        <LinearGradient colors={c.gradient} start={{ x: 0.1, y: 0 }} end={{ x: 0.9, y: 1 }} style={[StyleSheet.absoluteFill, { opacity: Platform.OS === 'android' ? 0.95 : 0.74 }]} />
+        <View style={styles.glow} />
+        <View style={styles.glow2} />
+        <LinearGradient colors={['rgba(255,255,255,0.22)', 'rgba(255,255,255,0)']} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={styles.sheen} />
+        <View style={styles.headInner}>
+          <View style={styles.headRow}>
+            <View style={{ flex: 1, alignItems: 'flex-start' }}>
+              <Text style={styles.hTitle}>{tr('طلباتي', 'My Orders')}</Text>
+              <Text style={styles.hSub}>{tr('تابع حجوزاتك خطوة بخطوة', 'Track your bookings step by step')}</Text>
+            </View>
+            {list ? (
+              <View style={styles.countPill}>
+                <Text style={styles.countText}>{all.length}</Text>
+              </View>
+            ) : null}
+          </View>
+          <View style={styles.tabs}>
+            {TABS.map((t) => {
+              const on = filter === t.key;
+              return (
+                <Pressable key={t.key} onPress={() => setFilter(t.key)} accessibilityRole="tab" accessibilityState={{ selected: on }} style={[styles.tab, on && styles.tabOn]}>
+                  <Text style={[styles.tabText, on && styles.tabTextOn]} numberOfLines={1}>
+                    {t.label} · {t.n}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
       </View>
       {open ? <OrderSheet b={open} onClose={() => setOpenId(null)} onChanged={() => load(true)} /> : null}
     </View>
@@ -412,13 +438,35 @@ export default function Orders() {
 const makeStyles = (c: Palette) =>
   StyleSheet.create({
     page: { flex: 1 },
-    body: { flex: 1, width: '100%', maxWidth: 720, alignSelf: 'center', paddingHorizontal: 16 },
+    body: { width: '100%', maxWidth: 720, alignSelf: 'center', gap: 12 },
+    header: { position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: 20, paddingBottom: 16, zIndex: 1, overflow: 'hidden', borderWidth: 1, borderTopWidth: 0, borderColor: 'rgba(255,255,255,0.28)', borderBottomLeftRadius: 30, borderBottomRightRadius: 30 },
+    sheen: { position: 'absolute', top: 0, left: 0, right: 0, height: '65%', pointerEvents: 'none' },
+    glow: { position: 'absolute', width: 260, height: 260, borderRadius: 130, top: -120, left: -80, backgroundColor: 'rgba(255,255,255,0.10)', pointerEvents: 'none' },
+    glow2: { position: 'absolute', width: 180, height: 180, borderRadius: 90, bottom: -90, right: -50, backgroundColor: 'rgba(255,255,255,0.07)', pointerEvents: 'none' },
+    headInner: { width: '100%', maxWidth: 720, alignSelf: 'center', gap: 14 },
+    headRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    hTitle: { fontFamily: fonts.bold, fontSize: 24, color: '#FFFFFF' },
+    hSub: { fontFamily: fonts.regular, fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
+    tabs: { flexDirection: 'row', gap: 8 },
+    tab: { flex: 1, height: 38, borderRadius: 999, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8, backgroundColor: 'rgba(255,255,255,0.16)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
+    tabOn: { backgroundColor: '#FFFFFF', borderColor: '#FFFFFF' },
+    tabText: { fontFamily: fonts.semibold, fontSize: 13, color: '#FFFFFF' },
+    tabTextOn: { fontFamily: fonts.bold, color: c.accent },
     countPill: { paddingHorizontal: 11, paddingVertical: 3, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.18)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
     countText: { fontFamily: fonts.bold, fontSize: 13, color: '#FFFFFF' },
-    listContent: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 18, gap: 12 },
+    listContent: { paddingHorizontal: 16 },
     center: { alignItems: 'center', justifyContent: 'center' },
 
-    card: { padding: 13, borderRadius: 20, backgroundColor: c.card, borderWidth: 1, borderColor: c.accentBorder },
+    card: {
+      padding: 13,
+      borderRadius: 22,
+      overflow: 'hidden',
+      backgroundColor: c.isDark ? 'rgba(30,36,52,0.55)' : Platform.OS === 'android' ? 'rgba(255,255,255,0.86)' : 'rgba(255,255,255,0.5)',
+      borderWidth: 1,
+      borderColor: c.isDark ? 'rgba(255,255,255,0.12)' : Platform.OS === 'android' ? c.accentBorder : 'rgba(255,255,255,0.9)',
+    },
+    cardHover: { borderColor: rgba(c.accent, 0.45) },
+    cardSheen: { position: 'absolute', top: 0, left: 0, right: 0, height: '55%', pointerEvents: 'none' },
     cardHot: { borderWidth: 1.5, borderColor: '#7C3AED' },
     topRow: { flexDirection: 'row', alignItems: 'center', gap: 11 },
     thumb: { overflow: 'hidden', backgroundColor: c.fieldBg },

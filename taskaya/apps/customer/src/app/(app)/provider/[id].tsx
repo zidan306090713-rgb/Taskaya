@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
-import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ReactNode, useEffect, useMemo, useState } from 'react';
+import { Animated, Platform, Pressable, ScrollView, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ListSkeleton, PageSkeleton } from '@/components/ui/Skeleton';
 import { StickyBar } from '@/components/ui/StickyBar';
@@ -26,7 +27,38 @@ const duration = (m: number | null | undefined) => {
   return tr(`حوالي ${h} ساعة`, `~${h} h`);
 };
 
-/** صفحة مقدم الخدمة: غلاف بعرض الشاشة + كارت بيانات + الخدمات + شريط "احجز الآن" ثابت */
+const WEB_GLASS =
+  Platform.OS === 'web'
+    ? ({ backdropFilter: 'blur(14px) saturate(160%)', WebkitBackdropFilter: 'blur(14px) saturate(160%)', transition: 'border-color .2s ease, background-color .2s ease' } as any)
+    : null;
+const WEB_BTN = Platform.OS === 'web' ? ({ backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' } as any) : null;
+
+/** كارت زجاجي بنفس قيم ProviderRow (طبقة الـ blur مقصوصة لوحدها عشان اللوجو يقدر يطلع برّه الكارت) */
+function Glass({ style, radius = 18, children }: { style?: StyleProp<ViewStyle>; radius?: number; children?: ReactNode }) {
+  const { c } = useTheme();
+  const sheen = c.isDark ? (['rgba(255,255,255,0.08)', 'rgba(255,255,255,0)'] as const) : (['rgba(255,255,255,0.7)', 'rgba(255,255,255,0)'] as const);
+  return (
+    <View
+      style={[
+        {
+          borderRadius: radius,
+          borderWidth: 1,
+          backgroundColor: c.isDark ? 'rgba(30,36,52,0.55)' : Platform.OS === 'android' ? 'rgba(255,255,255,0.86)' : 'rgba(255,255,255,0.5)',
+          borderColor: c.isDark ? 'rgba(255,255,255,0.12)' : Platform.OS === 'android' ? c.accentBorder : 'rgba(255,255,255,0.9)',
+        },
+        WEB_GLASS,
+        style,
+      ]}>
+      <View style={[StyleSheet.absoluteFill, { borderRadius: radius, overflow: 'hidden', pointerEvents: 'none' }]}>
+        {Platform.OS === 'ios' ? <BlurView intensity={28} tint={c.isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} /> : null}
+        <LinearGradient colors={sheen} style={{ height: '55%' }} />
+      </View>
+      {children}
+    </View>
+  );
+}
+
+/** صفحة مقدم الخدمة: غلاف + كارت زجاجي + الخدمات + شريط "احجز الآن" ثابت */
 export default function ProviderScreen() {
   const { c } = useTheme();
   const styles = useMemo(() => makeStyles(c), [c]);
@@ -60,11 +92,16 @@ export default function ProviderScreen() {
   }, [id, uid]);
 
   const back = () => (router.canGoBack() ? router.back() : router.replace('/'));
-  const backBtn = (
-    <Pressable onPress={back} style={[styles.float, { top: insets.top + 10 }, isRTL ? { right: 14 } : { left: 14 }]} accessibilityLabel={tr('رجوع', 'Back')}>
-      <Ionicons name={isRTL ? 'arrow-forward' : 'arrow-back'} size={20} color="#0B1F3A" />
-    </Pressable>
-  );
+  const floatBtn = (side: 'start' | 'end', icon: keyof typeof Ionicons.glyphMap, label: string, onPress?: () => void) => {
+    const atRight = side === 'start' ? isRTL : !isRTL;
+    return (
+      <Pressable onPress={onPress} style={[styles.float, WEB_BTN, { top: insets.top + 10 }, atRight ? { right: 14 } : { left: 14 }]} accessibilityLabel={label}>
+        {Platform.OS === 'ios' ? <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} /> : null}
+        <Ionicons name={icon} size={20} color="#FFFFFF" />
+      </Pressable>
+    );
+  };
+  const backBtn = floatBtn('start', isRTL ? 'arrow-forward' : 'arrow-back', tr('رجوع', 'Back'), back);
 
   const p = data?.profile;
   if (!p) {
@@ -104,38 +141,44 @@ export default function ProviderScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 120 }} showsVerticalScrollIndicator={false}>
         {/* ===== الغلاف (كامل من غير قص + نسخة مغبّشة وراه) ===== */}
-        <View style={[styles.cover, { height: 230 + insets.top }]}>
+        <View style={[styles.cover, { height: 270 + insets.top }]}>
           {coverUri ? (
-            <>
-              <Image source={{ uri: coverUri }} style={StyleSheet.absoluteFill} contentFit="cover" blurRadius={24} />
-              <Image source={{ uri: coverUri }} style={[StyleSheet.absoluteFill, { top: insets.top }]} contentFit="contain" transition={200} />
-            </>
+            <Image source={{ uri: coverUri }} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition="top" transition={200} />
           ) : (
             <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
           )}
-          <LinearGradient colors={['rgba(5,12,32,0.35)', 'rgba(5,12,32,0)', 'rgba(5,12,32,0.45)']} locations={[0, 0.4, 1]} style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]} />
+          <LinearGradient colors={['rgba(5,12,32,0.4)', 'rgba(5,12,32,0)', 'rgba(5,12,32,0.75)']} locations={[0, 0.35, 1]} style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]} />
         </View>
 
         <Animated.View style={[styles.inner, bodyAnim]}>
-          {/* ===== كارت البيانات + اللوجو الراكب ===== */}
-          <View style={styles.who}>
-            <View style={styles.logo}>
-              {logoUri ? (
-                <Image source={{ uri: logoUri }} style={StyleSheet.absoluteFill} contentFit="cover" />
-              ) : (
-                <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[StyleSheet.absoluteFill, styles.center]}>
-                  <Text style={styles.logoText}>{p.business_name.charAt(0)}</Text>
-                </LinearGradient>
-              )}
+          {/* ===== كارت البيانات الزجاجي + اللوجو في حلقة بيضا ===== */}
+          <Glass radius={24} style={styles.who}>
+            <View style={styles.logoRing}>
+              <View style={styles.logo}>
+                {logoUri ? (
+                  <Image source={{ uri: logoUri }} style={StyleSheet.absoluteFill} contentFit="cover" />
+                ) : (
+                  <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[StyleSheet.absoluteFill, styles.center]}>
+                    <Text style={styles.logoText}>{p.business_name.charAt(0)}</Text>
+                  </LinearGradient>
+                )}
+              </View>
             </View>
             <View style={styles.nameRow}>
               <Text style={styles.name}>{p.business_name}</Text>
               {p.is_verified ? <Ionicons name="checkmark-circle" size={20} color={c.accentText} /> : null}
             </View>
+            {p.owner_name && p.owner_name.trim() !== p.business_name.trim() ? (
+              <View style={styles.ownerRow}>
+                <Ionicons name="person-circle-outline" size={16} color={c.textSecondary} />
+                <Text style={styles.owner}>{p.owner_name}</Text>
+              </View>
+            ) : null}
+            {p.description ? <Text style={styles.desc}>{p.description}</Text> : null}
             <View style={styles.pills}>
               <View style={[styles.pill, styles.pillStar]}>
                 <Ionicons name="star" size={13} color="#F59E0B" />
-                <Text style={[styles.pillText, { color: '#B45309' }]}>
+                <Text style={[styles.pillText, { color: c.isDark ? '#FBBF24' : '#B45309' }]}>
                   {Number(p.rating_avg).toFixed(1)} · {p.rating_count} {tr('تقييم', 'reviews')}
                 </Text>
               </View>
@@ -146,16 +189,13 @@ export default function ProviderScreen() {
                 </View>
               ) : null}
               {!open ? (
-                <View style={[styles.pill, { backgroundColor: '#64748B' }]}>
+                <View style={[styles.pill, { backgroundColor: '#64748B', borderColor: '#64748B' }]}>
                   <Ionicons name="moon" size={13} color="#FFFFFF" />
                   <Text style={[styles.pillText, { color: '#FFFFFF' }]}>{tr('مش متاح حاليًا', 'Unavailable now')}</Text>
                 </View>
               ) : null}
             </View>
-          </View>
-
-          {/* ===== الوصف ===== */}
-          {p.description ? <Text style={styles.desc}>{p.description}</Text> : null}
+          </Glass>
 
           {/* ===== الخدمات ===== */}
           <View style={styles.secRow}>
@@ -170,14 +210,14 @@ export default function ProviderScreen() {
                 .join(' · ');
               return (
                 <Pressable key={s.id} onPress={() => setSel(s.id)} accessibilityRole="radio" accessibilityState={{ selected: on }}>
-                  <View style={[styles.svc, on && styles.svcOn]}>
+                  <Glass style={[styles.svc, on && styles.svcOn]}>
                     <View style={[styles.radio, on && styles.radioOn]} />
                     <View style={{ flex: 1 }}>
                       <Text style={styles.svcName} numberOfLines={2}>{svcName(s)}</Text>
                       {meta ? <Text style={styles.svcMeta}>{meta}</Text> : null}
                     </View>
                     <Text style={styles.svcPrice}>{priceOf(s)}</Text>
-                  </View>
+                  </Glass>
                 </Pressable>
               );
             })
@@ -188,9 +228,7 @@ export default function ProviderScreen() {
       </ScrollView>
 
       {backBtn}
-      <Pressable style={[styles.float, { top: insets.top + 10 }, isRTL ? { left: 14 } : { right: 14 }]} accessibilityLabel={tr('المفضلة', 'Favorite')}>
-        <Ionicons name="heart-outline" size={20} color="#0B1F3A" />
-      </Pressable>
+      {floatBtn('end', 'heart-outline', tr('المفضلة', 'Favorite'))}
 
       <StickyBar
         label={!open ? tr('مقدم الخدمة مش متاح حاليًا', 'This provider is unavailable now') : chosen ? svcName(chosen) : tr('اختار خدمة', 'Pick a service')}
@@ -213,74 +251,54 @@ const makeStyles = (c: Palette) =>
       width: 42,
       height: 42,
       borderRadius: 14,
+      overflow: 'hidden',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: 'rgba(255,255,255,0.88)',
+      backgroundColor: Platform.OS === 'ios' ? 'rgba(11,27,63,0.18)' : 'rgba(11,27,63,0.38)',
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.45)',
       zIndex: 5,
     },
     inner: { width: '100%', maxWidth: 720, alignSelf: 'center', paddingHorizontal: 14 },
-    who: {
-      marginTop: -36,
-      paddingTop: 46,
-      paddingBottom: 16,
-      paddingHorizontal: 16,
-      borderRadius: 24,
-      alignItems: 'center',
-      backgroundColor: c.card,
-      borderWidth: 1,
-      borderColor: c.accentBorder,
-      shadowColor: c.shadow,
-      shadowOpacity: c.isDark ? 0.22 : 0.1,
-      shadowRadius: 16,
-      shadowOffset: { width: 0, height: 8 },
-    },
-    logo: {
+    who: { marginTop: -36, paddingTop: 48, paddingBottom: 16, paddingHorizontal: 16, alignItems: 'center' },
+    logoRing: {
       position: 'absolute',
-      top: -34,
-      width: 68,
-      height: 68,
-      borderRadius: 20,
-      overflow: 'hidden',
-      backgroundColor: c.card,
-      borderWidth: 3,
-      borderColor: c.card,
+      top: -36,
       alignSelf: 'center',
+      padding: 3,
+      borderRadius: 23,
+      backgroundColor: c.isDark ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.92)',
     },
+    logo: { width: 64, height: 64, borderRadius: 20, overflow: 'hidden' },
     logoText: { fontFamily: fonts.bold, fontSize: 28, color: '#FFFFFF' },
     nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    ownerRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 },
+    owner: { fontFamily: fonts.semibold, fontSize: 13.5, color: c.textSecondary },
     name: { fontFamily: fonts.bold, fontSize: 20, color: c.text, textAlign: 'center' },
     pills: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginTop: 10 },
-    pill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 11, paddingVertical: 5, borderRadius: 999, backgroundColor: c.accentSoft },
-    pillStar: { backgroundColor: 'rgba(245,158,11,0.12)' },
-    pillText: { fontFamily: fonts.semibold, fontSize: 12.5, color: c.accentText },
-    desc: {
-      marginTop: 12,
-      padding: 14,
-      borderRadius: 18,
-      fontFamily: fonts.regular,
-      fontSize: 14,
-      lineHeight: 22,
-      color: c.textSecondary,
-      backgroundColor: c.card,
+    pill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      paddingHorizontal: 11,
+      paddingVertical: 5,
+      borderRadius: 999,
       borderWidth: 1,
       borderColor: c.accentBorder,
-      overflow: 'hidden',
+      backgroundColor: c.isDark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.6)',
     },
+    pillStar: { backgroundColor: 'rgba(245,158,11,0.14)', borderColor: 'rgba(245,158,11,0.32)' },
+    pillText: { fontFamily: fonts.semibold, fontSize: 12.5, color: c.accentText },
+    desc: { marginTop: 6, maxWidth: 520, fontFamily: fonts.regular, fontSize: 13.5, lineHeight: 21, color: c.textSecondary, textAlign: 'center' },
     secRow: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 20, marginBottom: 10 },
     secBar: { width: 5, height: 20, borderRadius: 3 },
     sec: { fontFamily: fonts.bold, fontSize: 17, color: c.text },
-    svc: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-      padding: 14,
-      marginBottom: 10,
-      borderRadius: 18,
-      backgroundColor: c.card,
-      borderWidth: 1,
-      borderColor: c.accentBorder,
+    svc: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, marginBottom: 10 },
+    svcOn: {
+      borderWidth: 1.5,
+      borderColor: c.accent,
+      backgroundColor: c.isDark ? 'rgba(255,255,255,0.1)' : Platform.OS === 'android' ? '#FFFFFF' : 'rgba(255,255,255,0.8)',
     },
-    svcOn: { borderWidth: 1.5, borderColor: c.accent, backgroundColor: c.isDark ? 'rgba(255,255,255,0.05)' : '#F5F8FF' },
     radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: c.iconMuted },
     radioOn: { borderWidth: 6, borderColor: c.accent },
     svcName: { fontFamily: fonts.semibold, fontSize: 15, color: c.text },

@@ -97,6 +97,25 @@ function IntroLogo({ start, size, c }: { start: number; size: number; c: Palette
 }
 
 // نجوم بتندفع من النص لبره (سرعة الضوء) وبعدين بتهدى وتقف مكانها
+const WEB_FROST = Platform.OS === 'web' ? ({ backdropFilter: 'blur(10px) saturate(160%)', WebkitBackdropFilter: 'blur(10px) saturate(160%)' } as object) : null;
+
+// بقعة لون ناعمة (زي خلفية الرئيسية)
+function Blob({ id, size, color, style }: { id: string; size: number; color: string; style: object }) {
+  return (
+    <View pointerEvents="none" style={[{ position: 'absolute', width: size, height: size }, style]}>
+      <Svg width={size} height={size}>
+        <Defs>
+          <RadialGradient id={id} cx="50%" cy="50%" r="50%">
+            <Stop offset="0" stopColor={color} stopOpacity={0.4} />
+            <Stop offset="1" stopColor={color} stopOpacity={0} />
+          </RadialGradient>
+        </Defs>
+        <Circle cx={size / 2} cy={size / 2} r={size / 2} fill={'url(#' + id + ')'} />
+      </Svg>
+    </View>
+  );
+}
+
 function seeded(n: number, w: number, h: number) {
   let s = 17;
   const r = () => (s = (s * 9301 + 49297) % 233280) / 233280;
@@ -120,6 +139,7 @@ export default function Intro() {
   const [city] = useState(() => new Animated.Value(0));
   const [tag] = useState(() => new Animated.Value(0));
   const [out] = useState(() => new Animated.Value(0));
+  const [ring] = useState(() => new Animated.Value(0));
   const [wordW, setWordW] = useState(280);
   const main = useRef<Animated.CompositeAnimation | null>(null);
   const done = useRef(false);
@@ -141,6 +161,7 @@ export default function Intro() {
       at(warp, 0, 1500),
       at(flash, 1050, 550, Easing.out(Easing.quad)),
       at(glow, 1150, 1050),
+      Animated.spring(ring, { toValue: 1, delay: 2250, friction: 6, tension: 60, useNativeDriver: ND }),
       ...letters.map((v, i) => Animated.spring(v, { toValue: 1, delay: 2450 + i * 80, friction: 7, tension: 70, useNativeDriver: ND })),
       at(shine, 3300, 800, Easing.inOut(Easing.quad)),
       at(city, 3350, 600),
@@ -152,7 +173,7 @@ export default function Intro() {
       clearTimeout(timer);
       main.current?.stop();
     };
-  }, [warp, flash, glow, letters, shine, city, tag, exit]);
+  }, [warp, flash, glow, ring, letters, shine, city, tag, exit]);
 
   const fadeOut = out.interpolate({ inputRange: [0, 1], outputRange: [1, 0] });
   const rise = (v: Animated.Value, d: number) => ({
@@ -162,6 +183,12 @@ export default function Intro() {
 
   return (
     <Animated.View style={[StyleSheet.absoluteFill, styles.root, { opacity: out.interpolate({ inputRange: [0, 0.6, 1], outputRange: [1, 1, 0] }) }]}>
+      {/* خلفية الهوية: navy بتدرّج + بقع ألوان ناعمة */}
+      <LinearGradient colors={['#0B1B3F', '#06112B', '#030817']} start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }} style={StyleSheet.absoluteFill} pointerEvents="none" />
+      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity: glow }]}>
+        <Blob id="introBlobA" size={420} color={c.accent} style={{ top: -160, left: -170 }} />
+        <Blob id="introBlobB" size={460} color={c.accentLight} style={{ bottom: -190, right: -190 }} />
+      </Animated.View>
       {/* سرعة الضوء */}
       <Animated.View style={[StyleSheet.absoluteFill, { opacity: fadeOut }]} pointerEvents="none">
         {stars.map((s, i) => (
@@ -209,10 +236,15 @@ export default function Intro() {
         style={[
           styles.abs,
           styles.scene,
-          { left: 0, right: 0, top: oy - 120, opacity: fadeOut, transform: [{ scale: out.interpolate({ inputRange: [0, 1], outputRange: [1, 2.8] }) }] },
+          { left: 0, right: 0, top: oy - 140, opacity: fadeOut, transform: [{ scale: out.interpolate({ inputRange: [0, 1], outputRange: [1, 2.8] }) }] },
         ]}
       >
-        <IntroLogo start={start} size={210} c={c} />
+        <View style={styles.logoBox}>
+          <Animated.View style={[styles.ring, WEB_FROST, { transform: [{ scale: ring }] }]}>
+            <LinearGradient colors={['rgba(255,255,255,0.22)', 'rgba(255,255,255,0)']} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={styles.ringSheen} />
+          </Animated.View>
+          <IntroLogo start={start} size={190} c={c} />
+        </View>
 
         <View style={[styles.word, LTR]} onLayout={(e) => setWordW(e.nativeEvent.layout.width)}>
           {LETTERS.map((ch, i) => (
@@ -283,7 +315,7 @@ export default function Intro() {
         </Svg>
       </Animated.View>
 
-      <Pressable onPress={exit} style={[styles.skip, { top: insets.top + 14 }]} accessibilityRole="button" hitSlop={10}>
+      <Pressable onPress={exit} style={[styles.skip, WEB_FROST, { top: insets.top + 14 }]} accessibilityRole="button" hitSlop={10}>
         <Text style={styles.skipText}>{tr('تخطي', 'Skip')}</Text>
       </Pressable>
     </Animated.View>
@@ -294,6 +326,13 @@ const styles = StyleSheet.create({
   root: { backgroundColor: '#030817', zIndex: 10, overflow: 'hidden' },
   abs: { position: 'absolute' },
   scene: { alignItems: 'center' },
+  logoBox: { width: 236, height: 236, alignItems: 'center', justifyContent: 'center' },
+  ring: {
+    position: 'absolute', top: 0, left: 0, width: 236, height: 236, borderRadius: 118, overflow: 'hidden',
+    borderWidth: 2.5, borderColor: 'rgba(255,255,255,0.9)', backgroundColor: 'rgba(255,255,255,0.07)',
+    shadowColor: '#FFFFFF', shadowOpacity: 0.35, shadowRadius: 24, shadowOffset: { width: 0, height: 0 },
+  },
+  ringSheen: { position: 'absolute', top: 0, left: 0, right: 0, height: '55%' },
   word: { flexDirection: 'row', marginTop: 4, overflow: 'hidden', paddingHorizontal: 6 },
   letter: {
     fontFamily: fonts.bold,
@@ -314,8 +353,8 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.22)',
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderColor: 'rgba(255,255,255,0.35)',
+    backgroundColor: 'rgba(255,255,255,0.1)',
   },
   skipText: { fontFamily: fonts.semibold, fontSize: 13, color: 'rgba(255,255,255,0.8)' },
 });

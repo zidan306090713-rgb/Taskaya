@@ -1,17 +1,18 @@
-import { useMemo as useStylesMemo } from 'react';
-import { useTheme } from '@/providers/ThemeProvider';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { GlowBg } from '@/components/home/GlowBg';
+import { AuthCard } from '@/components/ui/AuthCard';
+import { AuthHero } from '@/components/ui/AuthHero';
 import { OtpInput, OtpStatus } from '@/components/ui/OtpInput';
-import { t, tr } from '@/i18n';
 import { useEntrance, useFocusHide } from '@/hooks/use-screen-entrance';
-import { OrbitLogo } from '@/components/ui/OrbitLogo';
+import { t, tr } from '@/i18n';
 import { cancelHold, holdAuth, releaseAuth, resendSms, verifyOtp } from '@/lib/auth';
 import { toLocalDisplay } from '@/lib/phone';
-import { colors, fonts, Palette, rgba, spacing } from '@/theme';
+import { useTheme } from '@/providers/ThemeProvider';
+import { fonts, Palette, rgba } from '@/theme';
 
 const RESEND_SECONDS = 60;
 const MIN_THINK_MS = 700; // أقل مدة يظهر فيها "جاري التحقق"
@@ -21,10 +22,10 @@ const ERROR_MS = 800; // مدة ظهور اللون الأحمر قبل المس
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
-
+/** صفحة كود التأكيد — نفس هوية الدخول: AuthHero + AuthCard زجاج + GlowBg */
 export default function Verify() {
   const { c } = useTheme();
-  const styles = useStylesMemo(() => makeStyles(c), [c]);
+  const styles = useMemo(() => makeStyles(c), [c]);
   const router = useRouter();
   const { phone = '' } = useLocalSearchParams<{ phone: string }>();
   const [code, setCode] = useState('');
@@ -34,7 +35,6 @@ export default function Verify() {
   const busy = useRef(false);
 
   const hide = useFocusHide();
-  const brandAnim = useEntrance(0);
   const cardAnim = useEntrance(60);
   const footAnim = useEntrance(120);
 
@@ -47,12 +47,12 @@ export default function Verify() {
   // لو الشاشة اتقفلت أثناء التحقق، نطلق أي جلسة محجوزة
   useEffect(() => () => releaseAuth(), []);
 
-  async function submit(c: string) {
+  async function submit(value: string) {
     busy.current = true;
     setError('');
     setStatus('checking');
     holdAuth();
-    const [{ error: err }] = await Promise.all([verifyOtp(phone, c), sleep(MIN_THINK_MS)]);
+    const [{ error: err }] = await Promise.all([verifyOtp(phone, value), sleep(MIN_THINK_MS)]);
     if (err) {
       cancelHold();
       setStatus('error');
@@ -82,29 +82,21 @@ export default function Verify() {
     else setLeft(RESEND_SECONDS);
   };
 
-  const webGlass =
-    Platform.OS === 'web'
-      ? ({ backdropFilter: 'blur(8px) saturate(160%)', WebkitBackdropFilter: 'blur(8px) saturate(160%)' } as any)
-      : null;
-
   const canResend = left <= 0 && status === 'idle';
 
   return (
     <KeyboardAvoidingView style={[{ flex: 1, backgroundColor: 'transparent' }, hide]} behavior="padding">
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-        {/* ===== Brand ===== */}
-        <Animated.View style={[styles.brandWrap, brandAnim]}>
-          <OrbitLogo size={104} />
-          <Text style={styles.brand}>TASKAYA</Text>
-        </Animated.View>
+      <GlowBg />
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <AuthHero />
 
-        {/* ===== Card ===== */}
-        <Animated.View style={cardAnim}>
-          <View style={[styles.card, webGlass]}>
-            <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.accent} />
-            <View style={styles.cardBody}>
+        <View style={styles.inner}>
+          <Animated.View style={cardAnim}>
+            <AuthCard style={styles.card}>
               <View style={styles.iconRing}>
-                <Ionicons name="chatbubble-ellipses-outline" size={26} color={c.accentText} />
+                <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.iconFill}>
+                  <Ionicons name="chatbubble-ellipses-outline" size={26} color="#FFFFFF" />
+                </LinearGradient>
               </View>
 
               <Text style={styles.title}>{t('verifyTitle')}</Text>
@@ -150,26 +142,26 @@ export default function Verify() {
                 accessibilityRole="button"
                 style={({ pressed }) => [styles.resend, canResend && styles.resendActive, pressed && canResend && { opacity: 0.85 }]}
               >
+                {canResend ? <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} /> : null}
                 <Ionicons name={canResend ? 'refresh' : 'time-outline'} size={16} color={canResend ? '#FFFFFF' : c.textSecondary} />
                 <Text style={[styles.resendText, canResend && { color: '#FFFFFF' }]}>
                   {left > 0 ? `${t('resendIn')} ${fmt(left)}` : t('resend')}
                 </Text>
               </Pressable>
-            </View>
-          </View>
-        </Animated.View>
+            </AuthCard>
+          </Animated.View>
 
-        {/* ===== Footer ===== */}
-        <Animated.View style={[styles.footerWrap, footAnim]}>
-          <Pressable onPress={() => router.back()} accessibilityRole="button" style={styles.changeRow}>
-            <Ionicons name="arrow-back" size={15} color={c.textSecondary} />
-            <Text style={styles.muted}>{t('changeNumber')}</Text>
-          </Pressable>
-          <View style={styles.secure}>
-            <Ionicons name="shield-checkmark-outline" size={14} color={c.textSecondary} />
-            <Text style={styles.secureText}>{tr('لن نشارك رقمك مع أي طرف آخر', 'We never share your number')}</Text>
-          </View>
-        </Animated.View>
+          <Animated.View style={[styles.footerWrap, footAnim]}>
+            <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/login'))} accessibilityRole="button" style={styles.changeRow}>
+              <Ionicons name="arrow-back" size={15} color={c.accentText} />
+              <Text style={[styles.muted, { color: c.accentText }]}>{t('changeNumber')}</Text>
+            </Pressable>
+            <View style={styles.secure}>
+              <Ionicons name="shield-checkmark-outline" size={14} color={c.textSecondary} />
+              <Text style={styles.secureText}>{tr('لن نشارك رقمك مع أي طرف آخر', 'We never share your number')}</Text>
+            </View>
+          </Animated.View>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -177,90 +169,63 @@ export default function Verify() {
 
 const makeStyles = (c: Palette) =>
   StyleSheet.create({
-  container: { flexGrow: 1, justifyContent: 'center', padding: spacing.lg, width: '100%', maxWidth: 440, alignSelf: 'center' },
+    scroll: { flexGrow: 1, paddingBottom: 30 },
+    inner: { paddingHorizontal: 20, width: '100%', maxWidth: 440, alignSelf: 'center' },
+    card: { marginTop: -64, padding: 22, alignItems: 'center' },
 
-  brandWrap: { alignItems: 'center', marginBottom: 22 },
-  logo: {
-    width: 60,
-    height: 60,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.6)',
-    shadowColor: c.accent,
-    shadowOpacity: 0.5,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 8 },
-    marginBottom: 10,
-  },
-  logoLetter: { fontFamily: fonts.bold, fontSize: 36, lineHeight: 48, color: '#FFFFFF', textShadowColor: 'rgba(8,36,100,0.35)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 6 },
-  brand: { fontFamily: fonts.bold, fontSize: 24, color: c.accentText, textAlign: 'center', letterSpacing: 6 },
+    iconRing: {
+      width: 70,
+      height: 70,
+      borderRadius: 35,
+      padding: 3,
+      backgroundColor: '#FFFFFF',
+      marginBottom: 14,
+      shadowColor: c.accent,
+      shadowOpacity: 0.3,
+      shadowRadius: 14,
+      shadowOffset: { width: 0, height: 6 },
+    },
+    iconFill: { flex: 1, borderRadius: 32, alignItems: 'center', justifyContent: 'center' },
 
-  card: {
-    borderRadius: 28,
-    overflow: 'hidden',
-    backgroundColor: c.isDark ? 'rgba(21,26,36,0.92)' : Platform.OS === 'android' ? 'rgba(255,255,255,0.88)' : 'rgba(255,255,255,0.28)',
-    borderWidth: 1,
-    borderColor: rgba(c.accent, 0.18),
-    shadowColor: c.accent,
-    shadowOpacity: 0.2,
-    shadowRadius: 40,
-    shadowOffset: { width: 0, height: 22 },
-    elevation: 0,
-  },
-  accent: { height: 4 },
-  cardBody: { padding: 26, alignItems: 'center' },
+    title: { fontFamily: fonts.bold, fontSize: 22, color: c.text, textAlign: 'center' },
+    sub: { fontFamily: fonts.regular, fontSize: 14, color: c.textSecondary, textAlign: 'center', marginTop: 6 },
+    phonePill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginTop: 12,
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      borderRadius: 999,
+      backgroundColor: rgba(c.accent, 0.1),
+      borderWidth: 1,
+      borderColor: rgba(c.accent, 0.25),
+    },
+    phone: { fontFamily: fonts.bold, fontSize: 17, color: c.accentText, letterSpacing: 1.5 },
 
-  iconRing: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: rgba(c.accent, 0.1),
-    borderWidth: 1.5,
-    borderColor: rgba(c.accent, 0.28),
-    marginBottom: 16,
-  },
-  title: { fontFamily: fonts.bold, fontSize: 24, color: c.text, textAlign: 'center' },
-  sub: { fontFamily: fonts.regular, fontSize: 14, color: c.textSecondary, textAlign: 'center', marginTop: 6 },
-  phonePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: rgba(c.accent, 0.1),
-    borderWidth: 1,
-    borderColor: rgba(c.accent, 0.25),
-  },
-  phone: { fontFamily: fonts.bold, fontSize: 17, color: c.accentText, letterSpacing: 1.5 },
+    statusRow: { minHeight: 30, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+    statusInline: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    status: { fontFamily: fonts.semibold, fontSize: 14, textAlign: 'center' },
 
-  statusRow: { minHeight: 30, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
-  statusInline: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  status: { fontFamily: fonts.semibold, fontSize: 14, textAlign: 'center' },
+    resend: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginTop: 10,
+      paddingHorizontal: 22,
+      height: 46,
+      borderRadius: 999,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: c.isDark ? 'rgba(255,255,255,0.12)' : Platform.OS === 'android' ? c.accentBorder : 'rgba(255,255,255,0.9)',
+      backgroundColor: c.isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.55)',
+    },
+    resendActive: { borderColor: 'rgba(255,255,255,0.35)' },
+    resendText: { fontFamily: fonts.semibold, fontSize: 14, color: c.textSecondary },
 
-  resend: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 12,
-    paddingHorizontal: 20,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: c.isDark ? 'rgba(255,255,255,0.06)' : 'rgba(11,31,58,0.05)',
-    borderWidth: 1,
-    borderColor: rgba(c.accent, 0.18),
-  },
-  resendActive: { backgroundColor: c.accent, borderColor: 'rgba(255,255,255,0.35)', shadowColor: c.accent, shadowOpacity: 0.4, shadowRadius: 14, shadowOffset: { width: 0, height: 6 } },
-  resendText: { fontFamily: fonts.semibold, fontSize: 14, color: c.textSecondary },
-
-  footerWrap: { alignItems: 'center', marginTop: 24 },
-  changeRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6 },
-  muted: { fontFamily: fonts.semibold, color: c.textSecondary },
-  secure: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12, opacity: 0.85 },
-  secureText: { fontFamily: fonts.regular, fontSize: 12, color: c.textSecondary },
-});
+    footerWrap: { alignItems: 'center', marginTop: 22 },
+    changeRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6 },
+    muted: { fontFamily: fonts.semibold },
+    secure: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12, opacity: 0.85 },
+    secureText: { fontFamily: fonts.regular, fontSize: 12, color: c.textSecondary },
+  });

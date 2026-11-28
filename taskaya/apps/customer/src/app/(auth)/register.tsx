@@ -4,7 +4,9 @@ import { Link, useRouter } from 'expo-router';
 import { ComponentProps, ReactNode, useState } from 'react';
 import { ActivityIndicator, Animated, Keyboard, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { RoleChooser, type Role } from '@/components/RoleChooser';
+import { AuthCard } from '@/components/ui/AuthCard';
 import { AuthHero } from '@/components/ui/AuthHero';
+import { GlowBg } from '@/components/home/GlowBg';
 import { KeyboardInputBar } from '@/components/ui/KeyboardInputBar';
 import { PremiumInput } from '@/components/ui/PremiumInput';
 import { useEntrance, useFocusHide } from '@/hooks/use-screen-entrance';
@@ -94,12 +96,13 @@ export default function Register() {
 
   return (
     <View style={[{ flex: 1, backgroundColor: 'transparent' }, hide]}>
+      <GlowBg />
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <AuthHero compact />
 
         <View style={styles.inner}>
           <Animated.View style={cardAnim}>
-            <View style={[styles.card, { backgroundColor: c.card, borderColor: c.accentBorder, shadowColor: c.accent }]}>
+            <AuthCard style={styles.card}>
               <Text style={[styles.welcome, { color: c.text }]}>{t('register')}</Text>
               <Text style={[styles.welcomeSub, { color: c.textSecondary }]}>{tr('أنشئ حسابك في دقيقة واحدة', 'Create your account in a minute')}</Text>
 
@@ -158,7 +161,7 @@ export default function Register() {
                   )}
                 </LinearGradient>
               </Pressable>
-            </View>
+            </AuthCard>
           </Animated.View>
 
           <Animated.View style={[styles.footerWrap, footAnim]}>
@@ -202,16 +205,7 @@ export default function Register() {
 const styles = StyleSheet.create({
   scroll: { flexGrow: 1, paddingBottom: 30 },
   inner: { width: '100%', maxWidth: 440, alignSelf: 'center', paddingHorizontal: 18 },
-  card: {
-    marginTop: -60,
-    borderRadius: 26,
-    borderWidth: 1,
-    padding: 22,
-    shadowOpacity: 0.18,
-    shadowRadius: 30,
-    shadowOffset: { width: 0, height: 14 },
-    elevation: 0,
-  },
+  card: { marginTop: -60, padding: 22 },
   welcome: { fontFamily: fonts.bold, fontSize: 23 },
   welcomeSub: { fontFamily: fonts.regular, fontSize: 14, marginTop: 4, marginBottom: 14 },
   roleChip: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, marginBottom: 16 },

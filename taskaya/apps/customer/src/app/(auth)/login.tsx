@@ -3,7 +3,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Link } from 'expo-router';
 import { ReactNode, useState } from 'react';
 import { ActivityIndicator, Animated, Keyboard, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AuthCard } from '@/components/ui/AuthCard';
 import { AuthHero } from '@/components/ui/AuthHero';
+import { GlowBg } from '@/components/home/GlowBg';
 import { KeyboardInputBar } from '@/components/ui/KeyboardInputBar';
 import { PremiumInput } from '@/components/ui/PremiumInput';
 import { useEntrance, useFocusHide } from '@/hooks/use-screen-entrance';
@@ -59,12 +61,13 @@ export default function Login() {
 
   return (
     <View style={[{ flex: 1, backgroundColor: 'transparent' }, hide]}>
+      <GlowBg />
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <AuthHero />
 
         <View style={styles.inner}>
           <Animated.View style={cardAnim}>
-            <View style={[styles.card, { backgroundColor: c.card, borderColor: c.accentBorder, shadowColor: c.accent }]}>
+            <AuthCard style={styles.card}>
               <Text style={[styles.welcome, { color: c.text }]}>{tr('أهلاً بعودتك', 'Welcome back')}</Text>
               <Text style={[styles.welcomeSub, { color: c.textSecondary }]}>{tr('سجّل دخولك لمتابعة طلباتك', 'Sign in to manage your orders')}</Text>
 
@@ -124,7 +127,7 @@ export default function Login() {
                   )}
                 </LinearGradient>
               </Pressable>
-            </View>
+            </AuthCard>
           </Animated.View>
 
           <Animated.View style={[styles.footerWrap, footAnim]}>
@@ -185,16 +188,7 @@ export default function Login() {
 const styles = StyleSheet.create({
   scroll: { flexGrow: 1, paddingBottom: 30 },
   inner: { width: '100%', maxWidth: 440, alignSelf: 'center', paddingHorizontal: 18 },
-  card: {
-    marginTop: -64,
-    borderRadius: 26,
-    borderWidth: 1,
-    padding: 22,
-    shadowOpacity: 0.18,
-    shadowRadius: 30,
-    shadowOffset: { width: 0, height: 14 },
-    elevation: 0,
-  },
+  card: { marginTop: -64, padding: 22 },
   welcome: { fontFamily: fonts.bold, fontSize: 23 },
   welcomeSub: { fontFamily: fonts.regular, fontSize: 14, marginTop: 4, marginBottom: 20 },
   errorBox: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, marginBottom: 14, borderRadius: 14, borderWidth: 1 },

@@ -1,15 +1,19 @@
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Animated, Easing, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { PremiumInput } from '@/components/ui/PremiumInput';
 import { isRTL, tr } from '@/i18n';
 import { toLocalDisplay } from '@/lib/phone';
 import { isThreePartName, MyProfile, updateMyName, uploadAvatar } from '@/lib/profile';
 import { useTheme } from '@/providers/ThemeProvider';
 import { fonts, rgba } from '@/theme';
+
+const WEB_FROST = Platform.OS === 'web' ? ({ backdropFilter: 'blur(16px) saturate(160%)', WebkitBackdropFilter: 'blur(16px) saturate(160%)' } as any) : null;
+const WEB_DIM = Platform.OS === 'web' ? ({ backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' } as any) : null;
 
 // صورة البروفايل: الصورة لو موجودة، أو أيقونة شخص
 export function Avatar({ uri, size }: { uri: string | null | undefined; size: number }) {
@@ -49,6 +53,11 @@ export function EditProfileSheet({ me, onClose }: { me: MyProfile; onClose: () =
   const [busyPhoto, setBusyPhoto] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  // دخول النافذة: spring (حركة + تكبير، من غير شفافية) والخلفية تظهر متغبّشة فورًا
+  const anim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(anim, { toValue: 1, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: Platform.OS !== 'web' }).start();
+  }, [anim]);
 
   const pickPhoto = async () => {
     setError('');
@@ -88,80 +97,97 @@ export function EditProfileSheet({ me, onClose }: { me: MyProfile; onClose: () =
     onClose();
   };
 
+  // زجاج: شفاف على الويب و iOS، شبه مصمت على أندرويد (من غير elevation)
+  const sheetBg = c.isDark
+    ? Platform.OS === 'android' ? 'rgba(21,26,36,0.97)' : 'rgba(21,26,36,0.78)'
+    : Platform.OS === 'android' ? 'rgba(255,255,255,0.97)' : 'rgba(255,255,255,0.78)';
+
   return (
-    <Modal visible transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
+    <Modal visible transparent animationType="none" statusBarTranslucent onRequestClose={onClose}>
       <View style={{ flex: 1, direction: isRTL ? 'rtl' : 'ltr' }}>
-      <Pressable style={[StyleSheet.absoluteFill, styles.backdrop]} onPress={onClose} accessibilityLabel={tr('إغلاق', 'Close')} />
+      <Pressable style={[StyleSheet.absoluteFill, styles.backdrop, WEB_DIM]} onPress={onClose} accessibilityLabel={tr('إغلاق', 'Close')} />
       <View style={styles.wrap}>
-        <View
-          style={[
-            styles.sheet,
-            { backgroundColor: c.isDark ? '#151A24' : '#FFFFFF', borderColor: rgba(c.accent, 0.3), shadowColor: c.accent },
-          ]}
-        >
-          <Text style={[styles.title, { color: c.text }]}>{tr('تعديل البيانات', 'Edit profile')}</Text>
+        <Animated.View style={[styles.sheet, WEB_FROST, { transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }, { scale: anim.interpolate({ inputRange: [0, 1], outputRange: [0.96, 1] }) }] }, { backgroundColor: sheetBg, borderColor: c.isDark ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.9)', shadowColor: c.accent }]}>
+          {Platform.OS === 'ios' ? <BlurView intensity={40} tint={c.isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} /> : null}
 
-          {/* الصورة: اضغط لتغييرها */}
-          <Pressable
-            onPress={pickPhoto}
-            disabled={busyPhoto}
-            style={styles.avatarBtn}
-            accessibilityRole="button"
-            accessibilityLabel={tr('تغيير الصورة', 'Change photo')}
-          >
-            <Avatar uri={me.avatar_url} size={100} />
-            <View style={[styles.camBadge, { backgroundColor: c.accent, borderColor: c.isDark ? '#151A24' : '#FFFFFF' }]}>
-              {busyPhoto ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Ionicons name="camera" size={16} color="#FFFFFF" />}
-            </View>
-          </Pressable>
-          <Text style={[styles.hint, { color: c.textSecondary }]}>{tr('اضغط على الصورة لتغييرها', 'Tap the photo to change it')}</Text>
+          {/* ===== الشريط الملوّن (نفس هيدر حسابي) ===== */}
+          <View style={styles.band}>
+            <LinearGradient colors={c.gradient} start={{ x: 0.1, y: 0 }} end={{ x: 0.9, y: 1 }} style={[StyleSheet.absoluteFill, { opacity: Platform.OS === 'android' ? 0.95 : 0.85 }]} />
+            <View style={styles.glow} />
+            <View style={styles.glow2} />
+            <LinearGradient colors={['rgba(255,255,255,0.22)', 'rgba(255,255,255,0)']} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={styles.sheen} />
 
-          <PremiumInput
-            label={tr('الاسم الثلاثي', 'Full name')}
-            labelInside
-            icon="person-outline"
-            value={name}
-            onChangeText={(v) => {
-              setName(v);
-              setError('');
-            }}
-            autoCapitalize="words"
-            autoComplete="name"
-            textContentType="name"
-          />
+            <Text style={styles.title}>{tr('تعديل البيانات', 'Edit profile')}</Text>
 
-          {/* الرقم: مقفول لحد ما نعمل تغييره بكود تحقق */}
-          <View style={[styles.phoneRow, { backgroundColor: c.fieldBg, borderColor: c.fieldBorder }]}>
-            <Ionicons name="call-outline" size={20} color={c.iconMuted} />
-            <Text style={[styles.phoneText, { color: c.ink }]}>{me.phone ? toLocalDisplay(me.phone) : '-'}</Text>
-            <Ionicons name="lock-closed-outline" size={16} color={c.iconMuted} />
-          </View>
-          <Text style={[styles.hint, { color: c.textSecondary }]}>
-            {tr('تغيير الرقم محتاج كود تحقق — قريبًا', 'Changing your number needs a verification code — coming soon')}
-          </Text>
-
-          {error ? <Text style={[styles.error, { color: c.dangerText }]}>{error}</Text> : null}
-
-          <View style={styles.actions}>
+            {/* الصورة: اضغط لتغييرها */}
             <Pressable
-              onPress={onClose}
+              onPress={pickPhoto}
+              disabled={busyPhoto}
+              style={({ pressed }) => [styles.avatarRing, pressed && { opacity: 0.85 }]}
               accessibilityRole="button"
-              style={({ pressed }) => [
-                styles.btn,
-                styles.flex,
-                { backgroundColor: c.isDark ? 'rgba(255,255,255,0.08)' : 'rgba(11,31,58,0.06)' },
-                pressed && { opacity: 0.8 },
-              ]}
+              accessibilityLabel={tr('تغيير الصورة', 'Change photo')}
             >
-              <Text style={[styles.btnText, { color: c.ink }]}>{tr('إلغاء', 'Cancel')}</Text>
+              <Avatar uri={me.avatar_url} size={92} />
+              <View style={styles.camBadge}>
+                {busyPhoto ? <ActivityIndicator size="small" color={c.accent} /> : <Ionicons name="camera" size={16} color={c.accent} />}
+              </View>
             </Pressable>
-            <Pressable onPress={save} disabled={saving || busyPhoto} accessibilityRole="button" style={({ pressed }) => [styles.flex, pressed && { opacity: 0.9 }]}>
-              <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.btn}>
-                {saving ? <ActivityIndicator color="#FFFFFF" /> : <Text style={[styles.btnText, { color: '#FFFFFF' }]}>{tr('حفظ', 'Save')}</Text>}
-              </LinearGradient>
-            </Pressable>
+            <Text style={styles.bandHint}>{tr('اضغط على الصورة لتغييرها', 'Tap the photo to change it')}</Text>
           </View>
-        </View>
+
+          {/* ===== البيانات ===== */}
+          <View style={styles.body}>
+            <PremiumInput
+              label={tr('الاسم الثلاثي', 'Full name')}
+              labelInside
+              icon="person-outline"
+              value={name}
+              onChangeText={(v) => {
+                setName(v);
+                setError('');
+              }}
+              autoCapitalize="words"
+              autoComplete="name"
+              textContentType="name"
+            />
+
+            {/* الرقم: مقفول لحد ما نعمل تغييره بكود تحقق */}
+            <View style={[styles.phoneRow, { backgroundColor: c.fieldBg, borderColor: c.fieldBorder }]}>
+              <Ionicons name="call-outline" size={20} color={c.iconMuted} />
+              <Text style={[styles.phoneText, { color: c.ink }]}>{me.phone ? toLocalDisplay(me.phone) : '-'}</Text>
+              <Ionicons name="lock-closed-outline" size={16} color={c.iconMuted} />
+            </View>
+            <Text style={[styles.hint, { color: c.textSecondary }]}>
+              {tr('تغيير الرقم محتاج كود تحقق — قريبًا', 'Changing your number needs a verification code — coming soon')}
+            </Text>
+
+            {error ? <Text style={[styles.error, { color: c.dangerText }]}>{error}</Text> : null}
+
+            <View style={styles.actions}>
+              <Pressable
+                onPress={onClose}
+                accessibilityRole="button"
+                style={({ pressed }) => [
+                  styles.btn,
+                  styles.flex,
+                  {
+                    backgroundColor: c.isDark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.6)',
+                    borderWidth: 1,
+                    borderColor: c.isDark ? 'rgba(255,255,255,0.14)' : c.accentBorder,
+                  },
+                  pressed && { opacity: 0.8 },
+                ]}
+              >
+                <Text style={[styles.btnText, { color: c.ink }]}>{tr('إلغاء', 'Cancel')}</Text>
+              </Pressable>
+              <Pressable onPress={save} disabled={saving || busyPhoto} accessibilityRole="button" style={({ pressed }) => [styles.flex, pressed && { opacity: 0.9 }]}>
+                <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.btn}>
+                  {saving ? <ActivityIndicator color="#FFFFFF" /> : <Text style={[styles.btnText, { color: '#FFFFFF' }]}>{tr('حفظ', 'Save')}</Text>}
+                </LinearGradient>
+              </Pressable>
+            </View>
+          </View>
+        </Animated.View>
       </View>
       </View>
     </Modal>
@@ -169,39 +195,49 @@ export function EditProfileSheet({ me, onClose }: { me: MyProfile; onClose: () =
 }
 
 const styles = StyleSheet.create({
-  backdrop: { backgroundColor: 'rgba(5,15,35,0.5)' },
+  backdrop: { backgroundColor: 'rgba(5,15,35,0.45)' },
   // النافذة فوق شوية عشان الكيبورد ميغطيش خانة الاسم
   wrap: { flex: 1, alignItems: 'center', justifyContent: 'flex-start', paddingTop: 80, paddingHorizontal: 20, pointerEvents: 'box-none' },
   sheet: {
     width: '100%',
     maxWidth: 400,
-    borderRadius: 24,
-    borderWidth: 1.5,
-    padding: 20,
+    borderRadius: 26,
+    borderWidth: 1,
+    overflow: 'hidden',
     shadowOpacity: 0.3,
     shadowRadius: 24,
     shadowOffset: { width: 0, height: 10 },
-    elevation: 12,
   },
-  title: { fontFamily: fonts.bold, fontSize: 18, textAlign: 'center', marginBottom: 16 },
-  avatarBtn: { alignSelf: 'center' },
+  band: { alignItems: 'center', paddingTop: 18, paddingBottom: 16, paddingHorizontal: 20, overflow: 'hidden', borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
+  sheen: { position: 'absolute', top: 0, left: 0, right: 0, height: '65%', pointerEvents: 'none' },
+  glow: { position: 'absolute', width: 220, height: 220, borderRadius: 110, top: -110, left: -70, backgroundColor: 'rgba(255,255,255,0.10)', pointerEvents: 'none' },
+  glow2: { position: 'absolute', width: 160, height: 160, borderRadius: 80, bottom: -80, right: -40, backgroundColor: 'rgba(255,255,255,0.07)', pointerEvents: 'none' },
+  title: { fontFamily: fonts.bold, fontSize: 18, color: '#FFFFFF', textAlign: 'center', marginBottom: 14 },
+  avatarRing: { padding: 3, borderRadius: 34, borderWidth: 2, borderColor: 'rgba(255,255,255,0.6)', backgroundColor: 'rgba(255,255,255,0.15)' },
   camBadge: {
     position: 'absolute',
-    right: 0,
-    bottom: 0,
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    borderWidth: 3,
+    right: -6,
+    bottom: -6,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
   },
+  bandHint: { fontFamily: fonts.regular, fontSize: 12, color: 'rgba(255,255,255,0.85)', textAlign: 'center', marginTop: 12 },
+  body: { padding: 20, paddingTop: 18 },
   hint: { fontFamily: fonts.regular, fontSize: 12, textAlign: 'center', marginTop: 8, marginBottom: 14 },
   phoneRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     height: 56,
+    marginTop: 12,
     paddingHorizontal: 16,
     borderRadius: 16,
     borderWidth: 1.5,

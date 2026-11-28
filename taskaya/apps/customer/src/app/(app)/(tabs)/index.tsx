@@ -1,3 +1,4 @@
+import { Avatar } from '@/components/EditProfileSheet';
 import { Ionicons } from '@expo/vector-icons';
 import { BellButton } from '@/components/ui/BellButton';
 import { CatTiles } from '@/components/home/CatTiles';
@@ -121,7 +122,7 @@ export default function Home() {
           <View style={styles.headRow}>
             <View style={styles.helloRow}>
               <Pressable onPress={() => router.push('/profile' as never)} onHoverIn={() => setAvHover(true)} onHoverOut={() => setAvHover(false)} style={[styles.avatar, avHover && styles.avatarHover]} accessibilityLabel={tr('حسابي', 'Profile')}>
-                {me?.avatar_url ? <Image source={{ uri: me.avatar_url }} style={StyleSheet.absoluteFill} contentFit="cover" /> : <Text style={styles.avatarText}>{initial}</Text>}
+                <Avatar uri={me?.avatar_url} size={52} />
               </Pressable>
               <View style={styles.helloCol}>
                 <Text style={[styles.hello, { textAlign: lang === 'ar' ? 'right' : 'left' }]} numberOfLines={1}>{hello}</Text>
@@ -177,17 +178,7 @@ const makeStyles = (c: Palette) =>
     glow: { position: 'absolute', width: 260, height: 260, borderRadius: 130, top: -120, left: -80, backgroundColor: 'rgba(255,255,255,0.10)', pointerEvents: 'none' },
     glow2: { position: 'absolute', width: 180, height: 180, borderRadius: 90, bottom: -90, right: -50, backgroundColor: 'rgba(255,255,255,0.07)', pointerEvents: 'none' },
     headRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    avatar: {
-      width: 44,
-      height: 44,
-      borderRadius: 15,
-      overflow: 'hidden',
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: 'rgba(255,255,255,0.2)',
-      borderWidth: 1.5,
-      borderColor: 'rgba(255,255,255,0.45)',
-    },
+    avatar: { padding: 2, borderRadius: 20, borderWidth: 2, borderColor: 'rgba(255,255,255,0.6)', backgroundColor: 'rgba(255,255,255,0.15)' },
     avatarText: { fontFamily: fonts.bold, fontSize: 19, color: '#FFFFFF' },
     avatarHover: { backgroundColor: 'rgba(255,255,255,0.32)', borderColor: '#FFFFFF', transform: [{ scale: 1.05 }] },
     helloRow: { flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 1 },
